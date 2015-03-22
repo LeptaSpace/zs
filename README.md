@@ -6,8 +6,8 @@ Solution: design a new simple ZeroMQ focused language that provides sufficient p
 Problem: I'd like a scripting language for Malamute.
 Solution: use a scripting language that is fast enough for real work and totally sandboxed.
 
-
-
+Problem: I need a neutral language for contract testing. That is, writing code to test the ZeroMQ
+contracts around libzmq, czmq, zyre, etc. This language has to be multithreaded, minimalistic.
 
 
 
