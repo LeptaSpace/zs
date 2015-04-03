@@ -12,6 +12,8 @@ contracts around libzmq, czmq, zyre, etc. This language has to be multithreaded,
 Problem: I need a simpler way to show how ZeroMQ works for tutorials and conferences.
 Solution: a scriptable language that works with an interactive shell.
 
-
+Problem: I'd like to encourage other languages to implement the CZMQ semantics.
+Solution: provide a ZeroScript to C compiler, which targets CZMQ, and then make it easy for
+other languages to do the same.
 
 
