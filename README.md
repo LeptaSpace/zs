@@ -16,3 +16,15 @@ Problem: I'd like to encourage other languages to implement the CZMQ semantics.
 Solution: provide a ZeroScript to C compiler, which targets CZMQ, and then make it easy for
 other languages to do the same.
 
+# Inspirations
+
+Forth and Lisp, for simplicity of compilation and extensibility.
+
+Go and Rust, for built in concurrency.
+
+Erlang, for message passing actors.
+
+Gawk, for regular expression matching.
+
+GSL, for code generation.
+
