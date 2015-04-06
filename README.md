@@ -28,3 +28,12 @@ Gawk, for regular expression matching.
 
 GSL, for code generation.
 
+# Technical Requirements
+
+Performance is valuable but not essential. The language should not get in the way of doing a hundred K messages per second.
+
+Security is paramount. It should not expose any of the machine to abusive code.
+
+Concurrency is paramount.
+
+
