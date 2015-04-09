@@ -36,4 +36,6 @@ Security is paramount. It should not expose any of the machine to abusive code.
 
 Concurrency is paramount.
 
+Readability is paramount. The language should have no funny notations or characters.
+
 
