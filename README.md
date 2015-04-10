@@ -38,4 +38,6 @@ Concurrency is paramount.
 
 Readability is paramount. The language should have no funny notations or characters.
 
+Composability is paramount. The language should be built like Forth and Lisp, on itself.
+
 
