@@ -40,4 +40,6 @@ Readability is paramount. The language should have no funny notations or charact
 
 Composability is paramount. The language should be built like Forth and Lisp, on itself.
 
+Compilability is valuable. It should be feasible to convert the language into other languages for performance.
+
 
