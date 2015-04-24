@@ -1,5 +1,7 @@
 # ZeroScript
 
+This does not yet work, at all.
+
 Problem: I need a neutral language for the Guide. C is fine yet too much of a barrier to many people.
 Solution: design a new simple ZeroMQ focused language that provides sufficient power to write examples.
 
