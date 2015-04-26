@@ -54,7 +54,7 @@ zs_parser_new (void)
         s_set_charmap (self, "[", open_quote_event);
         s_set_charmap (self, "]", close_quote_event);
         s_set_charmap (self, " \t\n", white_space_event);
-        self->charmap [0] = eol_event;
+        self->charmap [0] = finished_event;
     }
     return self;
 }
@@ -92,7 +92,7 @@ zs_parser_verbose (zs_parser_t *self, bool verbose)
 void
 zs_parser_execute (zs_parser_t *self, const char *input)
 {
-    printf (">%s\n", input);
+//     printf (">%s\n", input);
     self->input = input;
     fsm_execute (self->fsm, ok_event);
 }
@@ -210,6 +210,16 @@ report_unexpected_input (zs_parser_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  Return number of processing cycles used so far
+
+uint64_t
+zs_parser_cycles (zs_parser_t *self)
+{
+    return fsm_cycles (self->fsm);
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Selftest
 
 void
@@ -223,8 +233,9 @@ zs_parser_test (bool verbose)
     zs_parser_t *parser = zs_parser_new ();
     zs_parser_verbose (parser, verbose);
     uint times;
-    for (times = 0; times < 2; times++)
+    for (times = 0; times < 1000; times++)
         zs_parser_execute (parser, "This is a string 12345 [Hello] Not again");
+//     printf ("%ld cycles done\n", (long) zs_parser_cycles (parser));
     zs_parser_destroy (&parser);
     //  @end
     printf ("OK\n");

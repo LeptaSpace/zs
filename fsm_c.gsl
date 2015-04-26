@@ -23,23 +23,22 @@ endfor
 
 #   Lowercase state/event/action names
 for class.state
-    state.name = "$(name)"
+    state.name = "$(name:c)"
+    state.comma = last()?? ""? ","
     for event
-        event.name = "$(name)"
+        if name <> "*"
+            event.name = "$(name:c)"
+        endif
         if defined (event.next)
-            event.next = "$(next)"
+            event.next = "$(next:c)"
         endif
         for action
-            action.name = "$(name)"
+            action.name = "$(name:c)"
         endfor
     endfor
-endfor
-
-#  Collect all events and actions at class level
-for class.state
-    state.comma = last()?? ""? ","
+    
+    #   Collect all events and actions at class level
     for event where name <> "*"
-        event.name = "$(event.name:c)"
         #   Copy event to class if not yet defined there
         if count (class.event, name = -1.name) = 0
             copy event to class
@@ -66,7 +65,7 @@ endfor
 #   Collect prototypes that we need
 for class.action
     new class.prototype
-        prototype.name = "$(action.name:c)"
+        prototype.name = "$(action.name)"
         prototype.exists = 0
         prototype.args = "$(class.name)_t *self"
     endnew
@@ -99,7 +98,7 @@ endfor
 typedef enum {
 .for class.state
 .   state.comma = last()?? ""? ","
-    $(name:c)_state = $(index ())$(comma)
+    $(name)_state = $(index ())$(comma)
 .endfor
 } state_t;
 
@@ -124,11 +123,7 @@ static char *
 s_event_name [] = {
     "(NONE)",
 .for class.event
-.   if defined (event.external)
-    "$(NAME)"$(comma)
-.   else
     "$(name)"$(comma)
-.   endif
 .endfor
 };
 
@@ -147,6 +142,7 @@ typedef struct {
     event_t event;              //  Current event
     event_t next_event;         //  The next event
     event_t exception;          //  Exception event, if any
+    uint64_t cycles;            //  Track the work done
 } fsm_t;
 
 static fsm_t *
@@ -155,7 +151,7 @@ fsm_new ($(class.name)_t *parent)
     fsm_t *self = (fsm_t *) zmalloc (sizeof (fsm_t));
     if (self) {
 .for class.state where item () = 1
-        self->state = $(name:c)_state;
+        self->state = $(name)_state;
 .endfor
         self->event = NULL_event;
         self->parent = parent;
@@ -192,24 +188,30 @@ fsm_set_animate (fsm_t *self, bool animate)
     self->animate = animate;
 }
 
+static uint64_t
+fsm_cycles (fsm_t *self)
+{
+    return self->cycles;
+}
+
 .macro output_action_list ()
 .   for action
-                    if (!self->exception) {
-                        //  $(name)
-                        if (self->animate)
-                            zsys_debug ("$(class.name):         $ $(name)");
-                        $(name:c) (self->parent);
-                    }
+                if (!self->exception) {
+                    //  $(name)
+                    if (self->animate)
+                        zsys_debug ("$(class.name):         $ $(name)");
+                    $(name) (self->parent);
+                }
 .   endfor
 .   if !count (action)
-                        //  No action - just logging
-                        if (self->animate)
-                            zsys_debug ("$(class.name):         $ $(name)");
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("$(class.name):         $ $(name)");
 .   endif
 .   if defined (event.next)
-                    if (!self->exception)
-                        self->state = $(next:c)_state;
-.       my.next_state = class->state ("$(name:c)" = "$(event.next:c)")
+                if (!self->exception)
+                    self->state = $(next)_state;
+.       my.next_state = class->state ("$(name)" = "$(event.next)")
 .   endif
 .endmacro
 
@@ -221,6 +223,7 @@ fsm_execute (fsm_t *self, event_t event)
 {
     self->next_event = event;
     while (self->next_event != NULL_event) {
+        self->cycles++;
         self->event = self->next_event;
         self->next_event = NULL_event;
         self->exception = NULL_event;
@@ -228,40 +231,39 @@ fsm_execute (fsm_t *self, event_t event)
             zsys_debug ("$(class.name): %s:", s_state_name [self->state]);
             zsys_debug ("$(class.name):     %s", s_event_name [self->event]);
         }
-        switch (self->state) {
+.#  Nested if is slightly faster than switch, surprisingly perhaps
 .for class.state
 .   if index () > 1
-
+        else
 .   endif
-            case $(name:c)_state:
+        if (self->state == $(name:c)_state) {
 .   for event where name <> "*"
 .       if index () > 1
-                else
+            else
 .       endif
-                if (self->event == $(name)_event) {
+            if (self->event == $(name)_event) {
 .       output_action_list ()
-                }
+            }
 .   endfor
 .   for event where name = "*"
 .       if item () > 1
-                else {
+            else {
 .       else
-                {
+            {
 .       endif
-                    //  Handle all other events
+                //  Handle all other events
 .       output_action_list ()
-                }
+            }
 .   else
-                else {
-                    //  Handle unexpected internal events
-                    zsys_warning ("$(class.name): unhandled event %s in %s",
-                        s_event_name [self->event], s_state_name [self->state]);
-                    assert (false);
-                }
+            else {
+                //  Handle unexpected internal events
+                zsys_warning ("$(class.name): unhandled event %s in %s",
+                    s_event_name [self->event], s_state_name [self->state]);
+                assert (false);
+            }
 .   endfor
-                break;
-.endfor
         }
+.endfor
         //  If we had an exception event, interrupt normal programming
         if (self->exception) {
             if (self->animate)

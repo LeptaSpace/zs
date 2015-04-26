@@ -4,7 +4,7 @@
 
 int main (void)
 {
-    zs_parser_test (true);
+    zs_parser_test (false);
 //     //  Main thread is read/parse/execute input text
 //     zsys_init ();
 //     uint line_nbr = 0;

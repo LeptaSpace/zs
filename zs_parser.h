@@ -34,6 +34,10 @@ void
 void
     zs_parser_execute (zs_parser_t *self, const char *input);
 
+//  Return number of processing cycles used so far
+uint64_t
+    zs_parser_cycles (zs_parser_t *self);
+
 //  Self test of this class
 void
     zs_parser_test (bool animate);

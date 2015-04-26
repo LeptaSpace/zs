@@ -78,9 +78,8 @@
         <action name = "have string" />
         <action name = "read next character" />
     </event>
-    <event name = "finished">
+    <event name = "finished" next = "start">
         <action name = "report unfinished string" />
-        <action name = "terminate" />
     </event>
     <event name = "*">
         <action name = "store the character" />
@@ -89,43 +88,35 @@
 </state>
 
 <state name = "defaults">
-    <event name = "letter">
+    <event name = "letter" next = "start">
         <action name = "report unexpected input" />
-        <action name = "terminate" />
     </event>
-    <event name = "digit">
+    <event name = "digit" next = "start">
         <action name = "report unexpected input" />
-        <action name = "terminate" />
     </event>
-    <event name = "sign">
+    <event name = "sign" next = "start">
         <action name = "report unexpected input" />
-        <action name = "terminate" />
     </event>
-    <event name = "separator">
+    <event name = "separator" next = "start">
         <action name = "report unexpected input" />
-        <action name = "terminate" />
     </event>
-    <event name = "punctuation">
+    <event name = "punctuation" next = "start">
         <action name = "report unexpected input" />
-        <action name = "terminate" />
     </event>
     <event name = "open quote" next = "start">
         <action name = "report unexpected input" />
-        <action name = "terminate" />
     </event>
     <event name = "close quote" next = "start">
+        <action name = "report unexpected input" />
+    </event>
+    <event name = "white space" next = "start">
         <action name = "report unexpected input" />
     </event>
     <event name = "finished">
         <!-- Finish processing -->
     </event>
-    <event name = "white space">
+    <event name = "other" next = "start">
         <action name = "report unexpected input" />
-        <action name = "terminate" />
-    </event>
-    <event name = "other">
-        <action name = "report unexpected input" />
-        <action name = "terminate" />
     </event>
 </state>
 
