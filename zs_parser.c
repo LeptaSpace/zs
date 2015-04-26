@@ -46,7 +46,8 @@ zs_parser_new (void)
     if (self) {
         self->fsm = fsm_new (self);
         uint char_nbr;
-        for (char_nbr = 0; char_nbr < 256; char_nbr++)
+        self->charmap [0] = finished_event;
+        for (char_nbr = 1; char_nbr < 256; char_nbr++)
             self->charmap [char_nbr] = other_event;
         //  There are two ways to do this; either we define character
         //  classes that produce generic events depending on the current
@@ -72,7 +73,6 @@ zs_parser_new (void)
         s_set_charmap (self, "(", open_paren_event);
         s_set_charmap (self, ")", close_paren_event);
         s_set_charmap (self, " \t\n", white_space_event);
-        self->charmap [0] = finished_event;
     }
     return self;
 }
@@ -281,13 +281,13 @@ zs_parser_test (bool verbose)
     zs_parser_t *parser = zs_parser_new ();
     zs_parser_verbose (parser, verbose);
     zs_parser_execute (parser, "ZeroScript 12345 [Hello]");
-    zs_parser_execute (parser, "1 +1 -1 .1 0.1");
-    zs_parser_execute (parser, "3.141592653589793238462643383279502884197169");
-    zs_parser_execute (parser, "1/2 1:2 1024*1024 10^10 1v2 99:70");
-    zs_parser_execute (parser, "1E10 3.14e+000");
-    zs_parser_execute (parser, "2k 2M 2G 2T 2P 2E 2Z 2Y");
-    zs_parser_execute (parser, "2Ki 2Mi 2Gi 2Ti 2Pi 2Ei");
-    zs_parser_execute (parser, "2d 2c 2m 2u 2n 2p 2f 2a 2z 2y");
+//     zs_parser_execute (parser, "1 +1 -1 .1 0.1");
+//     zs_parser_execute (parser, "3.141592653589793238462643383279502884197169");
+//     zs_parser_execute (parser, "1/2 1:2 1024*1024 10^10 1v2 99:70");
+//     zs_parser_execute (parser, "1E10 3.14e+000");
+//     zs_parser_execute (parser, "2k 2M 2G 2T 2P 2E 2Z 2Y");
+//     zs_parser_execute (parser, "2Ki 2Mi 2Gi 2Ti 2Pi 2Ei");
+//     zs_parser_execute (parser, "2d 2c 2m 2u 2n 2p 2f 2a 2z 2y");
     zs_parser_execute (parser, "[Here is a long string");
     zs_parser_execute (parser, " which continues over two lines]");
 
