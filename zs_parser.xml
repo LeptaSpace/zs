@@ -66,13 +66,16 @@
         <action name = "store the character" />
         <action name = "read next character" />
     </event>
-    <event name = "white space" next = "expecting token">
+    <event name = "white space" next = "after function">
         <action name = "have function" />
         <action name = "read next character" />
     </event>
-    <event name = "finished" next = "expecting token">
+    <event name = "finished" next = "after function">
         <action name = "have function" />
     </event>
+</state>
+
+<state name = "after function" inherit = "expecting token">
 </state>
 
 <state name = "reading number" inherit = "defaults">

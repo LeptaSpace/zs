@@ -280,7 +280,9 @@ zs_parser_test (bool verbose)
     //  @selftest
     zs_parser_t *parser = zs_parser_new ();
     zs_parser_verbose (parser, verbose);
-    zs_parser_execute (parser, "ZeroScript 12345 [Hello]");
+    zs_parser_execute (parser, "echo ([Hello, World])");
+    zs_parser_execute (parser, "echo ([Hello, ] [World])");
+    zs_parser_execute (parser, "echo (1234 5678)");
 //     zs_parser_execute (parser, "1 +1 -1 .1 0.1");
 //     zs_parser_execute (parser, "3.141592653589793238462643383279502884197169");
 //     zs_parser_execute (parser, "1/2 1:2 1024*1024 10^10 1v2 99:70");
@@ -288,8 +290,8 @@ zs_parser_test (bool verbose)
 //     zs_parser_execute (parser, "2k 2M 2G 2T 2P 2E 2Z 2Y");
 //     zs_parser_execute (parser, "2Ki 2Mi 2Gi 2Ti 2Pi 2Ei");
 //     zs_parser_execute (parser, "2d 2c 2m 2u 2n 2p 2f 2a 2z 2y");
-    zs_parser_execute (parser, "[Here is a long string");
-    zs_parser_execute (parser, " which continues over two lines]");
+//     zs_parser_execute (parser, "[Here is a long string");
+//     zs_parser_execute (parser, " which continues over two lines]");
 
 //     printf ("%ld cycles done\n", (long) zs_parser_cycles (parser));
     zs_parser_destroy (&parser);
