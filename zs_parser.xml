@@ -1,11 +1,5 @@
 <class name = "zs_parser" script = "fsm_c">
 
-<state name = "start">
-    <event name = "ok" next = "expecting token">
-        <action name = "read first character" />
-    </event>
-</state>
-
 <state name = "expecting token" inherit = "defaults">
     <event name = "letter" next = "reading function">
         <action name = "start new token" />
@@ -54,7 +48,7 @@
         <action name = "have function" />
         <action name = "read next character" />
     </event>
-    <event name = "finished" next = "start">
+    <event name = "finished" next = "expecting token">
         <action name = "have function" />
     </event>
 </state>
@@ -68,7 +62,7 @@
         <action name = "have number" />
         <action name = "read next character" />
     </event>
-    <event name = "finished" next = "start">
+    <event name = "finished" next = "expecting token">
         <action name = "have number" />
     </event>
 </state>
@@ -78,8 +72,7 @@
         <action name = "have string" />
         <action name = "read next character" />
     </event>
-    <event name = "finished" next = "start">
-        <action name = "report unfinished string" />
+    <event name = "finished">
     </event>
     <event name = "*">
         <action name = "store the character" />
@@ -88,34 +81,31 @@
 </state>
 
 <state name = "defaults">
-    <event name = "letter" next = "start">
+    <event name = "letter" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "digit" next = "start">
+    <event name = "digit" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "sign" next = "start">
+    <event name = "sign" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "separator" next = "start">
+    <event name = "separator" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "punctuation" next = "start">
+    <event name = "punctuation" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "open quote" next = "start">
+    <event name = "open quote" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "close quote" next = "start">
+    <event name = "close quote" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "white space" next = "start">
+    <event name = "white space" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
-    <event name = "finished">
-        <!-- Finish processing -->
-    </event>
-    <event name = "other" next = "start">
+    <event name = "other" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
 </state>

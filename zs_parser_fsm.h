@@ -18,34 +18,31 @@
 //  State machine constants
 
 typedef enum {
-    start_state = 1,
-    expecting_token_state = 2,
-    reading_function_state = 3,
-    reading_number_state = 4,
-    reading_string_state = 5,
-    defaults_state = 6
+    expecting_token_state = 1,
+    reading_function_state = 2,
+    reading_number_state = 3,
+    reading_string_state = 4,
+    defaults_state = 5
 } state_t;
 
 typedef enum {
     NULL_event = 0,
-    ok_event = 1,
-    letter_event = 2,
-    sign_event = 3,
-    digit_event = 4,
-    open_quote_event = 5,
-    white_space_event = 6,
-    punctuation_event = 7,
-    finished_event = 8,
-    separator_event = 9,
-    close_quote_event = 10,
-    other_event = 11
+    letter_event = 1,
+    sign_event = 2,
+    digit_event = 3,
+    open_quote_event = 4,
+    white_space_event = 5,
+    punctuation_event = 6,
+    finished_event = 7,
+    separator_event = 8,
+    close_quote_event = 9,
+    other_event = 10
 } event_t;
 
 //  Names for state machine logging and error reporting
 static char *
 s_state_name [] = {
     "(NONE)",
-    "start",
     "expecting_token",
     "reading_function",
     "reading_number",
@@ -56,7 +53,6 @@ s_state_name [] = {
 static char *
 s_event_name [] = {
     "(NONE)",
-    "ok",
     "letter",
     "sign",
     "digit",
@@ -70,7 +66,6 @@ s_event_name [] = {
 };
 
 //  Action prototypes
-static void read_first_character (zs_parser_t *self);
 static void start_new_token (zs_parser_t *self);
 static void store_the_character (zs_parser_t *self);
 static void read_next_character (zs_parser_t *self);
@@ -78,7 +73,6 @@ static void have_punctuation (zs_parser_t *self);
 static void have_function (zs_parser_t *self);
 static void have_number (zs_parser_t *self);
 static void have_string (zs_parser_t *self);
-static void report_unfinished_string (zs_parser_t *self);
 static void report_unexpected_input (zs_parser_t *self);
 
 //  This is the context block for a FSM thread; use the setter
@@ -99,7 +93,7 @@ fsm_new (zs_parser_t *parent)
 {
     fsm_t *self = (fsm_t *) zmalloc (sizeof (fsm_t));
     if (self) {
-        self->state = start_state;
+        self->state = expecting_token_state;
         self->event = NULL_event;
         self->parent = parent;
     }
@@ -158,25 +152,6 @@ fsm_execute (fsm_t *self, event_t event)
             zsys_debug ("zs_parser: %s:", s_state_name [self->state]);
             zsys_debug ("zs_parser:         %s", s_event_name [self->event]);
         }
-        if (self->state == start_state) {
-            if (self->event == ok_event) {
-                if (!self->exception) {
-                    //  read_first_character
-                    if (self->animate)
-                        zsys_debug ("zs_parser:             $ read_first_character");
-                    read_first_character (self->parent);
-                }
-                if (!self->exception)
-                    self->state = expecting_token_state;
-            }
-            else {
-                //  Handle unexpected internal events
-                zsys_warning ("zs_parser: unhandled event %s in %s",
-                    s_event_name [self->event], s_state_name [self->state]);
-                assert (false);
-            }
-        }
-        else
         if (self->state == expecting_token_state) {
             if (self->event == letter_event) {
                 if (!self->exception) {
@@ -302,7 +277,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == close_quote_event) {
@@ -313,7 +288,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == other_event) {
@@ -324,7 +299,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else {
                 //  Handle unexpected internal events
@@ -405,7 +380,7 @@ fsm_execute (fsm_t *self, event_t event)
                     have_function (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == digit_event) {
@@ -416,7 +391,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == punctuation_event) {
@@ -427,7 +402,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == open_quote_event) {
@@ -438,7 +413,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == close_quote_event) {
@@ -449,7 +424,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == other_event) {
@@ -460,7 +435,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else {
                 //  Handle unexpected internal events
@@ -511,7 +486,7 @@ fsm_execute (fsm_t *self, event_t event)
                     have_number (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == letter_event) {
@@ -522,7 +497,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == sign_event) {
@@ -533,7 +508,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == separator_event) {
@@ -544,7 +519,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == punctuation_event) {
@@ -555,7 +530,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == open_quote_event) {
@@ -566,7 +541,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == close_quote_event) {
@@ -577,7 +552,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == other_event) {
@@ -588,7 +563,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else {
                 //  Handle unexpected internal events
@@ -617,14 +592,9 @@ fsm_execute (fsm_t *self, event_t event)
             }
             else
             if (self->event == finished_event) {
-                if (!self->exception) {
-                    //  report_unfinished_string
-                    if (self->animate)
-                        zsys_debug ("zs_parser:             $ report_unfinished_string");
-                    report_unfinished_string (self->parent);
-                }
-                if (!self->exception)
-                    self->state = start_state;
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("zs_parser:             $ finished");
             }
             else {
                 //  Handle all other events
@@ -652,7 +622,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == digit_event) {
@@ -663,7 +633,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == sign_event) {
@@ -674,7 +644,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == separator_event) {
@@ -685,7 +655,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == punctuation_event) {
@@ -696,7 +666,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == open_quote_event) {
@@ -707,7 +677,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == close_quote_event) {
@@ -718,7 +688,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == white_space_event) {
@@ -729,13 +699,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
-            }
-            else
-            if (self->event == finished_event) {
-                //  No action - just logging
-                if (self->animate)
-                    zsys_debug ("zs_parser:             $ finished");
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == other_event) {
@@ -746,7 +710,7 @@ fsm_execute (fsm_t *self, event_t event)
                     report_unexpected_input (self->parent);
                 }
                 if (!self->exception)
-                    self->state = start_state;
+                    self->state = expecting_token_state;
             }
             else {
                 //  Handle unexpected internal events
