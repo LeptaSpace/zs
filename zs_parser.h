@@ -30,7 +30,7 @@ void
 void
     zs_parser_verbose (zs_parser_t *self, bool verbose);
 
-//  Parse and execute a buffer of input text.
+//  Parse and execute a buffer of one or more lines of code.
 void
     zs_parser_execute (zs_parser_t *self, const char *input);
 

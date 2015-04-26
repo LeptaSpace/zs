@@ -33,6 +33,10 @@
     <event name = "white space">
         <action name = "read next character" />
     </event>
+    <event name = "newline">
+        <action name = "count line processed" />
+        <action name = "read next character" />
+    </event>
     <event name = "punctuation">
         <action name = "have punctuation" />
         <action name = "read next character" />
@@ -68,6 +72,10 @@
     </event>
     <event name = "white space" next = "after function">
         <action name = "have function" />
+        <action name = "read next character" />
+    </event>
+    <event name = "newline" next = "after function">
+        <action name = "count line processed" />
         <action name = "read next character" />
     </event>
     <event name = "finished" next = "after function">
@@ -135,6 +143,11 @@
         <action name = "have number candidate" />
         <action name = "read next character" />
     </event>
+    <event name = "newline" next = "expecting token">
+        <action name = "have number candidate" />
+        <action name = "count line processed" />
+        <action name = "read next character" />
+    </event>
     <event name = "finished" next = "expecting token">
         <action name = "have number candidate" />
     </event>
@@ -147,6 +160,11 @@
     </event>
     <event name = "finished">
         <action name = "store newline character" />
+    </event>
+    <event name = "newline" next = "expecting token">
+        <action name = "store the character" />
+        <action name = "count line processed" />
+        <action name = "read next character" />
     </event>
     <event name = "*">
         <action name = "store the character" />
@@ -201,9 +219,6 @@
         <action name = "report unexpected input" />
     </event>
     <event name = "close paren" next = "expecting token">
-        <action name = "report unexpected input" />
-    </event>
-    <event name = "white space" next = "expecting token">
         <action name = "report unexpected input" />
     </event>
     <event name = "other" next = "expecting token">

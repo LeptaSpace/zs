@@ -72,7 +72,8 @@ zs_parser_new (void)
         s_set_charmap (self, "]", close_quote_event);
         s_set_charmap (self, "(", open_paren_event);
         s_set_charmap (self, ")", close_paren_event);
-        s_set_charmap (self, " \t\n", white_space_event);
+        s_set_charmap (self, " \t", white_space_event);
+        s_set_charmap (self, "\n", newline_event);
     }
     return self;
 }
@@ -105,7 +106,7 @@ zs_parser_verbose (zs_parser_t *self, bool verbose)
 
 
 //  ---------------------------------------------------------------------------
-//  Parse and execute a buffer of input text.
+//  Parse and execute a buffer of one or more lines of code.
 
 void
 zs_parser_execute (zs_parser_t *self, const char *input)
@@ -235,6 +236,17 @@ have_punctuation (zs_parser_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  count_line_processed
+//
+
+static void
+count_line_processed (zs_parser_t *self)
+{
+    self->line_nbr++;
+}
+
+
+//  ---------------------------------------------------------------------------
 //  report_unfinished_string
 //
 
@@ -282,7 +294,7 @@ zs_parser_test (bool verbose)
     zs_parser_t *parser = zs_parser_new ();
     zs_parser_verbose (parser, verbose);
     zs_parser_execute (parser, "echo ([Hello, World])");
-    zs_parser_execute (parser, "echo ([Hello, ] [World])");
+    zs_parser_execute (parser, "echo ([Hello, ]\n[World])");
     zs_parser_execute (parser, "echo (1234 5678)");
 //     zs_parser_execute (parser, "1 +1 -1 .1 0.1");
 //     zs_parser_execute (parser, "3.141592653589793238462643383279502884197169");

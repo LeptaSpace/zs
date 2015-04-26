@@ -35,19 +35,20 @@ typedef enum {
     digit_event = 5,
     open_quote_event = 6,
     white_space_event = 7,
-    punctuation_event = 8,
-    finished_event = 9,
-    slash_event = 10,
-    underscore_event = 11,
-    comma_event = 12,
-    colon_event = 13,
-    asterisk_event = 14,
-    caret_event = 15,
-    percent_event = 16,
-    open_paren_event = 17,
-    close_paren_event = 18,
-    close_quote_event = 19,
-    other_event = 20
+    newline_event = 8,
+    punctuation_event = 9,
+    finished_event = 10,
+    slash_event = 11,
+    underscore_event = 12,
+    comma_event = 13,
+    colon_event = 14,
+    asterisk_event = 15,
+    caret_event = 16,
+    percent_event = 17,
+    open_paren_event = 18,
+    close_paren_event = 19,
+    close_quote_event = 20,
+    other_event = 21
 } event_t;
 
 //  Names for state machine logging and error reporting
@@ -72,6 +73,7 @@ s_event_name [] = {
     "digit",
     "open_quote",
     "white_space",
+    "newline",
     "punctuation",
     "finished",
     "slash",
@@ -91,6 +93,7 @@ s_event_name [] = {
 static void start_new_token (zs_parser_t *self);
 static void store_the_character (zs_parser_t *self);
 static void read_next_character (zs_parser_t *self);
+static void count_line_processed (zs_parser_t *self);
 static void have_punctuation (zs_parser_t *self);
 static void have_function (zs_parser_t *self);
 static void have_number_candidate (zs_parser_t *self);
@@ -309,6 +312,21 @@ fsm_execute (fsm_t *self, event_t event)
             }
             else
             if (self->event == white_space_event) {
+                if (!self->exception) {
+                    //  read_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ read_next_character");
+                    read_next_character (self->parent);
+                }
+            }
+            else
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  count_line_processed
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ count_line_processed");
+                    count_line_processed (self->parent);
+                }
                 if (!self->exception) {
                     //  read_next_character
                     if (self->animate)
@@ -563,6 +581,23 @@ fsm_execute (fsm_t *self, event_t event)
                     if (self->animate)
                         zsys_debug ("zs_parser:             $ have_function");
                     have_function (self->parent);
+                }
+                if (!self->exception) {
+                    //  read_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ read_next_character");
+                    read_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = after_function_state;
+            }
+            else
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  count_line_processed
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ count_line_processed");
+                    count_line_processed (self->parent);
                 }
                 if (!self->exception) {
                     //  read_next_character
@@ -847,6 +882,21 @@ fsm_execute (fsm_t *self, event_t event)
             }
             else
             if (self->event == white_space_event) {
+                if (!self->exception) {
+                    //  read_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ read_next_character");
+                    read_next_character (self->parent);
+                }
+            }
+            else
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  count_line_processed
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ count_line_processed");
+                    count_line_processed (self->parent);
+                }
                 if (!self->exception) {
                     //  read_next_character
                     if (self->animate)
@@ -1221,6 +1271,29 @@ fsm_execute (fsm_t *self, event_t event)
                     self->state = expecting_token_state;
             }
             else
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  have_number_candidate
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ have_number_candidate");
+                    have_number_candidate (self->parent);
+                }
+                if (!self->exception) {
+                    //  count_line_processed
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ count_line_processed");
+                    count_line_processed (self->parent);
+                }
+                if (!self->exception) {
+                    //  read_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ read_next_character");
+                    read_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
             if (self->event == finished_event) {
                 if (!self->exception) {
                     //  have_number_candidate
@@ -1308,6 +1381,29 @@ fsm_execute (fsm_t *self, event_t event)
                         zsys_debug ("zs_parser:             $ store_newline_character");
                     store_newline_character (self->parent);
                 }
+            }
+            else
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  count_line_processed
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ count_line_processed");
+                    count_line_processed (self->parent);
+                }
+                if (!self->exception) {
+                    //  read_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_parser:             $ read_next_character");
+                    read_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
             }
             else {
                 //  Handle all other events
@@ -1493,17 +1589,6 @@ fsm_execute (fsm_t *self, event_t event)
             }
             else
             if (self->event == close_paren_event) {
-                if (!self->exception) {
-                    //  report_unexpected_input
-                    if (self->animate)
-                        zsys_debug ("zs_parser:             $ report_unexpected_input");
-                    report_unexpected_input (self->parent);
-                }
-                if (!self->exception)
-                    self->state = expecting_token_state;
-            }
-            else
-            if (self->event == white_space_event) {
                 if (!self->exception) {
                     //  report_unexpected_input
                     if (self->animate)
