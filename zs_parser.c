@@ -114,6 +114,7 @@ zs_parser_execute (zs_parser_t *self, const char *input)
     self->input = input;
     self->input_ptr = self->input;
     self->current = *self->input_ptr++;
+    self->line_nbr++;
     fsm_execute (self->fsm, self->charmap [(uint) self->current]);
 }
 
@@ -253,7 +254,7 @@ report_unexpected_input (zs_parser_t *self)
 {
     printf ("%s\n", self->input);
     printf ("%*c\n", (uint) (self->input_ptr - self->input), '^');
-    printf ("Line %u: unexpected input [%c]\n", self->line_nbr, self->current);
+    printf ("Line %u: unexpected input '%c'\n", self->line_nbr, self->current);
 }
 
 
