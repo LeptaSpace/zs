@@ -1,10 +1,11 @@
 //  This is a ZeroScript machine
 
-#include "zs_parser.h"
+#include "zs_classes.h"
 
 int main (void)
 {
-    zs_parser_test (false);
+    zs_lex_test (false);
+    zs_core_test (false);
 //     //  Main thread is read/parse/execute input text
 //     zsys_init ();
 //     uint line_nbr = 0;

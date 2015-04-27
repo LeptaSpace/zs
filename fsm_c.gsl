@@ -20,8 +20,8 @@ for class.include
     endif
 endfor
 
-
 #   Lowercase state/event/action names
+
 for class.state
     state.name = "$(name:c)"
     state.comma = last()?? ""? ","
@@ -224,13 +224,13 @@ fsm_cycles (fsm_t *self)
 .   endif
 .endmacro
 
-//  Execute state machine until it has no next event; returns control
-//  to caller so it can return with a further event.
+//  Execute state machine until it has no next event. Before calling this
+//  you must have set the next event using fsm_set_next_event(). Ends when
+//  there is no next event set.
 
 static void
-fsm_execute (fsm_t *self, event_t event)
+fsm_execute (fsm_t *self)
 {
-    self->next_event = event;
     while (self->next_event != NULL_event) {
         self->cycles++;
         self->event = self->next_event;

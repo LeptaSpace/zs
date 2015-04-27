@@ -1,0 +1,74 @@
+<class name = "zs_core" script = "fsm_c">
+
+<state name = "invoking" inherit = "defaults">
+    <event name = "number">
+        <action name = "queue numeric value" />
+        <action name = "get next token" />
+    </event>
+    <event name = "string">
+        <action name = "queue string value" />
+        <action name = "get next token" />
+    </event>
+    <event name = "invoke">
+        <action name = "invoke function" />
+        <action name = "get next token" />
+    </event>
+    <event name = "compose" next = "expecting open">
+        <action name = "name must be unknown" />
+        <action name = "open composition" />
+    </event>
+</state>
+
+<state name = "expecting open" inherit = "defaults">
+    <event name = "open" next = "composing">
+        <action name = "get next token" />
+    </event>
+</state>
+
+<state name = "composing" inherit = "defaults">
+    <event name = "number">
+        <action name = "record numeric value" />
+        <action name = "get next token" />
+    </event>
+    <event name = "string">
+        <action name = "record string value" />
+        <action name = "get next token" />
+    </event>
+    <event name = "invoke">
+        <action name = "record function" />
+        <action name = "get next token" />
+    </event>
+    <event name = "close" next = "invoking">
+        <action name = "close composition" />
+        <action name = "get next token" />
+    </event>
+</state>
+
+<state name = "defaults">
+    <event name = "number">
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "string">
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "invoke">
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "compose">
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "open">
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "close">
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "invalid">
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "null">
+        <action name = "signal success" />
+    </event>
+</state>
+
+</class>
