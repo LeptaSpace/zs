@@ -240,13 +240,13 @@ store_newline_character (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  have_invoke_token
+//  have_function_token
 //
 
 static void
-have_invoke_token (zs_lex_t *self)
+have_function_token (zs_lex_t *self)
 {
-    self->type = zs_lex_invoke;
+    self->type = zs_lex_function;
 }
 
 
@@ -378,13 +378,13 @@ zs_lex_test (bool verbose)
     
     assert (zs_lex_first (lex, "twopi:( pi 2 times )") == zs_lex_compose);
     assert (zs_lex_next (lex) == zs_lex_open);
-    assert (zs_lex_next (lex) == zs_lex_invoke);
+    assert (zs_lex_next (lex) == zs_lex_function);
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_invoke);
+    assert (zs_lex_next (lex) == zs_lex_function);
     assert (zs_lex_next (lex) == zs_lex_close);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_invoke);
+    assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_function);
     assert (zs_lex_next (lex) == zs_lex_open);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_close);
@@ -451,10 +451,10 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, "[Hello, World>") == zs_lex_invalid);
     assert (zs_lex_first (lex, "<Hello,>?<World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_invalid);
-    assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_invoke);
+    assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_function);
     assert (zs_lex_next (lex) == zs_lex_open);
-    assert (zs_lex_next (lex) == zs_lex_invoke);
-    assert (zs_lex_next (lex) == zs_lex_invoke);
+    assert (zs_lex_next (lex) == zs_lex_function);
+    assert (zs_lex_next (lex) == zs_lex_function);
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_next (lex) == zs_lex_null);
     assert (zs_lex_first (lex, ",1") == zs_lex_invalid);

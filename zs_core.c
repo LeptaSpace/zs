@@ -19,37 +19,7 @@
 
 #include "zs_classes.h"
 #include "zs_core_fsm.h"        //  Finite state machine engine
-
-//  This holds an item in our value queue
-typedef struct {
-    char *string;               //  It's either a string or
-    int64_t number;             //      an integer
-} value_t;
-
-static value_t *
-value_new (const char *string, int64_t number)
-{
-    value_t *self = (value_t *) zmalloc (sizeof (value_t));
-    if (self) {
-        if (string)
-            self->string = strdup (string);
-        else
-            self->number = number;
-    }
-    return self;
-}
-
-static void
-s_value_destroy (value_t **self_p)
-{
-    assert (self_p);
-    if (*self_p) {
-        value_t *self = *self_p;
-        free (self->string);
-        free (self);
-        *self_p = NULL;
-    }
-}
+#include "zs_core_lib.h"        //  Core library primitives
 
 //  This holds an entry in the dictionary
 typedef struct {
@@ -66,7 +36,7 @@ struct _zs_core_t {
     zs_lex_t *lex;              //  Lexer instance
     const char *input;          //  Line of text we're parsing
     int status;                 //  0 = OK, -1 = error
-    zlistx_t *values;           //  Value queue
+    zs_exec_t *exec;            //  Execution context
 };
 
 //  ---------------------------------------------------------------------------
@@ -80,18 +50,22 @@ zs_core_new (void)
     if (self) {
         self->fsm = fsm_new (self);
         self->lex = zs_lex_new ();
-        self->values = zlistx_new ();
-        zlistx_set_destructor (self->values, (czmq_destructor *) s_value_destroy);
         
         //  Set token type to event map
-        self->events [zs_lex_invoke] = invoke_event;
+        self->events [zs_lex_function] = function_event;
         self->events [zs_lex_compose] = compose_event;
         self->events [zs_lex_string] = string_event;
         self->events [zs_lex_number] = number_event;
         self->events [zs_lex_open] = open_event;
         self->events [zs_lex_close] = close_event;
         self->events [zs_lex_invalid] = invalid_event;
-        self->events [zs_lex_null] = null_event;
+        self->events [zs_lex_null] = eol_event;
+
+        self->exec = zs_exec_new ();
+        zs_exec_probe (self->exec, s_sum);
+        zs_exec_probe (self->exec, s_count);
+        zs_exec_probe (self->exec, s_echo);
+        zs_exec_probe (self->exec, s_selftest);
     }
     return self;
 }
@@ -108,6 +82,7 @@ zs_core_destroy (zs_core_t **self_p)
         zs_core_t *self = *self_p;
         fsm_destroy (&self->fsm);
         zs_lex_destroy (&self->lex);
+        zs_exec_destroy (&self->exec);
         free (self);
         *self_p = NULL;
     }
@@ -158,24 +133,61 @@ get_next_token (zs_core_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  queue_numeric_value
+//  push_number_to_output
 //
 
 static void
-queue_numeric_value (zs_core_t *self)
+push_number_to_output (zs_core_t *self)
 {
-    zlistx_add_end (self->values, value_new (NULL, atol (zs_lex_token (self->lex))));
+    zs_pipe_put_number (zs_exec_output (self->exec), atoll (zs_lex_token (self->lex)));
 }
 
 
 //  ---------------------------------------------------------------------------
-//  queue_string_value
+//  push_string_to_output
 //
 
 static void
-queue_string_value (zs_core_t *self)
+push_string_to_output (zs_core_t *self)
 {
-    zlistx_add_end (self->values, value_new (zs_lex_token (self->lex), 0));
+    zs_pipe_put_string (zs_exec_output (self->exec), zs_lex_token (self->lex));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  execute_function
+//
+
+static void
+execute_function (zs_core_t *self)
+{
+    zs_exec_cycle (self->exec);
+    if (zs_exec_call (self->exec, zs_lex_token (self->lex)))
+        fsm_set_exception (self->fsm, invalid_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  show_pipe_contents
+//
+
+static void
+show_pipe_contents (zs_core_t *self)
+{
+    printf ("=> ");
+    zs_pipe_print (zs_exec_output (self->exec));
+    zs_exec_cycle (self->exec);
+    printf ("OK\n");
+}
+
+
+//  ---------------------------------------------------------------------------
+//  name_must_be_unknown
+//
+
+static void
+name_must_be_unknown (zs_core_t *self)
+{
 }
 
 
@@ -190,31 +202,31 @@ open_composition (zs_core_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  record_numeric_value
+//  compose_number_value
 //
 
 static void
-record_numeric_value (zs_core_t *self)
+compose_number_value (zs_core_t *self)
 {
 }
 
 
 //  ---------------------------------------------------------------------------
-//  record_string_value
+//  compose_string_value
 //
 
 static void
-record_string_value (zs_core_t *self)
+compose_string_value (zs_core_t *self)
 {
 }
 
 
 //  ---------------------------------------------------------------------------
-//  record_function
+//  compose_function
 //
 
 static void
-record_function (zs_core_t *self)
+compose_function (zs_core_t *self)
 {
 }
 
@@ -225,26 +237,6 @@ record_function (zs_core_t *self)
 
 static void
 close_composition (zs_core_t *self)
-{
-}
-
-
-//  ---------------------------------------------------------------------------
-//  invoke_function
-//
-
-static void
-invoke_function (zs_core_t *self)
-{
-}
-
-
-//  ---------------------------------------------------------------------------
-//  name_must_be_unknown
-//
-
-static void
-name_must_be_unknown (zs_core_t *self)
 {
 }
 
@@ -287,14 +279,14 @@ zs_core_test (bool verbose)
 
     zs_core_execute (core, "1 2 3 sum");
     zs_core_execute (core, "sum (1 2 3)");
-    zs_core_execute (core, "a: (sum (1 2 3))");
-    zs_core_execute (core, "b: (a 4 5 6 sum)");
-    zs_core_execute (core, "c: (a b sum)");
-    zs_core_execute (core, "a b c");
-    zs_core_execute (core, "<hello> <world>");
-    zs_core_execute (core, "echo (<hello> <world>)");
-    zs_core_execute (core, "pi: (22/7)");
-    zs_core_execute (core, "twopi: (pi 2 times)");
+//     zs_core_execute (core, "a: (sum (1 2 3))");
+//     zs_core_execute (core, "b: (a 4 5 6 sum)");
+//     zs_core_execute (core, "c: (a b sum)");
+//     zs_core_execute (core, "a b c");
+//     zs_core_execute (core, "<hello> <world>");
+//     zs_core_execute (core, "echo (<hello> <world>)");
+//     zs_core_execute (core, "pi: (22/7)");
+//     zs_core_execute (core, "twopi: (pi 2 times)");
     
     zs_core_destroy (&core);
     //  @end

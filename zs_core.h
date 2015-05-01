@@ -37,8 +37,8 @@ void
     zs_core_verbose (zs_core_t *self, bool verbose);
 
 //  Execute a buffer of code; to reset the engine you destroy it and create a
-//  new one. Returns 0 if OK, -1 on syntax errors or cataclysmic implosions of
-//  the Sun (can be resolved from context).
+//  new one. Returns 0 if OK, -1 on syntax errors or cataclysmic implosions 
+//  of the Sun (can be determined from context).
 int
     zs_core_execute (zs_core_t *self, const char *input);
 

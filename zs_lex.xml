@@ -73,24 +73,24 @@
         <action name = "parse next character" />
     </event>
     <event name = "whitespace" next = "expecting token">
-        <action name = "have invoke token" />
+        <action name = "have function token" />
     </event>
     <event name = "colon" next = "expecting token">
         <action name = "have compose token" />
     </event>
     <event name = "open list" next = "expecting token">
-        <action name = "have invoke token" />
+        <action name = "have function token" />
         <action name = "push back to previous" />
     </event>
     <event name = "close list" next = "expecting token">
-        <action name = "have invoke token" />
+        <action name = "have function token" />
         <action name = "push back to previous" />
     </event>
     <event name = "newline" next = "expecting token">
-        <action name = "have invoke token" />
+        <action name = "have function token" />
     </event>
     <event name = "finished" next = "expecting token">
-        <action name = "have invoke token" />
+        <action name = "have function token" />
     </event>
 </state>
 

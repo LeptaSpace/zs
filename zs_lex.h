@@ -23,7 +23,7 @@ extern "C" {
 typedef struct _zs_lex_t zs_lex_t;
 
 typedef enum {
-    zs_lex_invoke,          //  function name
+    zs_lex_function,        //  function name
     zs_lex_compose,         //  function name followed by :
     zs_lex_string,          //  string
     zs_lex_number,          //  number expression

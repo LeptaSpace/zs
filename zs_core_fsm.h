@@ -18,7 +18,7 @@
 //  State machine constants
 
 typedef enum {
-    invoking_state = 1,
+    running_state = 1,
     expecting_open_state = 2,
     composing_state = 3,
     defaults_state = 4
@@ -28,19 +28,19 @@ typedef enum {
     NULL_event = 0,
     number_event = 1,
     string_event = 2,
-    invoke_event = 3,
+    function_event = 3,
     compose_event = 4,
-    open_event = 5,
-    close_event = 6,
-    invalid_event = 7,
-    null_event = 8
+    eol_event = 5,
+    open_event = 6,
+    close_event = 7,
+    invalid_event = 8
 } event_t;
 
 //  Names for state machine logging and error reporting
 static char *
 s_state_name [] = {
     "(NONE)",
-    "invoking",
+    "running",
     "expecting_open",
     "composing",
     "defaults"
@@ -51,27 +51,28 @@ s_event_name [] = {
     "(NONE)",
     "number",
     "string",
-    "invoke",
+    "function",
     "compose",
+    "eol",
     "open",
     "close",
-    "invalid",
-    "null"
+    "invalid"
 };
 
 //  Action prototypes
-static void queue_numeric_value (zs_core_t *self);
+static void push_number_to_output (zs_core_t *self);
 static void get_next_token (zs_core_t *self);
-static void queue_string_value (zs_core_t *self);
-static void invoke_function (zs_core_t *self);
+static void push_string_to_output (zs_core_t *self);
+static void execute_function (zs_core_t *self);
 static void name_must_be_unknown (zs_core_t *self);
 static void open_composition (zs_core_t *self);
-static void record_numeric_value (zs_core_t *self);
-static void record_string_value (zs_core_t *self);
-static void record_function (zs_core_t *self);
+static void show_pipe_contents (zs_core_t *self);
+static void signal_success (zs_core_t *self);
+static void compose_number_value (zs_core_t *self);
+static void compose_string_value (zs_core_t *self);
+static void compose_function (zs_core_t *self);
 static void close_composition (zs_core_t *self);
 static void signal_syntax_error (zs_core_t *self);
-static void signal_success (zs_core_t *self);
 
 //  This is the context block for a FSM thread; use the setter
 //  methods to set the FSM properties.
@@ -91,7 +92,7 @@ fsm_new (zs_core_t *parent)
 {
     fsm_t *self = (fsm_t *) zmalloc (sizeof (fsm_t));
     if (self) {
-        self->state = invoking_state;
+        self->state = running_state;
         self->event = NULL_event;
         self->parent = parent;
     }
@@ -150,13 +151,13 @@ fsm_execute (fsm_t *self)
             zsys_debug ("zs_core: %s:", s_state_name [self->state]);
             zsys_debug ("zs_core:           %s", s_event_name [self->event]);
         }
-        if (self->state == invoking_state) {
+        if (self->state == running_state) {
             if (self->event == number_event) {
                 if (!self->exception) {
-                    //  queue_numeric_value
+                    //  push_number_to_output
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ queue_numeric_value");
-                    queue_numeric_value (self->parent);
+                        zsys_debug ("zs_core:               $ push_number_to_output");
+                    push_number_to_output (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -168,10 +169,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == string_event) {
                 if (!self->exception) {
-                    //  queue_string_value
+                    //  push_string_to_output
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ queue_string_value");
-                    queue_string_value (self->parent);
+                        zsys_debug ("zs_core:               $ push_string_to_output");
+                    push_string_to_output (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -181,12 +182,12 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == invoke_event) {
+            if (self->event == function_event) {
                 if (!self->exception) {
-                    //  invoke_function
+                    //  execute_function
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ invoke_function");
-                    invoke_function (self->parent);
+                        zsys_debug ("zs_core:               $ execute_function");
+                    execute_function (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -209,8 +210,29 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ open_composition");
                     open_composition (self->parent);
                 }
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_core:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
                 if (!self->exception)
                     self->state = expecting_open_state;
+            }
+            else
+            if (self->event == eol_event) {
+                if (!self->exception) {
+                    //  show_pipe_contents
+                    if (self->animate)
+                        zsys_debug ("zs_core:               $ show_pipe_contents");
+                    show_pipe_contents (self->parent);
+                }
+                if (!self->exception) {
+                    //  signal_success
+                    if (self->animate)
+                        zsys_debug ("zs_core:               $ signal_success");
+                    signal_success (self->parent);
+                }
             }
             else
             if (self->event == open_event) {
@@ -237,15 +259,6 @@ fsm_execute (fsm_t *self)
                     if (self->animate)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
-                }
-            }
-            else
-            if (self->event == null_event) {
-                if (!self->exception) {
-                    //  signal_success
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_success");
-                    signal_success (self->parent);
                 }
             }
             else {
@@ -286,7 +299,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == invoke_event) {
+            if (self->event == function_event) {
                 if (!self->exception) {
                     //  signal_syntax_error
                     if (self->animate)
@@ -322,7 +335,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == null_event) {
+            if (self->event == eol_event) {
                 if (!self->exception) {
                     //  signal_success
                     if (self->animate)
@@ -341,10 +354,10 @@ fsm_execute (fsm_t *self)
         if (self->state == composing_state) {
             if (self->event == number_event) {
                 if (!self->exception) {
-                    //  record_numeric_value
+                    //  compose_number_value
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ record_numeric_value");
-                    record_numeric_value (self->parent);
+                        zsys_debug ("zs_core:               $ compose_number_value");
+                    compose_number_value (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -356,10 +369,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == string_event) {
                 if (!self->exception) {
-                    //  record_string_value
+                    //  compose_string_value
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ record_string_value");
-                    record_string_value (self->parent);
+                        zsys_debug ("zs_core:               $ compose_string_value");
+                    compose_string_value (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -369,12 +382,12 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == invoke_event) {
+            if (self->event == function_event) {
                 if (!self->exception) {
-                    //  record_function
+                    //  compose_function
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ record_function");
-                    record_function (self->parent);
+                        zsys_debug ("zs_core:               $ compose_function");
+                    compose_function (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -398,7 +411,7 @@ fsm_execute (fsm_t *self)
                     get_next_token (self->parent);
                 }
                 if (!self->exception)
-                    self->state = invoking_state;
+                    self->state = running_state;
             }
             else
             if (self->event == compose_event) {
@@ -428,7 +441,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == null_event) {
+            if (self->event == eol_event) {
                 if (!self->exception) {
                     //  signal_success
                     if (self->animate)
@@ -463,7 +476,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == invoke_event) {
+            if (self->event == function_event) {
                 if (!self->exception) {
                     //  signal_syntax_error
                     if (self->animate)
@@ -508,7 +521,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == null_event) {
+            if (self->event == eol_event) {
                 if (!self->exception) {
                     //  signal_success
                     if (self->animate)

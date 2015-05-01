@@ -92,7 +92,7 @@ static void parse_next_character (zs_lex_t *self);
 static void have_open_token (zs_lex_t *self);
 static void have_close_token (zs_lex_t *self);
 static void have_null_token (zs_lex_t *self);
-static void have_invoke_token (zs_lex_t *self);
+static void have_function_token (zs_lex_t *self);
 static void have_compose_token (zs_lex_t *self);
 static void push_back_to_previous (zs_lex_t *self);
 static void have_number_token (zs_lex_t *self);
@@ -475,10 +475,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == whitespace_event) {
                 if (!self->exception) {
-                    //  have_invoke_token
+                    //  have_function_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_invoke_token");
-                    have_invoke_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_function_token");
+                    have_function_token (self->parent);
                 }
                 if (!self->exception)
                     self->state = expecting_token_state;
@@ -497,10 +497,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == open_list_event) {
                 if (!self->exception) {
-                    //  have_invoke_token
+                    //  have_function_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_invoke_token");
-                    have_invoke_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_function_token");
+                    have_function_token (self->parent);
                 }
                 if (!self->exception) {
                     //  push_back_to_previous
@@ -514,10 +514,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == close_list_event) {
                 if (!self->exception) {
-                    //  have_invoke_token
+                    //  have_function_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_invoke_token");
-                    have_invoke_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_function_token");
+                    have_function_token (self->parent);
                 }
                 if (!self->exception) {
                     //  push_back_to_previous
@@ -531,10 +531,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == newline_event) {
                 if (!self->exception) {
-                    //  have_invoke_token
+                    //  have_function_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_invoke_token");
-                    have_invoke_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_function_token");
+                    have_function_token (self->parent);
                 }
                 if (!self->exception)
                     self->state = expecting_token_state;
@@ -542,10 +542,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == finished_event) {
                 if (!self->exception) {
-                    //  have_invoke_token
+                    //  have_function_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_invoke_token");
-                    have_invoke_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_function_token");
+                    have_function_token (self->parent);
                 }
                 if (!self->exception)
                     self->state = expecting_token_state;
