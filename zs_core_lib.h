@@ -51,6 +51,17 @@ void s_echo (zs_exec_t *self)
 }
 
 static
+void s_clr (zs_exec_t *self)
+{
+    if (zs_exec_probing (self))
+        zs_exec_register (self, "clr", "Clear all values");
+    else {
+        zs_pipe_purge (zs_exec_input (self));
+        zs_pipe_purge (zs_exec_output (self));
+    }
+}
+
+static
 void s_selftest (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
@@ -64,4 +75,13 @@ void s_selftest (zs_exec_t *self)
     }
 }
 
+static void
+s_register_primitives (zs_exec_t *self)
+{
+    zs_exec_probe (self, s_sum);
+    zs_exec_probe (self, s_count);
+    zs_exec_probe (self, s_echo);
+    zs_exec_probe (self, s_clr);
+    zs_exec_probe (self, s_selftest);
+}
 #endif

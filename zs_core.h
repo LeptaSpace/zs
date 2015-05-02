@@ -42,6 +42,11 @@ void
 int
     zs_core_execute (zs_core_t *self, const char *input);
 
+//  Return true if the input formed a complete phrase that was successfully
+//  evaulated. If not, the core expects more input.
+bool
+    zs_core_completed (zs_core_t *self);
+
 //  Return pipe results as string, after successful execution. Caller must
 //  free results when finished.
 char *

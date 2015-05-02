@@ -134,6 +134,17 @@ zs_exec_output (zs_exec_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  Reset the pipes, so whatever follows has empty input and output pipes.
+
+void
+zs_exec_reset (zs_exec_t *self)
+{
+    zs_pipe_purge (self->input);
+    zs_pipe_purge (self->output);
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Resolve a function by name, return function address, or NULL
 
 zs_primitive_t *
@@ -144,11 +155,24 @@ zs_exec_resolve (zs_exec_t *self, const char *name)
 
 
 //  ---------------------------------------------------------------------------
-//  Open new execution scope for specified function; we use this to handle
-//  a function followed by a value list in parentheses.
+//  Execute an inline function without value list, passing current output
+//  pipe to the function as input, and offering a new output pipe.
 
 void
-zs_exec_scope_open (zs_exec_t *self, zs_primitive_t *function)
+zs_exec_inline (zs_exec_t *self, zs_primitive_t *function)
+{
+    zs_pipe_destroy (&self->input);
+    self->input = self->output;
+    self->output = zs_pipe_new ();
+    (function) (self);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Open new execution scope for a complex function (with a value list)
+
+void
+zs_exec_open (zs_exec_t *self, zs_primitive_t *function)
 {
     //  Save output pipe and create new empty input pipe
     self->pipe_stack [self->stack_ptr] = self->output;
@@ -160,12 +184,12 @@ zs_exec_scope_open (zs_exec_t *self, zs_primitive_t *function)
 
 
 //  ---------------------------------------------------------------------------
-//  Close execution scope and return parent function; we use this to handle
-//  the closing parenthesis of a function value list. Returns NULL if there
-//  was no open scope (thus, a syntax error).
+//  Close execution scope for complex function, and execute the function,
+//  passing the result of the value list as input pipe. Returns 0 if OK,
+//  -1 on error (stack underflow).
 
-zs_primitive_t *
-zs_exec_scope_close (zs_exec_t *self)
+int
+zs_exec_close (zs_exec_t *self)
 {
     if (self->stack_ptr > 0) {
         self->stack_ptr--;
@@ -173,23 +197,11 @@ zs_exec_scope_close (zs_exec_t *self)
         zs_pipe_destroy (&self->input);
         self->input = self->output;
         self->output = self->pipe_stack [self->stack_ptr];
-        return self->call_stack [self->stack_ptr];
+        (self->call_stack [self->stack_ptr]) (self);
+        return 0;
     }
     else
-        return NULL;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Switch output pipe to input, create new output pipe. We use this to
-//  execute a simple function that takes no value list.
-
-void
-zs_exec_scope_chain (zs_exec_t *self)
-{
-    zs_pipe_destroy (&self->input);
-    self->input = self->output;
-    self->output = zs_pipe_new ();
+        return -1;
 }
 
 

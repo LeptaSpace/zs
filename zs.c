@@ -25,9 +25,11 @@ int main (int argc, char *argv [])
             break;
 
         if (zs_core_execute (core, input) == 0) {
-            char *results = zs_core_results (core);
-            printf ("=> %s OK\n", results);
-            zstr_free (&results);
+            if (zs_core_completed (core)) {
+                char *results = zs_core_results (core);
+                printf ("[%s]\n", results);
+                zstr_free (&results);
+            }
         }
         else {
             printf ("%*c\n", zs_core_offset (core), '^');

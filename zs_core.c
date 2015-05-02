@@ -38,6 +38,8 @@ struct _zs_core_t {
     int status;                 //  0 = OK, -1 = error
     zs_exec_t *exec;            //  Execution context
     zs_primitive_t *function;   //  Current function if any
+    bool completed;             //  Input formed a complete phrase
+    uint scope;                 //  Nesting scope, 0..n
 };
 
 //  ---------------------------------------------------------------------------
@@ -63,10 +65,7 @@ zs_core_new (void)
         self->events [zs_lex_null] = eol_event;
 
         self->exec = zs_exec_new ();
-        zs_exec_probe (self->exec, s_sum);
-        zs_exec_probe (self->exec, s_count);
-        zs_exec_probe (self->exec, s_echo);
-        zs_exec_probe (self->exec, s_selftest);
+        s_register_primitives (self->exec);
     }
     return self;
 }
@@ -109,9 +108,9 @@ int
 zs_core_execute (zs_core_t *self, const char *input)
 {
     self->input = input;
+    self->completed = false;
     zs_lex_token_t token = zs_lex_first (self->lex, self->input);
     assert (token < zs_lex_tokens);
-    zs_exec_scope_chain (self->exec);
     fsm_set_next_event (self->fsm, self->events [token]);
     fsm_execute (self->fsm);
     return self->status;
@@ -176,8 +175,7 @@ resolve_function_name (zs_core_t *self)
 static void
 call_simple_function (zs_core_t *self)
 {
-    zs_exec_scope_chain (self->exec);
-    (self->function) (self->exec);
+    zs_exec_inline (self->exec, self->function);
 }
 
 
@@ -188,7 +186,8 @@ call_simple_function (zs_core_t *self)
 static void
 open_function_scope (zs_core_t *self)
 {
-     zs_exec_scope_open (self->exec, self->function);
+    self->scope++;
+    zs_exec_open (self->exec, self->function);
 }
 
 
@@ -199,82 +198,37 @@ open_function_scope (zs_core_t *self)
 static void
 close_function_scope (zs_core_t *self)
 {
-    self->function = zs_exec_scope_close (self->exec);
-    if (self->function)
-        (self->function) (self->exec);
+    if (self->scope) {
+        self->scope--;
+        if (zs_exec_close (self->exec))
+            fsm_set_exception (self->fsm, invalid_event);
+    }
     else
         fsm_set_exception (self->fsm, invalid_event);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  name_must_be_unknown
+//  check_if_completed
 //
 
 static void
-name_must_be_unknown (zs_core_t *self)
+check_if_completed (zs_core_t *self)
 {
+    if (self->scope == 0)
+        fsm_set_exception (self->fsm, completed_event);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  open_composition
+//  signal_completed
 //
 
 static void
-open_composition (zs_core_t *self)
-{
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compose_number_value
-//
-
-static void
-compose_number_value (zs_core_t *self)
-{
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compose_string_value
-//
-
-static void
-compose_string_value (zs_core_t *self)
-{
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compose_function
-//
-
-static void
-compose_function (zs_core_t *self)
-{
-}
-
-
-//  ---------------------------------------------------------------------------
-//  close_composition
-//
-
-static void
-close_composition (zs_core_t *self)
-{
-}
-
-
-//  ---------------------------------------------------------------------------
-//  signal_success
-//
-
-static void
-signal_success (zs_core_t *self)
+signal_completed (zs_core_t *self)
 {
     self->status = 0;
+    self->completed = true;
 }
 
 
@@ -286,6 +240,18 @@ static void
 signal_syntax_error (zs_core_t *self)
 {
     self->status = -1;
+    self->completed = true;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return true if the input formed a complete phrase that was successfully
+//  evaulated. If not, the core expects more input.
+
+bool
+zs_core_completed (zs_core_t *self)
+{
+    return self->completed;
 }
 
 
@@ -342,6 +308,8 @@ zs_core_test (bool verbose)
     s_core_assert (core, "1 2 3 sum", "6");
     s_core_assert (core, "sum (1 2 3)", "6");
     s_core_assert (core, "sum (sum (1 2 3) count (4 5 6))", "9");
+    s_core_assert (core, "sum (1 2 3", "");
+    s_core_assert (core, ")", "6");
 
 //     zs_core_execute (core, "a: (sum (1 2 3))");
 //     zs_core_execute (core, "b: (a 4 5 6 sum)");

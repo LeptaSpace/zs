@@ -53,6 +53,10 @@ void
 int
     zs_exec_register (zs_exec_t *self, const char *name, const char *hint);
 
+//  Reset the pipes, so whatever follows has empty input and output pipes.
+void
+    zs_exec_reset (zs_exec_t *self);
+
 //  Return input pipe for the execution context
 zs_pipe_t *
     zs_exec_input (zs_exec_t *self);
@@ -65,21 +69,20 @@ zs_pipe_t *
 zs_primitive_t *
     zs_exec_resolve (zs_exec_t *self, const char *name);
 
-//  Open new execution scope for specified function; we use this to handle
-//  a function followed by a value list in parentheses.
+//  Execute an inline function without value list, passing current output
+//  pipe to the function as input, and offering a new output pipe.
 void
-    zs_exec_scope_open (zs_exec_t *self, zs_primitive_t *function);
+    zs_exec_inline (zs_exec_t *self, zs_primitive_t *function);
 
-//  Close execution scope and return parent function; we use this to handle
-//  the closing parenthesis of a function value list. Returns NULL if there
-//  was no open scope (thus, a syntax error).
-zs_primitive_t *
-    zs_exec_scope_close (zs_exec_t *self);
-
-//  Switch output pipe to input, create new output pipe. We use this to
-//  execute a simple function that takes no value list.
+//  Open new execution scope for a complex function (with a value list)
 void
-    zs_exec_scope_chain (zs_exec_t *self);
+    zs_exec_open (zs_exec_t *self, zs_primitive_t *function);
+
+//  Close execution scope for complex function, and execute the function,
+//  passing the result of the value list as input pipe. Returns 0 if OK,
+//  -1 on error (stack underflow).
+int
+    zs_exec_close (zs_exec_t *self);
 
 //  Self test of this class
 void

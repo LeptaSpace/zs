@@ -20,9 +20,7 @@
 typedef enum {
     parsing_text_state = 1,
     after_function_state = 2,
-    expecting_open_state = 3,
-    composing_state = 4,
-    defaults_state = 5
+    defaults_state = 3
 } state_t;
 
 typedef enum {
@@ -31,10 +29,11 @@ typedef enum {
     string_event = 2,
     function_event = 3,
     close_event = 4,
-    compose_event = 5,
+    open_event = 5,
     eol_event = 6,
-    open_event = 7,
-    invalid_event = 8
+    compose_event = 7,
+    invalid_event = 8,
+    completed_event = 9
 } event_t;
 
 //  Names for state machine logging and error reporting
@@ -43,8 +42,6 @@ s_state_name [] = {
     "(NONE)",
     "parsing_text",
     "after_function",
-    "expecting_open",
-    "composing",
     "defaults"
 };
 
@@ -55,10 +52,11 @@ s_event_name [] = {
     "string",
     "function",
     "close",
-    "compose",
-    "eol",
     "open",
-    "invalid"
+    "eol",
+    "compose",
+    "invalid",
+    "completed"
 };
 
 //  Action prototypes
@@ -67,16 +65,11 @@ static void get_next_token (zs_core_t *self);
 static void push_string_to_output (zs_core_t *self);
 static void resolve_function_name (zs_core_t *self);
 static void close_function_scope (zs_core_t *self);
-static void name_must_be_unknown (zs_core_t *self);
-static void open_composition (zs_core_t *self);
-static void signal_success (zs_core_t *self);
 static void open_function_scope (zs_core_t *self);
 static void call_simple_function (zs_core_t *self);
-static void compose_number_value (zs_core_t *self);
-static void compose_string_value (zs_core_t *self);
-static void compose_function (zs_core_t *self);
-static void close_composition (zs_core_t *self);
+static void check_if_completed (zs_core_t *self);
 static void signal_syntax_error (zs_core_t *self);
+static void signal_completed (zs_core_t *self);
 
 //  This is the context block for a FSM thread; use the setter
 //  methods to set the FSM properties.
@@ -220,34 +213,13 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == compose_event) {
                 if (!self->exception) {
-                    //  name_must_be_unknown
+                    //  signal_syntax_error
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ name_must_be_unknown");
-                    name_must_be_unknown (self->parent);
-                }
-                if (!self->exception) {
-                    //  open_composition
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ open_composition");
-                    open_composition (self->parent);
-                }
-                if (!self->exception) {
-                    //  get_next_token
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ get_next_token");
-                    get_next_token (self->parent);
+                        zsys_debug ("zs_core:               $ signal_syntax_error");
+                    signal_syntax_error (self->parent);
                 }
                 if (!self->exception)
-                    self->state = expecting_open_state;
-            }
-            else
-            if (self->event == eol_event) {
-                if (!self->exception) {
-                    //  signal_success
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_success");
-                    signal_success (self->parent);
-                }
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == open_event) {
@@ -267,6 +239,28 @@ fsm_execute (fsm_t *self)
                     if (self->animate)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
+                }
+                if (!self->exception)
+                    self->state = parsing_text_state;
+            }
+            else
+            if (self->event == eol_event) {
+                if (!self->exception) {
+                    //  check_if_completed
+                    if (self->animate)
+                        zsys_debug ("zs_core:               $ check_if_completed");
+                    check_if_completed (self->parent);
+                }
+                if (!self->exception)
+                    self->state = parsing_text_state;
+            }
+            else
+            if (self->event == completed_event) {
+                if (!self->exception) {
+                    //  signal_completed
+                    if (self->animate)
+                        zsys_debug ("zs_core:               $ signal_completed");
+                    signal_completed (self->parent);
                 }
                 if (!self->exception)
                     self->state = parsing_text_state;
@@ -395,10 +389,10 @@ fsm_execute (fsm_t *self)
                     call_simple_function (self->parent);
                 }
                 if (!self->exception) {
-                    //  signal_success
+                    //  check_if_completed
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_success");
-                    signal_success (self->parent);
+                        zsys_debug ("zs_core:               $ check_if_completed");
+                    check_if_completed (self->parent);
                 }
                 if (!self->exception)
                     self->state = parsing_text_state;
@@ -425,212 +419,13 @@ fsm_execute (fsm_t *self)
                 if (!self->exception)
                     self->state = parsing_text_state;
             }
-            else {
-                //  Handle unexpected internal events
-                zsys_warning ("zs_core: unhandled event %s in %s",
-                    s_event_name [self->event], s_state_name [self->state]);
-                exit (-1);
-            }
-        }
-        else
-        if (self->state == expecting_open_state) {
-            if (self->event == open_event) {
-                if (!self->exception) {
-                    //  get_next_token
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ get_next_token");
-                    get_next_token (self->parent);
-                }
-                if (!self->exception)
-                    self->state = composing_state;
-            }
             else
-            if (self->event == number_event) {
+            if (self->event == completed_event) {
                 if (!self->exception) {
-                    //  signal_syntax_error
+                    //  signal_completed
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == string_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == function_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == compose_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == close_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == invalid_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == eol_event) {
-                if (!self->exception) {
-                    //  signal_success
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_success");
-                    signal_success (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else {
-                //  Handle unexpected internal events
-                zsys_warning ("zs_core: unhandled event %s in %s",
-                    s_event_name [self->event], s_state_name [self->state]);
-                exit (-1);
-            }
-        }
-        else
-        if (self->state == composing_state) {
-            if (self->event == number_event) {
-                if (!self->exception) {
-                    //  compose_number_value
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ compose_number_value");
-                    compose_number_value (self->parent);
-                }
-                if (!self->exception) {
-                    //  get_next_token
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ get_next_token");
-                    get_next_token (self->parent);
-                }
-            }
-            else
-            if (self->event == string_event) {
-                if (!self->exception) {
-                    //  compose_string_value
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ compose_string_value");
-                    compose_string_value (self->parent);
-                }
-                if (!self->exception) {
-                    //  get_next_token
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ get_next_token");
-                    get_next_token (self->parent);
-                }
-            }
-            else
-            if (self->event == function_event) {
-                if (!self->exception) {
-                    //  compose_function
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ compose_function");
-                    compose_function (self->parent);
-                }
-                if (!self->exception) {
-                    //  get_next_token
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ get_next_token");
-                    get_next_token (self->parent);
-                }
-            }
-            else
-            if (self->event == close_event) {
-                if (!self->exception) {
-                    //  close_composition
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ close_composition");
-                    close_composition (self->parent);
-                }
-                if (!self->exception) {
-                    //  get_next_token
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ get_next_token");
-                    get_next_token (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == compose_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == open_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == invalid_event) {
-                if (!self->exception) {
-                    //  signal_syntax_error
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_syntax_error");
-                    signal_syntax_error (self->parent);
-                }
-                if (!self->exception)
-                    self->state = parsing_text_state;
-            }
-            else
-            if (self->event == eol_event) {
-                if (!self->exception) {
-                    //  signal_success
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_success");
-                    signal_success (self->parent);
+                        zsys_debug ("zs_core:               $ signal_completed");
+                    signal_completed (self->parent);
                 }
                 if (!self->exception)
                     self->state = parsing_text_state;
@@ -723,10 +518,21 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == eol_event) {
                 if (!self->exception) {
-                    //  signal_success
+                    //  check_if_completed
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ signal_success");
-                    signal_success (self->parent);
+                        zsys_debug ("zs_core:               $ check_if_completed");
+                    check_if_completed (self->parent);
+                }
+                if (!self->exception)
+                    self->state = parsing_text_state;
+            }
+            else
+            if (self->event == completed_event) {
+                if (!self->exception) {
+                    //  signal_completed
+                    if (self->animate)
+                        zsys_debug ("zs_core:               $ signal_completed");
+                    signal_completed (self->parent);
                 }
                 if (!self->exception)
                     self->state = parsing_text_state;

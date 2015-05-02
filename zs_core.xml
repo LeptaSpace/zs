@@ -17,15 +17,11 @@
         <action name = "close function scope" />
         <action name = "get next token" />
     </event>
-    <event name = "compose" next = "expecting open">
+<!--    <event name = "compose" next = "expecting open">
         <action name = "name must be unknown" />
         <action name = "open composition" />
         <action name = "get next token" />
-    </event>
-    <!-- TODO: handle multiliners -->
-    <event name = "eol">
-        <action name = "signal success" />
-    </event>
+    </event>-->
 </state>
 
 <state name = "after function" inherit = "defaults">
@@ -55,17 +51,17 @@
     </event>
     <event name = "eol" next = "parsing text">
         <action name = "call simple function" />
-        <action name = "signal success" />
+        <action name = "check if completed" />
     </event>
 </state>
 
-<state name = "expecting open" inherit = "defaults">
+<!--<state name = "expecting open" inherit = "defaults">
     <event name = "open" next = "composing">
         <action name = "get next token" />
     </event>
-</state>
+</state>-->
 
-<state name = "composing" inherit = "defaults">
+<!--<state name = "composing" inherit = "defaults">
     <event name = "number">
         <action name = "compose number value" />
         <action name = "get next token" />
@@ -82,7 +78,7 @@
         <action name = "close composition" />
         <action name = "get next token" />
     </event>
-</state>
+</state>-->
 
 <state name = "defaults">
     <event name = "number" next = "parsing text">
@@ -107,7 +103,10 @@
         <action name = "signal syntax error" />
     </event>
     <event name = "eol" next = "parsing text">
-        <action name = "signal success" />
+        <action name = "check if completed" />
+    </event>
+    <event name = "completed" next = "parsing text">
+        <action name = "signal completed" />
     </event>
 </state>
 
