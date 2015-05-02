@@ -31,6 +31,9 @@ for class.state
         endif
         if defined (event.next)
             event.next = "$(next:c)"
+            if count (class.state, name = -1.name) = 0
+                abort "Next state $(next) is not defined"
+            endif
         endif
         for action
             action.name = "$(name:c)"
