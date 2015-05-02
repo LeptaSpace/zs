@@ -62,9 +62,10 @@ int64_t
 const char *
     zs_pipe_get_string (zs_pipe_t *self);
 
-//  Print pipe contents, if any
-void
-    zs_pipe_print (zs_pipe_t *self);
+//  Return pipe contents, as string. Caller must free it when done. Values are
+//  separated by spaces.
+char *
+    zs_pipe_contents (zs_pipe_t *self);
 
 //  Self test of this class
 void

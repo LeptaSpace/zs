@@ -70,7 +70,6 @@ static void pop_function (zs_core_t *self);
 static void call_function (zs_core_t *self);
 static void name_must_be_unknown (zs_core_t *self);
 static void open_composition (zs_core_t *self);
-static void show_pipe_contents (zs_core_t *self);
 static void signal_success (zs_core_t *self);
 static void push_function (zs_core_t *self);
 static void compose_number_value (zs_core_t *self);
@@ -250,12 +249,6 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == eol_event) {
                 if (!self->exception) {
-                    //  show_pipe_contents
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ show_pipe_contents");
-                    show_pipe_contents (self->parent);
-                }
-                if (!self->exception) {
                     //  signal_success
                     if (self->animate)
                         zsys_debug ("zs_core:               $ signal_success");
@@ -408,12 +401,6 @@ fsm_execute (fsm_t *self)
                     if (self->animate)
                         zsys_debug ("zs_core:               $ call_function");
                     call_function (self->parent);
-                }
-                if (!self->exception) {
-                    //  show_pipe_contents
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ show_pipe_contents");
-                    show_pipe_contents (self->parent);
                 }
                 if (!self->exception) {
                     //  signal_success

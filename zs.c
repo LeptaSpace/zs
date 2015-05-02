@@ -24,7 +24,12 @@ int main (int argc, char *argv [])
         if (!fgets (input, 1026, stdin))
             break;
 
-        if (zs_core_execute (core, input)) {
+        if (zs_core_execute (core, input) == 0) {
+            char *results = zs_core_results (core);
+            printf ("=> %s OK\n", results);
+            zstr_free (&results);
+        }
+        else {
             printf ("%*c\n", zs_core_offset (core), '^');
             puts ("Syntax error");
         }

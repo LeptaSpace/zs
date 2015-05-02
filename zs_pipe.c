@@ -198,19 +198,41 @@ zs_pipe_get_string (zs_pipe_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Print pipe contents, if any
+//  Return pipe contents, as string. Caller must free it when done. Values are
+//  separated by spaces.
 
-void
-zs_pipe_print (zs_pipe_t *self)
+char *
+zs_pipe_contents (zs_pipe_t *self)
 {
+    //  Calculate length of resulting string
+    size_t result_size = 1;
     value_t *value = (value_t *) zlistx_first (self->values);
     while (value) {
         if (value->type == 's')
-            printf ("%s ", value->string);
-        else
-            printf ("%" PRId64 " ", value->number);
+            result_size += strlen (value->string) + 1;
+        else {
+            char formatted [20];
+            snprintf (formatted, 20, "%" PRId64, value->number);
+            result_size += strlen (formatted) + 1;
+        }
         value = (value_t *) zlistx_next (self->values);
     }
+    //  Now format the result
+    char *result = zmalloc (result_size);
+    value = (value_t *) zlistx_first (self->values);
+    while (value) {
+        if (*result)
+            strcat (result, " ");
+        if (value->type == 's')
+            strcat (result, value->string);
+        else {
+            char formatted [20];
+            snprintf (formatted, 20, "%" PRId64, value->number);
+            strcat (result, formatted);
+        }
+        value = (value_t *) zlistx_next (self->values);
+    }
+    return result;
 }
 
 
@@ -226,6 +248,7 @@ zs_pipe_test (bool verbose)
 
     //  @selftest
     zs_pipe_t *pipe = zs_pipe_new ();
+
     zs_pipe_destroy (&pipe);
     //  @end
     printf ("OK\n");

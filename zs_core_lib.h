@@ -44,8 +44,9 @@ void s_echo (zs_exec_t *self)
     if (zs_exec_probing (self))
         zs_exec_register (self, "echo", "Print all values");
     else {
-        zs_pipe_print (zs_exec_input (self));
-        printf ("\n");
+        char *results = zs_pipe_contents (zs_exec_input (self));
+        printf ("%s\n", results);
+        zstr_free (&results);
     }
 }
 

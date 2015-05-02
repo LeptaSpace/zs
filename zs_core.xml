@@ -25,7 +25,6 @@
     </event>
     <!-- TODO: handle multiliners -->
     <event name = "eol">
-        <action name = "show pipe contents" />
         <action name = "signal success" />
     </event>
 </state>
@@ -58,7 +57,6 @@
     </event>
     <event name = "eol">
         <action name = "call function" />
-        <action name = "show pipe contents" />
         <action name = "signal success" />
     </event>
 </state>

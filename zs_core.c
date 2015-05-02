@@ -113,6 +113,7 @@ zs_core_execute (zs_core_t *self, const char *input)
     self->input = input;
     zs_lex_token_t token = zs_lex_first (self->lex, self->input);
     assert (token < zs_lex_tokens);
+    zs_exec_cycle (self->exec);
     fsm_set_next_event (self->fsm, self->events [token]);
     fsm_execute (self->fsm);
     return self->status;
@@ -209,20 +210,6 @@ pop_function (zs_core_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  show_pipe_contents
-//
-
-static void
-show_pipe_contents (zs_core_t *self)
-{
-    printf ("=> ");
-    zs_pipe_print (zs_exec_output (self->exec));
-    zs_exec_cycle (self->exec);
-    printf ("OK\n");
-}
-
-
-//  ---------------------------------------------------------------------------
 //  name_must_be_unknown
 //
 
@@ -300,8 +287,18 @@ signal_success (zs_core_t *self)
 static void
 signal_syntax_error (zs_core_t *self)
 {
-    zs_exec_cycle (self->exec);
     self->status = -1;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return pipe results as string, after successful execution. Caller must
+//  free results when finished.
+
+char *
+zs_core_results (zs_core_t *self)
+{
+    return zs_pipe_contents (zs_exec_output (self->exec));
 }
 
 
@@ -312,6 +309,21 @@ uint
 zs_core_offset (zs_core_t *self)
 {
     return zs_lex_offset (self->lex);
+}
+
+
+static void
+s_core_assert (zs_core_t *self, const char *input, const char *output)
+{
+    int rc = zs_core_execute (self, input);
+    assert (rc == 0);
+    char *results = zs_core_results (self);
+    if (strneq (results, output)) {
+        printf ("input='%s' results='%s' expected='%s'\n",
+                input, results, output);
+        exit (-1);
+    }
+    zstr_free (&results);
 }
 
 
@@ -329,12 +341,10 @@ zs_core_test (bool verbose)
     zs_core_t *core = zs_core_new ();
     zs_core_verbose (core, verbose);
 
-    int rc = zs_core_execute (core, "1 2 3 sum");
-    assert (rc == 0);
-    rc = zs_core_execute (core, "sum (1 2 3)");
-    assert (rc == 0);
-    rc = zs_core_execute (core, "sum (sum (1 2 3) count (4 5 6))");
-    assert (rc == 0);
+    s_core_assert (core, "1 2 3 sum", "6");
+    s_core_assert (core, "sum (1 2 3)", "6");
+    s_core_assert (core, "sum (sum (1 2 3) count (4 5 6))", "9");
+
 //     zs_core_execute (core, "a: (sum (1 2 3))");
 //     zs_core_execute (core, "b: (a 4 5 6 sum)");
 //     zs_core_execute (core, "c: (a b sum)");

@@ -42,6 +42,11 @@ void
 int
     zs_core_execute (zs_core_t *self, const char *input);
 
+//  Return pipe results as string, after successful execution. Caller must
+//  free results when finished.
+char *
+    zs_core_results (zs_core_t *self);
+
 //  After a syntax error, return position of syntax error in text.
 uint
     zs_core_offset (zs_core_t *self);
