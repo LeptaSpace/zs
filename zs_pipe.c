@@ -249,6 +249,19 @@ zs_pipe_test (bool verbose)
     //  @selftest
     zs_pipe_t *pipe = zs_pipe_new ();
 
+    zs_pipe_put_number (pipe, 12345);
+    assert (zs_pipe_isnumber (pipe));
+    zs_pipe_put_string (pipe, "Hello World");
+    assert (zs_pipe_size (pipe) == 2);
+
+    assert (zs_pipe_get_number (pipe) == 12345);
+    const char *string = zs_pipe_get_string (pipe);
+    assert (streq (string, "Hello World"));
+    assert (zs_pipe_size (pipe) == 0);
+
+    char *results = zs_pipe_contents (pipe);
+    assert (streq (results, ""));
+    
     zs_pipe_destroy (&pipe);
     //  @end
     printf ("OK\n");
