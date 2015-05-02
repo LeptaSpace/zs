@@ -109,6 +109,7 @@ zs_core_execute (zs_core_t *self, const char *input)
 {
     self->input = input;
     self->completed = false;
+    self->status = 0;
     zs_lex_token_t token = zs_lex_first (self->lex, self->input);
     assert (token < zs_lex_tokens);
     fsm_set_next_event (self->fsm, self->events [token]);
@@ -227,7 +228,6 @@ check_if_completed (zs_core_t *self)
 static void
 signal_completed (zs_core_t *self)
 {
-    self->status = 0;
     self->completed = true;
 }
 
