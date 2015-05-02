@@ -37,6 +37,9 @@ struct _zs_core_t {
     const char *input;          //  Line of text we're parsing
     int status;                 //  0 = OK, -1 = error
     zs_exec_t *exec;            //  Execution context
+    zs_primitive_t *function;   //  Current function if any
+    zs_primitive_t *stack [256];    //  Call stack
+    uint stack_ptr;             //  Current size of stack
 };
 
 //  ---------------------------------------------------------------------------
@@ -155,14 +158,52 @@ push_string_to_output (zs_core_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  execute_function
+//  resolve_function_name
 //
 
 static void
-execute_function (zs_core_t *self)
+resolve_function_name (zs_core_t *self)
 {
+    self->function = zs_exec_resolve (self->exec, zs_lex_token (self->lex));
+    if (!self->function)
+        fsm_set_exception (self->fsm, invalid_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  call_function
+//
+
+static void
+call_function (zs_core_t *self)
+{
+    //  This won't work properly for nested functions yet
     zs_exec_cycle (self->exec);
-    if (zs_exec_call (self->exec, zs_lex_token (self->lex)))
+    (self->function) (self->exec);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  push_function
+//
+
+static void
+push_function (zs_core_t *self)
+{
+    self->stack [self->stack_ptr++] = self->function;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  pop_function
+//
+
+static void
+pop_function (zs_core_t *self)
+{
+    if (self->stack_ptr)
+        self->function = self->stack [--self->stack_ptr];
+    else
         fsm_set_exception (self->fsm, invalid_event);
 }
 
@@ -259,7 +300,18 @@ signal_success (zs_core_t *self)
 static void
 signal_syntax_error (zs_core_t *self)
 {
+    zs_exec_cycle (self->exec);
     self->status = -1;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  After a syntax error, return position of syntax error in text.
+
+uint
+zs_core_offset (zs_core_t *self)
+{
+    return zs_lex_offset (self->lex);
 }
 
 
@@ -277,8 +329,12 @@ zs_core_test (bool verbose)
     zs_core_t *core = zs_core_new ();
     zs_core_verbose (core, verbose);
 
-    zs_core_execute (core, "1 2 3 sum");
-    zs_core_execute (core, "sum (1 2 3)");
+    int rc = zs_core_execute (core, "1 2 3 sum");
+    assert (rc == 0);
+    rc = zs_core_execute (core, "sum (1 2 3)");
+    assert (rc == 0);
+    rc = zs_core_execute (core, "sum (sum (1 2 3) count (4 5 6))");
+    assert (rc == 0);
 //     zs_core_execute (core, "a: (sum (1 2 3))");
 //     zs_core_execute (core, "b: (a 4 5 6 sum)");
 //     zs_core_execute (core, "c: (a b sum)");

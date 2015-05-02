@@ -1,6 +1,6 @@
 <class name = "zs_core" script = "fsm_c">
 
-<state name = "running" inherit = "defaults">
+<state name = "parsing text" inherit = "defaults">
     <event name = "number">
         <action name = "push number to output" />
         <action name = "get next token" />
@@ -9,8 +9,13 @@
         <action name = "push string to output" />
         <action name = "get next token" />
     </event>
-    <event name = "function">
-        <action name = "execute function" />
+    <event name = "function" next = "after function">
+        <action name = "resolve function name" />
+        <action name = "get next token" />
+    </event>
+    <event name = "close">
+        <action name = "pop function" />
+        <action name = "call function" />
         <action name = "get next token" />
     </event>
     <event name = "compose" next = "expecting open">
@@ -18,7 +23,41 @@
         <action name = "open composition" />
         <action name = "get next token" />
     </event>
+    <!-- TODO: handle multiliners -->
     <event name = "eol">
+        <action name = "show pipe contents" />
+        <action name = "signal success" />
+    </event>
+</state>
+
+<state name = "after function" inherit = "defaults">
+    <event name = "open" next = "parsing text">
+        <action name = "push function" />
+        <action name = "get next token" />
+    </event>
+    <event name = "number" next = "parsing text">
+        <action name = "call function" />
+        <action name = "push number to output" />
+        <action name = "get next token" />
+    </event>
+    <event name = "string" next = "parsing text">
+        <action name = "call function" />
+        <action name = "push string to output" />
+        <action name = "get next token" />
+    </event>
+    <event name = "function" next = "after function">
+        <action name = "call function" />
+        <action name = "resolve function name" />
+        <action name = "get next token" />
+    </event>
+    <event name = "close">
+        <action name = "call function" />
+        <action name = "pop function" />
+        <action name = "call function" />
+        <action name = "get next token" />
+    </event>
+    <event name = "eol">
+        <action name = "call function" />
         <action name = "show pipe contents" />
         <action name = "signal success" />
     </event>
@@ -43,7 +82,7 @@
         <action name = "compose function" />
         <action name = "get next token" />
     </event>
-    <event name = "close" next = "running">
+    <event name = "close" next = "parsing text">
         <action name = "close composition" />
         <action name = "get next token" />
     </event>

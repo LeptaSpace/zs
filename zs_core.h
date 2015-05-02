@@ -42,6 +42,10 @@ void
 int
     zs_core_execute (zs_core_t *self, const char *input);
 
+//  After a syntax error, return position of syntax error in text.
+uint
+    zs_core_offset (zs_core_t *self);
+
 //  Self test of this class
 void
     zs_core_test (bool animate);

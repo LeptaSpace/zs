@@ -132,18 +132,12 @@ zs_exec_output (zs_exec_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Call a function by name, return 0 if OK, -1 if function does not exist.
+//  Resolve a function by name, return function address, or NULL
 
-int
-zs_exec_call (zs_exec_t *self, const char *name)
+zs_primitive_t *
+zs_exec_resolve (zs_exec_t *self, const char *name)
 {
-    zs_primitive_t *primitive = (zs_primitive_t *) zhash_lookup (self->primitives, name);
-    if (primitive) {
-        (primitive) (self);
-        return 0;
-    }
-    else
-        return -1;              //  Duplicate name
+    return (zs_primitive_t *) zhash_lookup (self->primitives, name);
 }
 
 

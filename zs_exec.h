@@ -61,9 +61,9 @@ zs_pipe_t *
 zs_pipe_t *
     zs_exec_output (zs_exec_t *self);
 
-//  Call a function by name, return 0 if OK, -1 if function does not exist.
-int
-    zs_exec_call (zs_exec_t *self, const char *name);
+//  Resolve a function by name, return function address, or NULL
+zs_primitive_t *
+    zs_exec_resolve (zs_exec_t *self, const char *name);
 
 //  Cycle output pipe to input, create new output pipe
 void

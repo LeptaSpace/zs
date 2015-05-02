@@ -1,7 +1,13 @@
 .template 0
-#   fsm_c.gsl
 #
 #   Generates a finite state machine engine in C
+#
+#   Copyright (c) the Contributors as noted in the AUTHORS file.
+#   This file is part of the ZeroScript language, http://zeroscript.org.
+#
+#   This Source Code Form is subject to the terms of the Mozilla Public
+#   License, v. 2.0. If a copy of the MPL was not distributed with this
+#   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
 class.title ?= "No title"
 
@@ -31,7 +37,7 @@ for class.state
         endif
         if defined (event.next)
             event.next = "$(next:c)"
-            if count (class.state, name = -1.name) = 0
+            if count (class.state, next = "$(name:c)") = 0
                 abort "Next state $(next) is not defined"
             endif
         endif
@@ -271,7 +277,7 @@ fsm_execute (fsm_t *self)
                 //  Handle unexpected internal events
                 zsys_warning ("$(class.name): unhandled event %s in %s",
                     s_event_name [self->event], s_state_name [self->state]);
-                assert (false);
+                exit (-1);
             }
 .   endfor
         }
