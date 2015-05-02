@@ -26,8 +26,10 @@ struct _zs_exec_t {
     zs_pipe_t *output;
     zs_primitive_t *primitive;
     bool probing;
-
-    zhash_t *primitives;            //  cheap and cheerful for now
+    zhash_t *primitives;            //  Cheap and cheerful dictionary
+    uint stack_ptr;                 //  Current size of stack
+    zs_primitive_t *call_stack [256];    //  Call stack
+    zs_pipe_t *pipe_stack [256];    //  Pipe stack
 };
 
 
@@ -142,10 +144,48 @@ zs_exec_resolve (zs_exec_t *self, const char *name)
 
 
 //  ---------------------------------------------------------------------------
-//  Cycle output pipe to input, create new output pipe
+//  Open new execution scope for specified function; we use this to handle
+//  a function followed by a value list in parentheses.
 
 void
-zs_exec_cycle (zs_exec_t *self)
+zs_exec_scope_open (zs_exec_t *self, zs_primitive_t *function)
+{
+    //  Save output pipe and create new empty input pipe
+    self->pipe_stack [self->stack_ptr] = self->output;
+    self->output = zs_pipe_new ();
+    zs_pipe_purge (self->input);
+    self->call_stack [self->stack_ptr] = function;
+    self->stack_ptr++;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Close execution scope and return parent function; we use this to handle
+//  the closing parenthesis of a function value list. Returns NULL if there
+//  was no open scope (thus, a syntax error).
+
+zs_primitive_t *
+zs_exec_scope_close (zs_exec_t *self)
+{
+    if (self->stack_ptr > 0) {
+        self->stack_ptr--;
+        //  Current output becomes new input and saved pipe is new output
+        zs_pipe_destroy (&self->input);
+        self->input = self->output;
+        self->output = self->pipe_stack [self->stack_ptr];
+        return self->call_stack [self->stack_ptr];
+    }
+    else
+        return NULL;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Switch output pipe to input, create new output pipe. We use this to
+//  execute a simple function that takes no value list.
+
+void
+zs_exec_scope_chain (zs_exec_t *self)
 {
     zs_pipe_destroy (&self->input);
     self->input = self->output;
@@ -165,6 +205,7 @@ zs_exec_test (bool verbose)
 
     //  @selftest
     zs_exec_t *exec = zs_exec_new ();
+    //  TODO
     zs_exec_destroy (&exec);
     //  @end
     printf ("OK\n");

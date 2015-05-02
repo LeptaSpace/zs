@@ -65,9 +65,21 @@ zs_pipe_t *
 zs_primitive_t *
     zs_exec_resolve (zs_exec_t *self, const char *name);
 
-//  Cycle output pipe to input, create new output pipe
+//  Open new execution scope for specified function; we use this to handle
+//  a function followed by a value list in parentheses.
 void
-    zs_exec_cycle (zs_exec_t *self);
+    zs_exec_scope_open (zs_exec_t *self, zs_primitive_t *function);
+
+//  Close execution scope and return parent function; we use this to handle
+//  the closing parenthesis of a function value list. Returns NULL if there
+//  was no open scope (thus, a syntax error).
+zs_primitive_t *
+    zs_exec_scope_close (zs_exec_t *self);
+
+//  Switch output pipe to input, create new output pipe. We use this to
+//  execute a simple function that takes no value list.
+void
+    zs_exec_scope_chain (zs_exec_t *self);
 
 //  Self test of this class
 void

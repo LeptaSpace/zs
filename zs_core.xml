@@ -14,8 +14,7 @@
         <action name = "get next token" />
     </event>
     <event name = "close">
-        <action name = "pop function" />
-        <action name = "call function" />
+        <action name = "close function scope" />
         <action name = "get next token" />
     </event>
     <event name = "compose" next = "expecting open">
@@ -31,32 +30,31 @@
 
 <state name = "after function" inherit = "defaults">
     <event name = "open" next = "parsing text">
-        <action name = "push function" />
+        <action name = "open function scope" />
         <action name = "get next token" />
     </event>
     <event name = "number" next = "parsing text">
-        <action name = "call function" />
+        <action name = "call simple function" />
         <action name = "push number to output" />
         <action name = "get next token" />
     </event>
     <event name = "string" next = "parsing text">
-        <action name = "call function" />
+        <action name = "call simple function" />
         <action name = "push string to output" />
         <action name = "get next token" />
     </event>
     <event name = "function" next = "after function">
-        <action name = "call function" />
+        <action name = "call simple function" />
         <action name = "resolve function name" />
         <action name = "get next token" />
     </event>
     <event name = "close">
-        <action name = "call function" />
-        <action name = "pop function" />
-        <action name = "call function" />
+        <action name = "call simple function" />
+        <action name = "close function scope" />
         <action name = "get next token" />
     </event>
-    <event name = "eol">
-        <action name = "call function" />
+    <event name = "eol" next = "parsing text">
+        <action name = "call simple function" />
         <action name = "signal success" />
     </event>
 </state>
@@ -87,28 +85,28 @@
 </state>
 
 <state name = "defaults">
-    <event name = "number">
+    <event name = "number" next = "parsing text">
         <action name = "signal syntax error" />
     </event>
-    <event name = "string">
+    <event name = "string" next = "parsing text">
         <action name = "signal syntax error" />
     </event>
-    <event name = "function">
+    <event name = "function" next = "parsing text">
         <action name = "signal syntax error" />
     </event>
-    <event name = "compose">
+    <event name = "compose" next = "parsing text">
         <action name = "signal syntax error" />
     </event>
-    <event name = "open">
+    <event name = "open" next = "parsing text">
         <action name = "signal syntax error" />
     </event>
-    <event name = "close">
+    <event name = "close" next = "parsing text">
         <action name = "signal syntax error" />
     </event>
-    <event name = "invalid">
+    <event name = "invalid" next = "parsing text">
         <action name = "signal syntax error" />
     </event>
-    <event name = "eol">
+    <event name = "eol" next = "parsing text">
         <action name = "signal success" />
     </event>
 </state>

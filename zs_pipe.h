@@ -67,6 +67,10 @@ const char *
 char *
     zs_pipe_contents (zs_pipe_t *self);
 
+//  Empty the pipe of any values it might contain.
+void
+    zs_pipe_purge (zs_pipe_t *self);
+
 //  Self test of this class
 void
     zs_pipe_test (bool animate);

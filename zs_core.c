@@ -38,8 +38,6 @@ struct _zs_core_t {
     int status;                 //  0 = OK, -1 = error
     zs_exec_t *exec;            //  Execution context
     zs_primitive_t *function;   //  Current function if any
-    zs_primitive_t *stack [256];    //  Call stack
-    uint stack_ptr;             //  Current size of stack
 };
 
 //  ---------------------------------------------------------------------------
@@ -113,7 +111,7 @@ zs_core_execute (zs_core_t *self, const char *input)
     self->input = input;
     zs_lex_token_t token = zs_lex_first (self->lex, self->input);
     assert (token < zs_lex_tokens);
-    zs_exec_cycle (self->exec);
+    zs_exec_scope_chain (self->exec);
     fsm_set_next_event (self->fsm, self->events [token]);
     fsm_execute (self->fsm);
     return self->status;
@@ -172,38 +170,38 @@ resolve_function_name (zs_core_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  call_function
+//  call_simple_function
 //
 
 static void
-call_function (zs_core_t *self)
+call_simple_function (zs_core_t *self)
 {
-    //  This won't work properly for nested functions yet
-    zs_exec_cycle (self->exec);
+    zs_exec_scope_chain (self->exec);
     (self->function) (self->exec);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  push_function
+//  open_function_scope
 //
 
 static void
-push_function (zs_core_t *self)
+open_function_scope (zs_core_t *self)
 {
-    self->stack [self->stack_ptr++] = self->function;
+     zs_exec_scope_open (self->exec, self->function);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  pop_function
+//  close_function_scope
 //
 
 static void
-pop_function (zs_core_t *self)
+close_function_scope (zs_core_t *self)
 {
-    if (self->stack_ptr)
-        self->function = self->stack [--self->stack_ptr];
+    self->function = zs_exec_scope_close (self->exec);
+    if (self->function)
+        (self->function) (self->exec);
     else
         fsm_set_exception (self->fsm, invalid_event);
 }

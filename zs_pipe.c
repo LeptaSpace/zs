@@ -237,6 +237,16 @@ zs_pipe_contents (zs_pipe_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  Empty the pipe of any values it might contain.
+
+void
+zs_pipe_purge (zs_pipe_t *self)
+{
+    zlistx_purge (self->values);
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Selftest
 
 void
@@ -261,6 +271,13 @@ zs_pipe_test (bool verbose)
 
     char *results = zs_pipe_contents (pipe);
     assert (streq (results, ""));
+
+    zs_pipe_put_number (pipe, 12345);
+    zs_pipe_put_number (pipe, 12345);
+    zs_pipe_put_number (pipe, 12345);
+    assert (zs_pipe_size (pipe) == 3);
+    zs_pipe_purge (pipe);
+    assert (zs_pipe_size (pipe) == 0);
     
     zs_pipe_destroy (&pipe);
     //  @end

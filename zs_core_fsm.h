@@ -66,12 +66,12 @@ static void push_number_to_output (zs_core_t *self);
 static void get_next_token (zs_core_t *self);
 static void push_string_to_output (zs_core_t *self);
 static void resolve_function_name (zs_core_t *self);
-static void pop_function (zs_core_t *self);
-static void call_function (zs_core_t *self);
+static void close_function_scope (zs_core_t *self);
 static void name_must_be_unknown (zs_core_t *self);
 static void open_composition (zs_core_t *self);
 static void signal_success (zs_core_t *self);
-static void push_function (zs_core_t *self);
+static void open_function_scope (zs_core_t *self);
+static void call_simple_function (zs_core_t *self);
 static void compose_number_value (zs_core_t *self);
 static void compose_string_value (zs_core_t *self);
 static void compose_function (zs_core_t *self);
@@ -205,16 +205,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == close_event) {
                 if (!self->exception) {
-                    //  pop_function
+                    //  close_function_scope
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ pop_function");
-                    pop_function (self->parent);
-                }
-                if (!self->exception) {
-                    //  call_function
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ call_function");
-                    call_function (self->parent);
+                        zsys_debug ("zs_core:               $ close_function_scope");
+                    close_function_scope (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -263,6 +257,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == invalid_event) {
@@ -272,6 +268,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else {
                 //  Handle unexpected internal events
@@ -284,10 +282,10 @@ fsm_execute (fsm_t *self)
         if (self->state == after_function_state) {
             if (self->event == open_event) {
                 if (!self->exception) {
-                    //  push_function
+                    //  open_function_scope
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ push_function");
-                    push_function (self->parent);
+                        zsys_debug ("zs_core:               $ open_function_scope");
+                    open_function_scope (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -301,10 +299,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == number_event) {
                 if (!self->exception) {
-                    //  call_function
+                    //  call_simple_function
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ call_function");
-                    call_function (self->parent);
+                        zsys_debug ("zs_core:               $ call_simple_function");
+                    call_simple_function (self->parent);
                 }
                 if (!self->exception) {
                     //  push_number_to_output
@@ -324,10 +322,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == string_event) {
                 if (!self->exception) {
-                    //  call_function
+                    //  call_simple_function
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ call_function");
-                    call_function (self->parent);
+                        zsys_debug ("zs_core:               $ call_simple_function");
+                    call_simple_function (self->parent);
                 }
                 if (!self->exception) {
                     //  push_string_to_output
@@ -347,10 +345,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == function_event) {
                 if (!self->exception) {
-                    //  call_function
+                    //  call_simple_function
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ call_function");
-                    call_function (self->parent);
+                        zsys_debug ("zs_core:               $ call_simple_function");
+                    call_simple_function (self->parent);
                 }
                 if (!self->exception) {
                     //  resolve_function_name
@@ -370,22 +368,16 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == close_event) {
                 if (!self->exception) {
-                    //  call_function
+                    //  call_simple_function
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ call_function");
-                    call_function (self->parent);
+                        zsys_debug ("zs_core:               $ call_simple_function");
+                    call_simple_function (self->parent);
                 }
                 if (!self->exception) {
-                    //  pop_function
+                    //  close_function_scope
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ pop_function");
-                    pop_function (self->parent);
-                }
-                if (!self->exception) {
-                    //  call_function
-                    if (self->animate)
-                        zsys_debug ("zs_core:               $ call_function");
-                    call_function (self->parent);
+                        zsys_debug ("zs_core:               $ close_function_scope");
+                    close_function_scope (self->parent);
                 }
                 if (!self->exception) {
                     //  get_next_token
@@ -397,10 +389,10 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == eol_event) {
                 if (!self->exception) {
-                    //  call_function
+                    //  call_simple_function
                     if (self->animate)
-                        zsys_debug ("zs_core:               $ call_function");
-                    call_function (self->parent);
+                        zsys_debug ("zs_core:               $ call_simple_function");
+                    call_simple_function (self->parent);
                 }
                 if (!self->exception) {
                     //  signal_success
@@ -408,6 +400,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_success");
                     signal_success (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == compose_event) {
@@ -417,6 +411,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == invalid_event) {
@@ -426,6 +422,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else {
                 //  Handle unexpected internal events
@@ -454,6 +452,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == string_event) {
@@ -463,6 +463,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == function_event) {
@@ -472,6 +474,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == compose_event) {
@@ -481,6 +485,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == close_event) {
@@ -490,6 +496,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == invalid_event) {
@@ -499,6 +507,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == eol_event) {
@@ -508,6 +518,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_success");
                     signal_success (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else {
                 //  Handle unexpected internal events
@@ -587,6 +599,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == open_event) {
@@ -596,6 +610,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == invalid_event) {
@@ -605,6 +621,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == eol_event) {
@@ -614,6 +632,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_success");
                     signal_success (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else {
                 //  Handle unexpected internal events
@@ -631,6 +651,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == string_event) {
@@ -640,6 +662,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == function_event) {
@@ -649,6 +673,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == compose_event) {
@@ -658,6 +684,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == open_event) {
@@ -667,6 +695,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == close_event) {
@@ -676,6 +706,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == invalid_event) {
@@ -685,6 +717,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_syntax_error");
                     signal_syntax_error (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else
             if (self->event == eol_event) {
@@ -694,6 +728,8 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_core:               $ signal_success");
                     signal_success (self->parent);
                 }
+                if (!self->exception)
+                    self->state = parsing_text_state;
             }
             else {
                 //  Handle unexpected internal events
