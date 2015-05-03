@@ -12,8 +12,7 @@
 
 /*
 @header
-    A pipe is an ordered list of strings and numbers. In this version we
-    store everything as a string, and evaluate as late as possible.
+    A pipe is an ordered list of strings and numbers.
 @discuss
 @end
 */

@@ -20,12 +20,25 @@ static
 void s_sum (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
-        zs_exec_register (self, "sum", "Add up the values");
+        zs_exec_register (self, "sum", "Add all the values");
     else {
         int64_t sum = 0;
         while (zs_pipe_size (zs_exec_input (self)) > 0)
             sum += zs_pipe_get_number (zs_exec_input (self));
         zs_pipe_put_number (zs_exec_output (self), sum);
+    }
+}
+
+static
+void s_prod (zs_exec_t *self)
+{
+    if (zs_exec_probing (self))
+        zs_exec_register (self, "prod", "Multiply all the values");
+    else {
+        int64_t prod = 0;
+        while (zs_pipe_size (zs_exec_input (self)) > 0)
+            prod *= zs_pipe_get_number (zs_exec_input (self));
+        zs_pipe_put_number (zs_exec_output (self), prod);
     }
 }
 
@@ -62,16 +75,26 @@ void s_clr (zs_exec_t *self)
 }
 
 static
-void s_selftest (zs_exec_t *self)
+void s_python (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
-        zs_exec_register (self, "selftest", "Run selftests");
+        zs_exec_register (self, "python", "Why not just use Python?");
+    else {
+        while (true);
+    }
+}
+
+static
+void s_check (zs_exec_t *self)
+{
+    if (zs_exec_probing (self))
+        zs_exec_register (self, "check", "Run internal checks");
     else {
         zs_lex_test (false);
         zs_pipe_test (false);
         zs_core_test (false);
         zs_exec_test (false);
-        printf ("\n");
+        zs_pipe_put_string (zs_exec_output (self), "Checks passed successfully");
     }
 }
 
@@ -79,9 +102,11 @@ static void
 s_register_primitives (zs_exec_t *self)
 {
     zs_exec_probe (self, s_sum);
+    zs_exec_probe (self, s_prod);
     zs_exec_probe (self, s_count);
     zs_exec_probe (self, s_echo);
     zs_exec_probe (self, s_clr);
-    zs_exec_probe (self, s_selftest);
+    zs_exec_probe (self, s_python);
+    zs_exec_probe (self, s_check);
 }
 #endif

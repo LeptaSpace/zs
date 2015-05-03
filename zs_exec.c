@@ -24,11 +24,11 @@
 struct _zs_exec_t {
     zs_pipe_t *input;
     zs_pipe_t *output;
-    zs_primitive_t *primitive;
+    zs_call_t *primitive;
     bool probing;
     zhash_t *primitives;            //  Cheap and cheerful dictionary
     uint stack_ptr;                 //  Current size of stack
-    zs_primitive_t *call_stack [256];    //  Call stack
+    zs_call_t *call_stack [256];    //  Call stack
     zs_pipe_t *pipe_stack [256];    //  Pipe stack
 };
 
@@ -86,7 +86,7 @@ zs_exec_probing (zs_exec_t *self)
 //  probe primitives at any time.
 
 void
-zs_exec_probe (zs_exec_t *self, zs_primitive_t *primitive)
+zs_exec_probe (zs_exec_t *self, zs_call_t *primitive)
 {
     self->probing = true;
     self->primitive = primitive;
@@ -147,10 +147,10 @@ zs_exec_reset (zs_exec_t *self)
 //  ---------------------------------------------------------------------------
 //  Resolve a function by name, return function address, or NULL
 
-zs_primitive_t *
+zs_call_t *
 zs_exec_resolve (zs_exec_t *self, const char *name)
 {
-    return (zs_primitive_t *) zhash_lookup (self->primitives, name);
+    return (zs_call_t *) zhash_lookup (self->primitives, name);
 }
 
 
@@ -159,7 +159,7 @@ zs_exec_resolve (zs_exec_t *self, const char *name)
 //  pipe to the function as input, and offering a new output pipe.
 
 void
-zs_exec_inline (zs_exec_t *self, zs_primitive_t *function)
+zs_exec_inline (zs_exec_t *self, zs_call_t *function)
 {
     zs_pipe_destroy (&self->input);
     self->input = self->output;
@@ -172,9 +172,9 @@ zs_exec_inline (zs_exec_t *self, zs_primitive_t *function)
 //  Open new execution scope for a complex function (with a value list)
 
 void
-zs_exec_open (zs_exec_t *self, zs_primitive_t *function)
+zs_exec_open (zs_exec_t *self, zs_call_t *function)
 {
-    //  Save output pipe and create new empty input pipe
+    //  Save output pipe and create new empty output and input pipes
     self->pipe_stack [self->stack_ptr] = self->output;
     self->output = zs_pipe_new ();
     zs_pipe_purge (self->input);
@@ -202,6 +202,43 @@ zs_exec_close (zs_exec_t *self)
     }
     else
         return -1;
+}
+
+
+
+//  ---------------------------------------------------------------------------
+
+void
+zs_exec_shift (zs_exec_t *self)
+{
+    zs_pipe_destroy (&self->input);
+    self->input = self->output;
+    self->output = zs_pipe_new ();
+}
+
+
+//  ---------------------------------------------------------------------------
+
+void
+zs_exec_push (zs_exec_t *self)
+{
+    self->pipe_stack [self->stack_ptr] = self->output;
+    self->output = zs_pipe_new ();
+    zs_pipe_purge (self->input);
+    self->stack_ptr++;
+}
+
+
+//  ---------------------------------------------------------------------------
+
+int
+zs_exec_pop (zs_exec_t *self)
+{
+    assert (self->stack_ptr > 0);
+    self->stack_ptr--;
+    zs_pipe_destroy (&self->input);
+    self->input = self->output;
+    self->output = self->pipe_stack [self->stack_ptr];
 }
 
 

@@ -37,7 +37,7 @@ struct _zs_core_t {
     const char *input;          //  Line of text we're parsing
     int status;                 //  0 = OK, -1 = error
     zs_exec_t *exec;            //  Execution context
-    zs_primitive_t *function;   //  Current function if any
+    zs_call_t *function;        //  Current function if any
     bool completed;             //  Input formed a complete phrase
     uint scope;                 //  Nesting scope, 0..n
 };
@@ -306,9 +306,9 @@ zs_core_test (bool verbose)
     zs_core_verbose (core, verbose);
 
     s_core_assert (core, "1 2 3 sum", "6");
-    s_core_assert (core, "sum (1 2 3)", "6");
-    s_core_assert (core, "sum (sum (1 2 3) count (4 5 6))", "9");
-    s_core_assert (core, "sum (1 2 3", "");
+    s_core_assert (core, "clr sum (1 2 3)", "6");
+    s_core_assert (core, "clr sum (sum (1 2 3) count (4 5 6))", "9");
+    s_core_assert (core, "clr sum (1 2 3", "1 2 3");
     s_core_assert (core, ")", "6");
 
 //     zs_core_execute (core, "a: (sum (1 2 3))");

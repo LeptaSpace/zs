@@ -1,5 +1,27 @@
 # ZeroScript
 
+This an experiment.
+
+Imagine a language with almost no syntax, designed from scratch for tiny devices.
+
+We write:
+
+    sum (1 2 3)
+
+Or, we write
+
+    1 2 3 sum
+
+phrase:
+
+    ( function [ '(' phrase ')' ] | number | string ) ...
+
+compose:
+
+    function: ( phrase )
+
+
+
 This does not yet work, at all.
 
 Problem: I need a neutral language for the Guide. C is fine yet too much of a barrier to many people.
@@ -44,4 +66,13 @@ Composability is paramount. The language should be built like Forth and Lisp, on
 
 Compilability is valuable. It should be feasible to convert the language into other languages for performance.
 
+
+Bibliography
+
+http://www.complang.tuwien.ac.at/forth/threaded-code.html
+Call Threading
+http://www.complang.tuwien.ac.at/forth/threaded-code.html#call-threading
+
+
+tail call recursion? not reliably optimized
 
