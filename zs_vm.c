@@ -44,8 +44,8 @@ void s_echo (zs_exec_t *self)
 #define OPCODE_NUMBER       252
 #define OPCODE_STRING       251
 #define OPCODE_SHIFT        250
-#define OPCODE_PUSH         249
-#define OPCODE_POP          248
+#define OPCODE_NEST         249
+#define OPCODE_UNNEST       248
 #define OPCODE_STOP         241
 //  ... down to 241 at most
 
@@ -63,6 +63,11 @@ void s_echo (zs_exec_t *self)
     memcpy (code + code_size, (byte *) s, strlen (s) + 1); \
     code_size += strlen (s) + 1
 
+//  Encode a function call
+#define encode_call(f) \
+    code [code_size++] = OPCODE_CALL; \
+    code [code_size++] = (byte) (f >> 8); \
+    code [code_size++] = (byte) (f & 0xFF);
 
 int main (void)
 {
@@ -126,25 +131,25 @@ int main (void)
 
     //  --------------------------------------------------------------------
     //  sum ( 123 456 ) echo
-    code [code_size++] = OPCODE_PUSH;
+    code [code_size++] = OPCODE_NEST;
     encode_number (123);
     encode_number (456);
-    code [code_size++] = OPCODE_POP;
+    code [code_size++] = OPCODE_UNNEST;
     code [code_size++] = exec_sum;
     code [code_size++] = OPCODE_SHIFT;
     code [code_size++] = exec_echo;
 
     //  --------------------------------------------------------------------
     //  sum ( 123 count (1 2 3) ) echo
-    code [code_size++] = OPCODE_PUSH;
+    code [code_size++] = OPCODE_NEST;
     encode_number (123);
-    code [code_size++] = OPCODE_PUSH;
+    code [code_size++] = OPCODE_NEST;
     encode_number (1);
     encode_number (2);
     encode_number (3);
-    code [code_size++] = OPCODE_POP;
+    code [code_size++] = OPCODE_UNNEST;
     code [code_size++] = exec_count;
-    code [code_size++] = OPCODE_POP;
+    code [code_size++] = OPCODE_UNNEST;
     code [code_size++] = exec_sum;
     code [code_size++] = OPCODE_SHIFT;
     code [code_size++] = exec_echo;
@@ -154,23 +159,20 @@ int main (void)
     code [code_size++] = OPCODE_RETURN;
 
     //  --------------------------------------------------------------------
-    //  sub: ( <OK> <Guys> )
+    //  sub: ( <OK> <Guys> echo )
 
     size_t exec_sub = code_size;      //  "OK" -> exec_sub
     encode_string ("OK");
     encode_string ("Guys");
-    code [code_size++] = OPCODE_RETURN;
-
-    //  main sub
-    size_t exec_start = code_size;
-    code [code_size++] = OPCODE_CALL;
-    code [code_size++] = (byte) exec_sub;   //  fix to long address
-    code [code_size++] = OPCODE_CALL;
-    code [code_size++] = (byte) exec_sub;
     code [code_size++] = OPCODE_SHIFT;
     code [code_size++] = exec_echo;
-    code [code_size++] = OPCODE_CALL;
-    code [code_size++] = (byte) exec_main;
+    code [code_size++] = OPCODE_RETURN;
+
+    //  sub sub main
+    size_t exec_start = code_size;
+    encode_call (exec_sub);
+    encode_call (exec_sub);
+    encode_call (exec_main);
 
     //  --------------------------------------------------------------------
     //  End program
@@ -183,15 +185,15 @@ int main (void)
 
     while (true) {
         byte opcode = code [program];
-//         printf ("program=%d opcode=%d\n", (int) program, opcode);
         program++;
 
         if (opcode < 241)
             (class0 [opcode]) (exec);
         else
         if (opcode == OPCODE_CALL) {
-            stack [stack_ptr++] = program + 1;
-            program = code [program];
+            size_t target = (code [program] << 8) + code [program + 1];
+            stack [stack_ptr++] = program + 2;
+            program = target;
         }
         else
         if (opcode == OPCODE_RETURN) {
@@ -213,18 +215,15 @@ int main (void)
         if (opcode == OPCODE_SHIFT)
             zs_exec_shift (exec);
         else
-        if (opcode == OPCODE_PUSH)
-            zs_exec_push (exec);
+        if (opcode == OPCODE_NEST)
+            zs_exec_nest (exec);
         else
-        if (opcode == OPCODE_POP)
-            zs_exec_pop (exec);
+        if (opcode == OPCODE_UNNEST)
+            zs_exec_unnest (exec);
         else
         if (opcode == OPCODE_STOP)
             break;
     }
-    char *results = zs_pipe_contents (zs_exec_output (exec));
-    puts (results);
-    free (results);
     free (code);
     zs_exec_destroy (&exec);
     return 0;

@@ -46,7 +46,7 @@ bool
 //  probe primitives at any time.
 void
     zs_exec_probe (zs_exec_t *self, zs_call_t *primitive);
-    
+
 //  Primitive registers itself with the execution context. This is only valid
 //  if zs_exec_probing () is true. Returns 0 if registration worked, -1 if it
 //  failed due to an internal error.
@@ -87,10 +87,10 @@ int
 void
     zs_exec_shift (zs_exec_t *self);
 void
-    zs_exec_push (zs_exec_t *self);
+    zs_exec_nest (zs_exec_t *self);
 int
-    zs_exec_pop (zs_exec_t *self);
-    
+    zs_exec_unnest (zs_exec_t *self);
+
 //  Self test of this class
 void
     zs_exec_test (bool animate);

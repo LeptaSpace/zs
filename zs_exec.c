@@ -220,7 +220,7 @@ zs_exec_shift (zs_exec_t *self)
 //  ---------------------------------------------------------------------------
 
 void
-zs_exec_push (zs_exec_t *self)
+zs_exec_nest (zs_exec_t *self)
 {
     self->pipe_stack [self->stack_ptr] = self->output;
     self->output = zs_pipe_new ();
@@ -232,7 +232,7 @@ zs_exec_push (zs_exec_t *self)
 //  ---------------------------------------------------------------------------
 
 int
-zs_exec_pop (zs_exec_t *self)
+zs_exec_unnest (zs_exec_t *self)
 {
     assert (self->stack_ptr > 0);
     self->stack_ptr--;
