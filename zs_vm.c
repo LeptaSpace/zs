@@ -44,7 +44,7 @@
     TODO:
         - drop last function for interactive use
         - allow extension classes
-        - provide way to dump code
+        - way to signal "thread exception" to caller
 @end
 */
 
@@ -96,7 +96,6 @@ s_primitive_destroy (s_primitive_t **self_p)
         free (self);
     }
 }
-
 
 //  Structure of our class
 
@@ -406,7 +405,8 @@ zs_vm_run (zs_vm_t *self)
         if (opcode < 240) {
             if (self->verbose)
                 printf ("D [%04zd]: primitive=%s\n", needle, self->class0 [opcode]->name);
-            (self->class0 [opcode]->function) (self);
+            if ((self->class0 [opcode]->function) (self))
+                break;
         }
         else
         if (opcode == VM_CALL) {
@@ -490,7 +490,8 @@ zs_vm_run (zs_vm_t *self)
 //  ---------------------------------------------------------------------------
 //  Selftest
 
-static void
+//  These are the primitives we use in the selftest application
+static int
 s_sum (zs_vm_t *self)
 {
     if (zs_vm_probing (self))
@@ -501,27 +502,30 @@ s_sum (zs_vm_t *self)
             sum += zs_pipe_get_number (zs_vm_input (self));
         zs_pipe_put_number (zs_vm_output (self), sum);
     }
+    return 0;
 }
 
-static void
+static int
 s_count (zs_vm_t *self)
 {
     if (zs_vm_probing (self))
         zs_vm_register (self, "count", "Count how many values there are");
     else
         zs_pipe_put_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
+    return 0;
 }
 
-static void
+static int
 s_clear (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "clear", "Clear output values");
     else
         ;   //  This is a no-op
+    return 0;
 }
 
-static void
+static int
 s_assert (zs_vm_t *self)
 {
     if (zs_vm_probing (self))
@@ -530,10 +534,11 @@ s_assert (zs_vm_t *self)
         int64_t first = zs_pipe_get_number (zs_vm_input (self));
         int64_t second = zs_pipe_get_number (zs_vm_input (self));
         if (first != second) {
-            printf ("E: %" PRId64 " != %" PRId64 "\n", first, second);
-            assert (false);   //  Need a way to signal a fatal thread error
+            printf ("E: assertion failed, %" PRId64 " != %" PRId64 "\n", first, second);
+            return -1;          //  Destroy the thread
         }
     }
+    return 0;
 }
 
 
@@ -609,10 +614,10 @@ zs_vm_test (bool verbose)
     zs_vm_compile_invoke (vm, "count");
     zs_vm_compile_close (vm);
     zs_vm_compile_invoke (vm, "sum");
-    zs_vm_compile_commit (vm);
     zs_vm_compile_number (vm, 126);
     zs_vm_compile_join (vm);
     zs_vm_compile_invoke (vm, "assert");
+    zs_vm_compile_commit (vm);
 
     //  --------------------------------------------------------------------
     //  sub sub main

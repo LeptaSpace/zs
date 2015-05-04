@@ -23,7 +23,7 @@ extern "C" {
 typedef struct _zs_vm_t zs_vm_t;
 
 //  Virtual machine primitive function type
-typedef void (zs_vm_fn_t) (zs_vm_t *self);
+typedef int (zs_vm_fn_t) (zs_vm_t *self);
 
 //  @interface
 //  Create a new empty virtual machine. Returns the reference if successful,
