@@ -28,13 +28,13 @@
         - decoding costs are significant
         - handled by if/switch in core interpreter
         - able to modify instruction pointer (needle)
-    - 0..239 are class 0 primitives
+    - 0..239 are class 0 atomics
         - no class name
         - assumed to be most commonly used
         - core runtime for ZeroScript machines
         - easy to extend by modifying codebase
         - decoding costs are very low
-    - 255 + n are higher class primitives
+    - 255 + n are higher class atomics
         - naming proposal is class.function
         - classes are numbered by VM 1..n
         - assumed to change externally
@@ -44,13 +44,12 @@
     TODO:
         - drop last function for interactive use
         - allow extension classes
-        - way to signal "thread exception" to caller
 @end
 */
 
 //  Bytecodes
 //  - up to 240 class 0 dictionary
-//  - 255 + 16 bits = extensions; class (1..n) + primitive
+//  - 255 + 16 bits = extensions; class (1..n) + function numbe
 
 //  These are built-in opcodes which are allowed to modify the needle, so we
 //  can keep it in a register variable here and perhaps save some CPU cycles.
@@ -67,18 +66,18 @@
 
 #include "zs_classes.h"
 
-//  Work with primitives
+//  Work with atomics
 
 typedef struct {
     zs_vm_fn_t *function;           //  Native C function
     char *name;                     //  Primitive name
     char *hint;                     //  Hint to user
-} s_primitive_t;
+} s_atomic_t;
 
-static s_primitive_t *
-s_primitive_new (const char *name, const char *hint, zs_vm_fn_t *function)
+static s_atomic_t *
+s_atomic_new (const char *name, const char *hint, zs_vm_fn_t *function)
 {
-    s_primitive_t *self = (s_primitive_t *) zmalloc (sizeof (s_primitive_t));
+    s_atomic_t *self = (s_atomic_t *) zmalloc (sizeof (s_atomic_t));
     assert (self);
     self->name = strdup (name);
     self->hint = strdup (hint);
@@ -87,9 +86,9 @@ s_primitive_new (const char *name, const char *hint, zs_vm_fn_t *function)
 }
 
 static void
-s_primitive_destroy (s_primitive_t **self_p)
+s_atomic_destroy (s_atomic_t **self_p)
 {
-    s_primitive_t *self = *self_p;
+    s_atomic_t *self = *self_p;
     if (self) {
         free (self->name);
         free (self->hint);
@@ -100,8 +99,8 @@ s_primitive_destroy (s_primitive_t **self_p)
 //  Structure of our class
 
 struct _zs_vm_t {
-    s_primitive_t *class0 [240];    //  Class 0 primitives
-    size_t class0_size;             //  Number defined so far
+    s_atomic_t *atomics [240];      //  Class 0 atomics
+    size_t atomics_size;            //  Nbr of atomics defined so far
     zs_vm_fn_t *probing;            //  Primitive during registration
 
     byte *code;                     //  Compiled bytecode (zchunk?)
@@ -157,9 +156,9 @@ zs_vm_destroy (zs_vm_t **self_p)
         //  Destroy current input/output pipes
         zs_pipe_destroy (&self->input);
         zs_pipe_destroy (&self->output);
-        //  Destroy all defined primitives
-        while (self->class0_size)
-            s_primitive_destroy (&self->class0 [--self->class0_size]);
+        //  Destroy all defined atomics
+        while (self->atomics_size)
+            s_atomic_destroy (&self->atomics [--self->atomics_size]);
         //  Destroy VM code block
         free (self->code);
         free (self);
@@ -169,15 +168,15 @@ zs_vm_destroy (zs_vm_t **self_p)
 
 
 //  ---------------------------------------------------------------------------
-//  Probe primitive to ask it to register itself; we use a self-registration
-//  system where all information about a primitive is encapsulated in its
+//  Probe atomic to ask it to register itself; we use a self-registration
+//  system where all information about an atomic is encapsulated in its
 //  source code, rather than spread throughout the codebase. It's valid to
 //  probe dictionary at any time.
 
 void
-zs_vm_probe (zs_vm_t *self, zs_vm_fn_t *primitive)
+zs_vm_probe (zs_vm_t *self, zs_vm_fn_t *atomic)
 {
-    self->probing = primitive;
+    self->probing = atomic;
     (self->probing) (self);
     self->probing = NULL;
 }
@@ -203,7 +202,7 @@ int
 zs_vm_register (zs_vm_t *self, const char *name, const char *hint)
 {
     assert (self->probing);
-    self->class0 [self->class0_size++] = s_primitive_new (name, hint, self->probing);
+    self->atomics [self->atomics_size++] = s_atomic_new (name, hint, self->probing);
     return 0;
 }
 
@@ -301,10 +300,10 @@ zs_vm_compile_invoke (zs_vm_t *self, const char *name)
         assert (guard >= offset);
         guard -= offset;
     }
-    //  2. Check if name is a primitive
+    //  2. Check if name is an atomic
     size_t index;
-    for (index = 0; index < self->class0_size; index++) {
-        if (streq ((self->class0 [index])->name, name)) {
+    for (index = 0; index < self->atomics_size; index++) {
+        if (streq ((self->atomics [index])->name, name)) {
             self->code [self->code_size++] = index;
             return 0;
         }
@@ -369,10 +368,10 @@ zs_vm_output (zs_vm_t *self)
 void
 zs_vm_dump (zs_vm_t *self)
 {
-    printf ("Primitives: %zd\n", self->class0_size);
+    printf ("Primitives: %zd\n", self->atomics_size);
     size_t index;
-    for (index = 0; index < self->class0_size; index++)
-        printf (" - %s: %s\n", self->class0 [index]->name, self->class0 [index]->hint);
+    for (index = 0; index < self->atomics_size; index++)
+        printf (" - %s: %s\n", self->atomics [index]->name, self->atomics [index]->hint);
     printf ("Compiled size: %zd\n", self->code_size);
 }
 
@@ -404,8 +403,8 @@ zs_vm_run (zs_vm_t *self)
         needle++;
         if (opcode < 240) {
             if (self->verbose)
-                printf ("D [%04zd]: primitive=%s\n", needle, self->class0 [opcode]->name);
-            if ((self->class0 [opcode]->function) (self))
+                printf ("D [%04zd]: atomic=%s\n", needle, self->atomics [opcode]->name);
+            if ((self->atomics [opcode]->function) (self))
                 break;
         }
         else
@@ -490,7 +489,7 @@ zs_vm_run (zs_vm_t *self)
 //  ---------------------------------------------------------------------------
 //  Selftest
 
-//  These are the primitives we use in the selftest application
+//  These are the atomics we use in the selftest application
 static int
 s_sum (zs_vm_t *self)
 {

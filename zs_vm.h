@@ -22,7 +22,7 @@ extern "C" {
 //  Opaque class structure
 typedef struct _zs_vm_t zs_vm_t;
 
-//  Virtual machine primitive function type
+//  Virtual machine atomic function type
 typedef int (zs_vm_fn_t) (zs_vm_t *self);
 
 //  @interface
@@ -35,12 +35,12 @@ zs_vm_t *
 void
     zs_vm_destroy (zs_vm_t **self_p);
 
-//  Probe primitive to ask it to register itself; we use a self-registration
-//  system where all information about a primitive is encapsulated in its
+//  Probe atomic to ask it to register itself; we use a self-registration
+//  system where all information about an atomic is encapsulated in its
 //  source code, rather than spread throughout the codebase. It's valid to
 //  probe dictionary at any time.
 void
-    zs_vm_probe (zs_vm_t *self, zs_vm_fn_t *primitive);
+    zs_vm_probe (zs_vm_t *self, zs_vm_fn_t *atomic);
 
 //  Return true if we're probing dictionary; this tells dictionary to
 //  register rather than to run.
