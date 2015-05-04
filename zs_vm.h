@@ -70,21 +70,21 @@ void
 void
     zs_vm_compile_commit (zs_vm_t *self);
 
-//  Compile a function call; returns 0 if OK, -1 if name is not known.
-int
-    zs_vm_compile_invoke (zs_vm_t *self, const char *name);
-
-//  Compile a join scope operation;
-void
-    zs_vm_compile_join (zs_vm_t *self);
-
-//  Compile an open scope operation;
+//  Compile an open scope operation; you must match this with a close.
 void
     zs_vm_compile_open (zs_vm_t *self);
 
-//  Compile a close scope operation;
-void
-    zs_vm_compile_close (zs_vm_t *self);
+//  Close a function scope and call the parent function; the function gets the
+//  current output pipe as input, and sends output to the parent output pipe.
+//  Returns 0 if OK or -1 if the function was not defined.
+int
+    zs_vm_compile_close (zs_vm_t *self, const char *name);
+
+//  Call a function, chaining to the previous; the function gets the current
+//  output pipe as input, and sends its output to a new pipe. Returns 0 if OK
+//  or -1 if the function was not defined.
+int
+    zs_vm_compile_chain (zs_vm_t *self, const char *name);
 
 //  Return input pipe for the execution context
 zs_pipe_t *

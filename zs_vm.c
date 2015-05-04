@@ -58,9 +58,9 @@
 #define VM_RETURN       253     //  Return to previous needle
 #define VM_NUMBER       252     //  Issue a number constant
 #define VM_STRING       251     //  Issue a string constant
-#define VM_JOIN         250     //  Join input to output pipe
+#define VM_CHAIN        250     //  Chain to next function
 #define VM_OPEN         249     //  Open new output pipe
-#define VM_CLOSE        248     //  Return to previous output pipe
+#define VM_CLOSE        248     //  Close function scope and execute
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
 
@@ -277,10 +277,17 @@ zs_vm_compile_commit (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Compile a function call; returns 0 if OK, -1 if name is not known.
+//  Compile an open scope operation; you must match this with a close.
 
-int
-zs_vm_compile_invoke (zs_vm_t *self, const char *name)
+void
+zs_vm_compile_open (zs_vm_t *self)
+{
+    self->code [self->code_size++] = VM_OPEN;
+}
+
+
+static int
+s_compile_call (zs_vm_t *self, byte opcode, const char *name)
 {
     if (streq (name, "stop")) {
         self->code [self->code_size++] = VM_STOP;
@@ -291,6 +298,7 @@ zs_vm_compile_invoke (zs_vm_t *self, const char *name)
     while (guard) {
         assert (self->code [guard] == VM_GUARD);
         if (streq (name, (char *) self->code + guard + 3)) {
+            self->code [self->code_size++] = opcode;
             self->code [self->code_size++] = VM_CALL;
             self->code [self->code_size++] = (byte) (guard >> 8);
             self->code [self->code_size++] = (byte) (guard & 0xFF);
@@ -304,6 +312,7 @@ zs_vm_compile_invoke (zs_vm_t *self, const char *name)
     size_t index;
     for (index = 0; index < self->atomics_size; index++) {
         if (streq ((self->atomics [index])->name, name)) {
+            self->code [self->code_size++] = opcode;
             self->code [self->code_size++] = index;
             return 0;
         }
@@ -313,32 +322,26 @@ zs_vm_compile_invoke (zs_vm_t *self, const char *name)
 
 
 //  ---------------------------------------------------------------------------
-//  Compile a join scope operation;
+//  Close a function scope and call the parent function; the function gets the
+//  current output pipe as input, and sends output to the parent output pipe.
+//  Returns 0 if OK or -1 if the function was not defined.
 
-void
-zs_vm_compile_join (zs_vm_t *self)
+int
+zs_vm_compile_close (zs_vm_t *self, const char *name)
 {
-    self->code [self->code_size++] = VM_JOIN;
+    return s_compile_call (self, VM_CLOSE, name);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Compile an open scope operation;
+//  Call a function, chaining to the previous; the function gets the current
+//  output pipe as input, and sends its output to a new pipe. Returns 0 if OK
+//  or -1 if the function was not defined.
 
-void
-zs_vm_compile_open (zs_vm_t *self)
+int
+zs_vm_compile_chain (zs_vm_t *self, const char *name)
 {
-    self->code [self->code_size++] = VM_OPEN;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Compile a close scope operation;
-
-void
-zs_vm_compile_close (zs_vm_t *self)
-{
-    self->code [self->code_size++] = VM_CLOSE;
+    return s_compile_call (self, VM_CHAIN, name);
 }
 
 
@@ -442,9 +445,9 @@ zs_vm_run (zs_vm_t *self)
             needle += strlen (string) + 1;
         }
         else
-        if (opcode == VM_JOIN) {
+        if (opcode == VM_CHAIN) {
             if (self->verbose)
-                printf ("D [%04zd]: join\n", needle);
+                printf ("D [%04zd]: chain\n", needle);
             zs_pipe_destroy (&self->input);
             self->input = self->output;
             self->output = zs_pipe_new ();
@@ -562,11 +565,9 @@ zs_vm_test (bool verbose)
     zs_vm_compile_define (vm, "sub");
     zs_vm_compile_string (vm, "OK");
     zs_vm_compile_string (vm, "Guys");
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "count");
+    zs_vm_compile_chain  (vm, "count");
     zs_vm_compile_number (vm, 2);
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "assert");
+    zs_vm_compile_chain  (vm, "assert");
     zs_vm_compile_commit (vm);
 
     //  --------------------------------------------------------------------
@@ -580,28 +581,22 @@ zs_vm_test (bool verbose)
 
     zs_vm_compile_number (vm, 123);
     zs_vm_compile_number (vm, 1000000000);
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "sum");
+    zs_vm_compile_chain  (vm, "sum");
     zs_vm_compile_number (vm, 1000000123);
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "assert");
+    zs_vm_compile_chain  (vm, "assert");
 
     zs_vm_compile_string (vm, "Hello,");
     zs_vm_compile_string (vm, "World");
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "count");
+    zs_vm_compile_chain  (vm, "count");
     zs_vm_compile_number (vm, 2);
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "assert");
+    zs_vm_compile_chain  (vm, "assert");
 
     zs_vm_compile_open (vm);
     zs_vm_compile_number (vm, 123);
     zs_vm_compile_number (vm, 456);
-    zs_vm_compile_close (vm);
-    zs_vm_compile_invoke (vm, "sum");
+    zs_vm_compile_close  (vm, "sum");
     zs_vm_compile_number (vm, 579);
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "assert");
+    zs_vm_compile_chain  (vm, "assert");
 
     zs_vm_compile_open (vm);
     zs_vm_compile_number (vm, 123);
@@ -609,24 +604,18 @@ zs_vm_test (bool verbose)
     zs_vm_compile_number (vm, 1);
     zs_vm_compile_number (vm, 2);
     zs_vm_compile_number (vm, 3);
-    zs_vm_compile_close (vm);
-    zs_vm_compile_invoke (vm, "count");
-    zs_vm_compile_close (vm);
-    zs_vm_compile_invoke (vm, "sum");
+    zs_vm_compile_close  (vm, "count");
+    zs_vm_compile_close  (vm, "sum");
     zs_vm_compile_number (vm, 126);
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "assert");
+    zs_vm_compile_chain  (vm, "assert");
     zs_vm_compile_commit (vm);
 
     //  --------------------------------------------------------------------
     //  sub sub main
     zs_vm_compile_define (vm, "go");
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "sub");
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "sub");
-    zs_vm_compile_join (vm);
-    zs_vm_compile_invoke (vm, "main");
+    zs_vm_compile_chain  (vm, "sub");
+    zs_vm_compile_chain  (vm, "sub");
+    zs_vm_compile_chain  (vm, "main");
     zs_vm_compile_commit (vm);
     if (verbose)
         zs_vm_dump (vm);
