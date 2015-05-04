@@ -25,11 +25,11 @@
     - machine uses bytecodes with parameters following each opcode
     - 240-254 are built-in opcodes
         - essential to machine operation
-        - decoding costs are significant
+        - decoding costs must be minimized
         - handled by if/switch in core interpreter
-        - able to modify instruction pointer (needle)
+        - can modify instruction pointer (needle)
     - 0..239 are class 0 atomics
-        - no class name
+        - no class name (short obvious names)
         - assumed to be most commonly used
         - core runtime for ZeroScript machines
         - easy to extend by modifying codebase
@@ -44,6 +44,7 @@
     TODO:
         - drop last function for interactive use
         - allow extension classes
+        - control atomics
 @end
 */
 
@@ -514,16 +515,6 @@ s_count (zs_vm_t *self)
         zs_vm_register (self, "count", "Count how many values there are");
     else
         zs_pipe_put_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
-    return 0;
-}
-
-static int
-s_clear (zs_exec_t *self)
-{
-    if (zs_exec_probing (self))
-        zs_exec_register (self, "clear", "Clear output values");
-    else
-        ;   //  This is a no-op
     return 0;
 }
 
