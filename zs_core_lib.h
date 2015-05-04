@@ -16,8 +16,8 @@
 //  ---------------------------------------------------------------------------
 //  Some core primitives
 
-static
-void s_sum (zs_exec_t *self)
+static void
+s_sum (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "sum", "Add all the values");
@@ -29,8 +29,8 @@ void s_sum (zs_exec_t *self)
     }
 }
 
-static
-void s_prod (zs_exec_t *self)
+static void
+s_prod (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "prod", "Multiply all the values");
@@ -42,8 +42,8 @@ void s_prod (zs_exec_t *self)
     }
 }
 
-static
-void s_count (zs_exec_t *self)
+static void
+s_count (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "count", "Count how many values there are");
@@ -51,8 +51,8 @@ void s_count (zs_exec_t *self)
         zs_pipe_put_number (zs_exec_output (self), zs_pipe_size (zs_exec_input (self)));
 }
 
-static
-void s_echo (zs_exec_t *self)
+static void
+s_echo (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "echo", "Print all values");
@@ -63,29 +63,26 @@ void s_echo (zs_exec_t *self)
     }
 }
 
-static
-void s_clr (zs_exec_t *self)
+static void
+s_clr (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "clr", "Clear all values");
-    else {
-        zs_pipe_purge (zs_exec_input (self));
-        zs_pipe_purge (zs_exec_output (self));
-    }
+    else
+        ;           //  Do nothing; this is a no-op
 }
 
-static
-void s_python (zs_exec_t *self)
+static void
+s_python (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "python", "Why not just use Python?");
-    else {
+    else
         while (true);
-    }
 }
 
-static
-void s_check (zs_exec_t *self)
+static void
+s_check (zs_exec_t *self)
 {
     if (zs_exec_probing (self))
         zs_exec_register (self, "check", "Run internal checks");

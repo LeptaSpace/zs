@@ -231,7 +231,7 @@ zs_exec_nest (zs_exec_t *self)
 
 //  ---------------------------------------------------------------------------
 
-int
+void
 zs_exec_unnest (zs_exec_t *self)
 {
     assert (self->stack_ptr > 0);

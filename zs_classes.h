@@ -7,5 +7,6 @@
 #include "zs_pipe.h"
 #include "zs_exec.h"
 #include "zs_core.h"
+#include "zs_vm.h"
 
 #endif

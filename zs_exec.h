@@ -88,7 +88,7 @@ void
     zs_exec_shift (zs_exec_t *self);
 void
     zs_exec_nest (zs_exec_t *self);
-int
+void
     zs_exec_unnest (zs_exec_t *self);
 
 //  Self test of this class
