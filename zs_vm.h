@@ -79,14 +79,14 @@ int
     zs_vm_compile_rollback (zs_vm_t *self);
 
 //  Compile an open scope operation; you must match this with a close.
-void
-    zs_vm_compile_open (zs_vm_t *self);
+//  Returns 0 if OK or -1 if the function was not defined.
+int
+    zs_vm_compile_open (zs_vm_t *self, const char *name);
 
 //  Compile a close scope + execute function. The function gets the current
-//  output pipe as input, and sends output to the parent output pipe. Returns
-//  0 if OK or -1 if the function was not defined.
-int
-    zs_vm_compile_close (zs_vm_t *self, const char *name);
+//  output pipe as input, and sends output to the parent output pipe.
+void
+    zs_vm_compile_close (zs_vm_t *self);
 
 //  Compile a chain scope + execute function. The function gets the current
 //  output pipe as input, and sends its output to a new pipe. Returns 0 if OK

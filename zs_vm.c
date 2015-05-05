@@ -13,7 +13,7 @@
 /*
 @header
     This class encodes and executes a ZeroScript application using a threaded
-    bytecode virtual machine. Actual parsing is done by zs_core and zs_lex.
+    bytecode virtual machine. Actual parsing is done by zs_repl and zs_lex.
 @discuss
     Notes about input/output:
     - each function receives an input pipe and an output pipe
@@ -42,7 +42,6 @@
         - decoding costs are insignificant
 
     TODO:
-        - drop last function for interactive use
         - allow extension classes
         - control atomics
 @end
@@ -110,6 +109,9 @@ struct _zs_vm_t {
     size_t code_head;               //  Last defined function
     size_t checkpoint;              //  When defining a function
 
+    char *scope_stack [256];        //  Scope stack, arbitrary size
+    size_t scope_stack_ptr;         //  Size of scope stack
+
     zs_pipe_t *pipe_stack [256];    //  Pipe stack, arbitrary size
     size_t pipe_stack_ptr;          //  Size of pipe stack
     zs_pipe_t *input;               //  Current input pipe
@@ -144,6 +146,66 @@ s_function_name (zs_vm_t *self, size_t guard)
         return "";
 }
 
+//  Return builtin opcode for name, or -1 if not known
+static int
+s_try_builtin (zs_vm_t *self, const char *name)
+{
+    if (streq (name, "stop"))
+        return VM_STOP;
+    return 0;
+}
+
+//  Return atomic opcode for name, or -1 if not known
+static int
+s_try_atomic (zs_vm_t *self, const char *name)
+{
+    size_t index;
+    for (index = 0; index < self->atomics_size; index++)
+        if (streq ((self->atomics [index])->name, name))
+            return index;
+    return -1;
+}
+
+//  Return function guard for name, or -1 if not known
+static int
+s_try_function (zs_vm_t *self, const char *name)
+{
+    size_t guard = self->code_head;
+    while (guard) {
+        assert (self->code [guard] == VM_GUARD);
+        if (streq (name, s_function_name (self, guard)))
+            return guard;
+        size_t offset = (self->code [guard + 1] << 8) + self->code [guard + 2];
+        assert (guard >= offset);
+        guard -= offset;
+    }
+    return -1;
+}
+
+//  Compile call to function, atomic, or builtin (in that order)
+static int
+s_compile_call (zs_vm_t *self, byte opcode, const char *name)
+{
+    int found;
+    if ((found = s_try_function (self, name)) != -1) {
+        self->code [self->code_size++] = opcode;
+        self->code [self->code_size++] = VM_CALL;
+        self->code [self->code_size++] = (byte) (found >> 8);
+        self->code [self->code_size++] = (byte) (found & 0xFF);
+        return 0;
+    }
+    if ((found = s_try_atomic (self, name)) != -1) {
+        self->code [self->code_size++] = opcode;
+        self->code [self->code_size++] = (byte) found;
+        return 0;
+    }
+    if ((found = s_try_builtin (self, name)) != -1) {
+        self->code [self->code_size++] = (byte) found;
+        return 0;
+    }
+    return -1;
+}
+
 
 //  ---------------------------------------------------------------------------
 //  Create a new empty virtual machine. Returns the reference if successful,
@@ -156,7 +218,7 @@ zs_vm_new (void)
     if (self) {
         self->input = zs_pipe_new ();
         self->output = zs_pipe_new ();
-        self->code_max = 32000;
+        self->code_max = 32000;         //  Arbitrary; TODO: extensible
         self->code = malloc (self->code_max);
         self->code [self->code_size++] = VM_STOP;
     }
@@ -268,7 +330,6 @@ void
 zs_vm_compile_define (zs_vm_t *self, const char *name)
 {
     assert (!self->checkpoint);
-    printf ("<DEFINE code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
     //  This is provisional on a successful commit
     self->checkpoint = self->code_size;
     //  Store offset to previous function guard, if any
@@ -295,7 +356,6 @@ zs_vm_compile_commit (zs_vm_t *self)
     //  The function is now successfully compiled in the bytecode
     self->code_head = self->checkpoint;
     self->checkpoint = 0;
-    printf (">COMMIT code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
 }
 
 
@@ -310,7 +370,6 @@ int
 zs_vm_compile_rollback (zs_vm_t *self)
 {
     int rc = 0;
-    printf ("<ROLLBK code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
     if (self->checkpoint) {
         self->code_size = self->checkpoint;
         self->checkpoint = 0;
@@ -326,7 +385,6 @@ zs_vm_compile_rollback (zs_vm_t *self)
     }
     else
         rc = -1;
-    printf (">ROLLBK code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
 
     return rc;
 }
@@ -334,58 +392,36 @@ zs_vm_compile_rollback (zs_vm_t *self)
 
 //  ---------------------------------------------------------------------------
 //  Compile an open scope operation; you must match this with a close.
+//  Returns 0 if OK or -1 if the function was not defined.
 
-void
-zs_vm_compile_open (zs_vm_t *self)
+int
+zs_vm_compile_open (zs_vm_t *self, const char *name)
 {
-    self->code [self->code_size++] = VM_OPEN;
-}
-
-
-static int
-s_compile_call (zs_vm_t *self, byte opcode, const char *name)
-{
-    if (streq (name, "stop")) {
-        self->code [self->code_size++] = VM_STOP;
+    if (s_try_function (self, name) != -1
+    ||  s_try_atomic (self, name) != -1
+    ||  s_try_builtin (self, name) != -1) {
+        //  We use a scope stack during compilation so it's less work for the
+        //  caller, who has the function name now, rather than at closing time.
+        self->code [self->code_size++] = VM_OPEN;
+        self->scope_stack [self->scope_stack_ptr++] = strdup (name);
         return 0;
     }
-    //  1. Check if name is a user-defined function
-    size_t guard = self->code_head;
-    while (guard) {
-        assert (self->code [guard] == VM_GUARD);
-        if (streq (name, s_function_name (self, guard))) {
-            self->code [self->code_size++] = opcode;
-            self->code [self->code_size++] = VM_CALL;
-            self->code [self->code_size++] = (byte) (guard >> 8);
-            self->code [self->code_size++] = (byte) (guard & 0xFF);
-            return 0;
-        }
-        size_t offset = (self->code [guard + 1] << 8) + self->code [guard + 2];
-        assert (guard >= offset);
-        guard -= offset;
-    }
-    //  2. Check if name is an atomic
-    size_t index;
-    for (index = 0; index < self->atomics_size; index++) {
-        if (streq ((self->atomics [index])->name, name)) {
-            self->code [self->code_size++] = opcode;
-            self->code [self->code_size++] = index;
-            return 0;
-        }
-    }
-    return -1;                  //  Not known
+    else
+        return -1;              //  Not a defined function
 }
 
 
 //  ---------------------------------------------------------------------------
 //  Compile a close scope + execute function. The function gets the current
-//  output pipe as input, and sends output to the parent output pipe. Returns
-//  0 if OK or -1 if the function was not defined.
+//  output pipe as input, and sends output to the parent output pipe.
 
-int
-zs_vm_compile_close (zs_vm_t *self, const char *name)
+void
+zs_vm_compile_close (zs_vm_t *self)
 {
-    return s_compile_call (self, VM_CLOSE, name);
+    assert (self->scope_stack_ptr);
+    char *name = self->scope_stack [--self->scope_stack_ptr];
+    s_compile_call (self, VM_CLOSE, name);
+    free (name);
 }
 
 
@@ -605,6 +641,7 @@ zs_vm_test (bool verbose)
         printf ("\n");
 
     //  @selftest
+    int rc;
     zs_vm_t *vm = zs_vm_new ();
     zs_vm_set_verbose (vm, verbose);
 
@@ -644,21 +681,24 @@ zs_vm_test (bool verbose)
     zs_vm_compile_number (vm, 2);
     zs_vm_compile_chain  (vm, "assert");
 
-    zs_vm_compile_open (vm);
+    rc = zs_vm_compile_open (vm, "sum");
+    assert (rc == 0);
     zs_vm_compile_number (vm, 123);
     zs_vm_compile_number (vm, 456);
-    zs_vm_compile_close  (vm, "sum");
+    zs_vm_compile_close  (vm);
     zs_vm_compile_number (vm, 579);
     zs_vm_compile_chain  (vm, "assert");
 
-    zs_vm_compile_open (vm);
+    rc = zs_vm_compile_open (vm, "sum");
+    assert (rc == 0);
     zs_vm_compile_number (vm, 123);
-    zs_vm_compile_open (vm);
+    rc = zs_vm_compile_open (vm, "count");
+    assert (rc == 0);
     zs_vm_compile_number (vm, 1);
     zs_vm_compile_number (vm, 2);
     zs_vm_compile_number (vm, 3);
-    zs_vm_compile_close  (vm, "count");
-    zs_vm_compile_close  (vm, "sum");
+    zs_vm_compile_close  (vm);
+    zs_vm_compile_close  (vm);
     zs_vm_compile_number (vm, 126);
     zs_vm_compile_chain  (vm, "assert");
     zs_vm_compile_commit (vm);
@@ -675,7 +715,7 @@ zs_vm_test (bool verbose)
 
     zs_vm_run (vm);
 
-    int rc = zs_vm_compile_rollback (vm);
+    rc = zs_vm_compile_rollback (vm);
     assert (rc == 0);
     zs_vm_run (vm);
 
@@ -689,7 +729,7 @@ zs_vm_test (bool verbose)
 
     rc = zs_vm_compile_rollback (vm);
     assert (rc == -1);
-//     zs_vm_run (vm);
+    zs_vm_run (vm);
 
     zs_vm_destroy (&vm);
     //  @end
