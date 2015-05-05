@@ -193,18 +193,47 @@ compile_open (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  close_list
+//  compile_define
 //
 
 static void
-close_list (zs_repl_t *self)
+compile_define (zs_repl_t *self)
+{
+    self->scope++;
+    zs_vm_compile_define (self->vm, zs_lex_token (self->lex));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_close
+//
+
+static void
+compile_close (zs_repl_t *self)
 {
     if (self->scope) {
         self->scope--;
         zs_vm_compile_close (self->vm);
     }
     else
+        fsm_set_exception (self->fsm, invalid_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_close_or_commit
+//
+
+static void
+compile_close_or_commit (zs_repl_t *self)
+{
+    assert (self->scope);
+    if (--self->scope)
+        zs_vm_compile_close (self->vm);
+    else {
+        zs_vm_compile_commit (self->vm);
         fsm_set_exception (self->fsm, completed_event);
+    }
 }
 
 
@@ -227,29 +256,6 @@ check_if_completed (zs_repl_t *self)
 static void
 compile_commit_shell (zs_repl_t *self)
 {
-    zs_vm_compile_commit (self->vm);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compile_define
-//
-
-static void
-compile_define (zs_repl_t *self)
-{
-    zs_vm_compile_define (self->vm, zs_lex_token (self->lex));
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compile_commit
-//
-
-static void
-compile_commit (zs_repl_t *self)
-{
-    self->scope--;
     zs_vm_compile_commit (self->vm);
 }
 
@@ -365,6 +371,7 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "clr", "");
     s_repl_assert (repl, "sum (1 2 3", "");
     s_repl_assert (repl, ")", "6");
+    s_repl_assert (repl, "clr", "");
     s_repl_assert (repl, "sub: (<hello>)", "");
     s_repl_assert (repl, "sub", "hello");
     zs_repl_destroy (&repl);

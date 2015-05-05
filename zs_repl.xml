@@ -37,6 +37,13 @@
 </state>
 
 <state name = "building shell" inherit = "building function">
+    <event name = "close list">
+        <action name = "compile close" />
+        <action name = "get next token" />
+    </event>
+    <event name = "finished">
+        <action name = "check if completed" />
+    </event>
     <event name = "completed" next = "starting">
         <action name = "compile commit shell" />
         <action name = "run virtual machine" />
@@ -62,14 +69,10 @@
         <action name = "get next token" />
     </event>
     <event name = "close list">
-        <action name = "close list" />
+        <action name = "compile close or commit" />
         <action name = "get next token" />
     </event>
-    <event name = "finished">
-        <action name = "check if completed" />
-    </event>
     <event name = "completed" next = "starting">
-        <action name = "compile commit" />
     </event>
 </state>
 
