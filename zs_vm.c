@@ -152,7 +152,7 @@ s_try_builtin (zs_vm_t *self, const char *name)
 {
     if (streq (name, "stop"))
         return VM_STOP;
-    return 0;
+    return -1;
 }
 
 //  Return atomic opcode for name, or -1 if not known
