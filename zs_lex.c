@@ -16,12 +16,13 @@
     compositions and invocations, strings, numbers, and open or close
     lists. It does not validate any semantics.
 @discuss
-    Functions start with a letter and if followed by ':' are treated
-    as composition, else invocation.
-
-    Strings are quoted by < and >.
+    Functions start with a letter. A simple function is a name. A complex
+    function is a name followed by a list. A definition is a function followed
+    by ':' and a list.
 
     Lists start with ( and end with ).
+
+    Strings are quoted by < and >.
 
     Accepts a wide range of numeric expressions:
         All digits
@@ -240,24 +241,35 @@ store_newline_character (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  have_function_token
+//  have_simple_fn_token
 //
 
 static void
-have_function_token (zs_lex_t *self)
+have_simple_fn_token (zs_lex_t *self)
 {
-    self->type = zs_lex_function;
+    self->type = zs_lex_simple_fn;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  have_compose_token
+//  have_complex_fn_token
 //
 
 static void
-have_compose_token (zs_lex_t *self)
+have_complex_fn_token (zs_lex_t *self)
 {
-    self->type = zs_lex_compose;
+    self->type = zs_lex_complex_fn;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_define_fn_token
+//
+
+static void
+have_define_fn_token (zs_lex_t *self)
+{
+    self->type = zs_lex_define_fn;
 }
 
 
@@ -284,24 +296,13 @@ have_string_token (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  have_open_token
+//  have_close_list_token
 //
 
 static void
-have_open_token (zs_lex_t *self)
+have_close_list_token (zs_lex_t *self)
 {
-    self->type = zs_lex_open;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  have_close_token
-//
-
-static void
-have_close_token (zs_lex_t *self)
-{
-    self->type = zs_lex_close;
+    self->type = zs_lex_close_list;
 }
 
 
@@ -370,24 +371,21 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, " which continues over two lines>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "pi: ( 22/7 )") == zs_lex_compose);
-    assert (zs_lex_next (lex) == zs_lex_open);
+    assert (zs_lex_first (lex, "pi: ( 22/7 )") == zs_lex_define_fn);
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_close);
+    assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "twopi:( pi 2 times )") == zs_lex_compose);
-    assert (zs_lex_next (lex) == zs_lex_open);
-    assert (zs_lex_next (lex) == zs_lex_function);
+    assert (zs_lex_first (lex, "twopi:( pi 2 times )") == zs_lex_define_fn);
+    assert (zs_lex_next (lex) == zs_lex_simple_fn);
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_function);
-    assert (zs_lex_next (lex) == zs_lex_close);
+    assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_function);
-    assert (zs_lex_next (lex) == zs_lex_open);
+    assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_complex_fn);
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_close);
+    assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
     assert (zs_lex_first (lex, "1 +1 -1 .1 0.1") == zs_lex_number);
@@ -451,10 +449,9 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, "[Hello, World>") == zs_lex_invalid);
     assert (zs_lex_first (lex, "<Hello,>?<World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_invalid);
-    assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_function);
-    assert (zs_lex_next (lex) == zs_lex_open);
-    assert (zs_lex_next (lex) == zs_lex_function);
-    assert (zs_lex_next (lex) == zs_lex_function);
+    assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_complex_fn);
+    assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (zs_lex_next (lex) == zs_lex_simple_fn);
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_next (lex) == zs_lex_null);
     assert (zs_lex_first (lex, ",1") == zs_lex_invalid);

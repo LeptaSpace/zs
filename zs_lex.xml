@@ -30,17 +30,8 @@
         <action name = "start new token" />
         <action name = "parse next character" />
     </event>
-    <event name = "whitespace">
-        <action name = "parse next character" />
-    </event>
-    <event name = "newline">
-        <action name = "parse next character" />
-    </event>
-    <event name = "open list" next = "expecting token">
-        <action name = "have open token" />
-    </event>
     <event name = "close list" next = "expecting token">
-        <action name = "have close token" />
+        <action name = "have close list token" />
     </event>
     <event name = "finished">
         <action name = "have null token" />
@@ -72,25 +63,46 @@
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
-    <event name = "whitespace" next = "expecting token">
-        <action name = "have function token" />
+    <event name = "whitespace" next = "after function">
+        <action name = "parse next character" />
     </event>
-    <event name = "colon" next = "expecting token">
-        <action name = "have compose token" />
+    <event name = "newline" next = "after function">
+        <action name = "parse next character" />
+    </event>
+    <event name = "colon" next = "after function colon">
+        <action name = "parse next character" />
     </event>
     <event name = "open list" next = "expecting token">
-        <action name = "have function token" />
-        <action name = "push back to previous" />
+        <action name = "have complex fn token" />
     </event>
     <event name = "close list" next = "expecting token">
-        <action name = "have function token" />
+        <action name = "have simple fn token" />
         <action name = "push back to previous" />
     </event>
-    <event name = "newline" next = "expecting token">
-        <action name = "have function token" />
-    </event>
     <event name = "finished" next = "expecting token">
-        <action name = "have function token" />
+        <action name = "have simple fn token" />
+    </event>
+</state>
+
+<state name = "after function">
+    <event name = "finished" next = "expecting token">
+        <action name = "have simple fn token" />
+    </event>
+    <event name = "open list" next = "expecting token">
+        <action name = "have complex fn token" />
+    </event>
+    <event name = "colon" next = "after function colon">
+        <action name = "parse next character" />
+    </event>
+    <event name = "*" next = "expecting token">
+        <action name = "have simple fn token" />
+        <action name = "push back to previous" />
+    </event>
+</state>
+
+<state name = "after function colon" inherit = "defaults">
+    <event name = "open list" next = "expecting token">
+        <action name = "have define fn token" />
     </event>
 </state>
 
@@ -162,6 +174,7 @@
         <action name = "store newline character" />
     </event>
     <event name = "newline">
+        <!-- todo is this event needed? -->
         <action name = "store newline character" />
         <action name = "parse next character" />
     </event>
@@ -174,6 +187,12 @@
 <state name = "defaults">
     <event name = "other" next = "expecting token">
         <action name = "have invalid token" />
+    </event>
+    <event name = "whitespace">
+        <action name = "parse next character" />
+    </event>
+    <event name = "newline">
+        <action name = "parse next character" />
     </event>
     <event name = "*" next = "expecting token">
         <action name = "have invalid token" />

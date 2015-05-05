@@ -23,12 +23,12 @@ extern "C" {
 typedef struct _zs_lex_t zs_lex_t;
 
 typedef enum {
-    zs_lex_function,        //  function name
-    zs_lex_compose,         //  function name followed by :
-    zs_lex_string,          //  string
+    zs_lex_simple_fn,       //  function
+    zs_lex_complex_fn,      //  function (
+    zs_lex_define_fn,       //  function: (
+    zs_lex_close_list,      //  close   )
+    zs_lex_string,          //  <string>
     zs_lex_number,          //  number expression
-    zs_lex_open,            //  open list
-    zs_lex_close,           //  close list
     zs_lex_invalid,         //  Syntax error
     zs_lex_null,            //  Nothing to return
     zs_lex_tokens           //  Size of this set
