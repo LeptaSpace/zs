@@ -45,7 +45,7 @@ for class.state
             action.name = "$(name:c)"
         endfor
     endfor
-    
+
     #   Collect all events and actions at class level
     for event where name <> "*"
         #   Copy event to class if not yet defined there
@@ -419,7 +419,7 @@ $(class.name)_test (bool verbose)
 
     //  @selftest
     $(class.name)_t *$(class.name) = $(class.name)_new ();
-    
+
     $(class.name)_destroy (&$(class.name));
     //  @end
     printf ("OK\\n");

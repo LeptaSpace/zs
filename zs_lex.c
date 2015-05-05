@@ -20,7 +20,7 @@
     as composition, else invocation.
 
     Strings are quoted by < and >.
-    
+
     Lists start with ( and end with ).
 
     Accepts a wide range of numeric expressions:
@@ -354,28 +354,28 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, "1234") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "1234 4567") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "<Hello, World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "<Hello,>\n<World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "<Here is a long string") == zs_lex_null);
     assert (zs_lex_first (lex, " which continues over two lines>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "pi: ( 22/7 )") == zs_lex_compose);
     assert (zs_lex_next (lex) == zs_lex_open);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_close);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "twopi:( pi 2 times )") == zs_lex_compose);
     assert (zs_lex_next (lex) == zs_lex_open);
     assert (zs_lex_next (lex) == zs_lex_function);
@@ -396,10 +396,10 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "3.141592653589793238462643383279502884197169") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
-    
+
     assert (zs_lex_first (lex, "1/2 1:2 1024*1024 10^10 1v2 99:70") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);

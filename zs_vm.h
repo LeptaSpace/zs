@@ -70,17 +70,25 @@ void
 void
     zs_vm_compile_commit (zs_vm_t *self);
 
+//  Cancel the current or last function definition and reset the virtual
+//  machine to the state before the previous _define. You can call this
+//  repeatedly to delete function definitions until the machine is empty.
+//  Returns 0 if OK, -1 if there was no function to rollback (the machine
+//  is then empty).
+int
+    zs_vm_compile_rollback (zs_vm_t *self);
+
 //  Compile an open scope operation; you must match this with a close.
 void
     zs_vm_compile_open (zs_vm_t *self);
 
-//  Close a function scope and call the parent function; the function gets the
-//  current output pipe as input, and sends output to the parent output pipe.
-//  Returns 0 if OK or -1 if the function was not defined.
+//  Compile a close scope + execute function. The function gets the current
+//  output pipe as input, and sends output to the parent output pipe. Returns
+//  0 if OK or -1 if the function was not defined.
 int
     zs_vm_compile_close (zs_vm_t *self, const char *name);
 
-//  Call a function, chaining to the previous; the function gets the current
+//  Compile a chain scope + execute function. The function gets the current
 //  output pipe as input, and sends its output to a new pipe. Returns 0 if OK
 //  or -1 if the function was not defined.
 int

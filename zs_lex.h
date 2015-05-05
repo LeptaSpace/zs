@@ -34,7 +34,7 @@ typedef enum {
     zs_lex_tokens           //  Size of this set
 } zs_lex_token_t;
 
-    
+
 //  @interface
 //  Create a new zs_lex, return the reference if successful, or NULL
 //  if construction failed due to lack of available memory.

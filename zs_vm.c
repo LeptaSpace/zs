@@ -107,9 +107,8 @@ struct _zs_vm_t {
     byte *code;                     //  Compiled bytecode (zchunk?)
     size_t code_max;                //  Allocated memory
     size_t code_size;               //  Actual amount used
-    size_t last_guard;              //  Last defined function guard
-    size_t main;                    //  VM main function, if any
-    bool defining;                  //  Are we defining a function?
+    size_t code_head;               //  Last defined function
+    size_t checkpoint;              //  When defining a function
 
     zs_pipe_t *pipe_stack [256];    //  Pipe stack, arbitrary size
     size_t pipe_stack_ptr;          //  Size of pipe stack
@@ -121,6 +120,15 @@ struct _zs_vm_t {
 
     bool verbose;                   //  Trace execution progress
 };
+
+//  Map function guard to code body
+static size_t
+s_function_body (zs_vm_t *self, size_t guard)
+{
+    size_t body = guard + 3;
+    body += strlen ((char *) self->code + body) + 1;
+    return body;
+}
 
 
 //  ---------------------------------------------------------------------------
@@ -226,7 +234,6 @@ zs_vm_compile_number (zs_vm_t *self, int64_t number)
 //  Compile a string constant into the virtual machine.
 //  Strings are stored thus:
 //      [VM_STRING][null-terminated string]
-//  TODO: add 2-byte length to eliminate strlen calculation
 
 void
 zs_vm_compile_string (zs_vm_t *self, const char *string)
@@ -240,7 +247,7 @@ zs_vm_compile_string (zs_vm_t *self, const char *string)
 //  ---------------------------------------------------------------------------
 //  Compile a new function definition; end with a commit.
 //  Functions are stored thus:
-//      [VM_GUARD]                  <-- self->last_guard
+//      [VM_GUARD]                  <-- self->code_head
 //      [offset]                    Offset to previous, hi/lo 2 bytes
 //      [name, null-terminated]
 //      [ ... ]                     code
@@ -249,13 +256,15 @@ zs_vm_compile_string (zs_vm_t *self, const char *string)
 void
 zs_vm_compile_define (zs_vm_t *self, const char *name)
 {
-    assert (!self->defining);
-    self->defining = true;
-    uint16_t offset = self->code_size - self->last_guard;
-    self->last_guard = self->code_size;
+    assert (!self->checkpoint);
+    //  This is provisional on a successful commit
+    self->checkpoint = self->code_size;
+    //  Store offset to previous function guard, if any
+    uint16_t offset = self->code_size - self->code_head;
     self->code [self->code_size++] = VM_GUARD;
     self->code [self->code_size++] = (byte) (offset >> 8);
     self->code [self->code_size++] = (byte) (offset & 0xFF);
+    //  Store function name and bump code size
     strcpy ((char *) self->code + self->code_size, name);
     self->code_size += strlen (name) + 1;
 }
@@ -267,13 +276,31 @@ zs_vm_compile_define (zs_vm_t *self, const char *name)
 void
 zs_vm_compile_commit (zs_vm_t *self)
 {
-    //  Check that we're in a function definition
-    assert (self->defining);
+    //  We must have an open function definition
+    assert (self->checkpoint);
+    //  End function with a RETURN operation
     self->code [self->code_size++] = VM_RETURN;
-    self->defining = false;
-    //  This should be simplified
-    self->main = self->last_guard + 3;
-    self->main += strlen ((char *) self->code + self->main) + 1;
+    //  The function is now successfully compiled in the bytecode
+    self->code_head = self->checkpoint;
+    self->checkpoint = 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Cancel the current or last function definition and reset the virtual
+//  machine to the state before the previous _define. You can call this
+//  repeatedly to delete function definitions until the machine is empty.
+//  Returns 0 if OK, -1 if there was no function to rollback (the machine
+//  is then empty).
+
+int
+zs_vm_compile_rollback (zs_vm_t *self)
+{
+    if (self->checkpoint)
+        self->code_size = self->checkpoint;
+    else {
+    }
+    return -1;
 }
 
 
@@ -295,7 +322,7 @@ s_compile_call (zs_vm_t *self, byte opcode, const char *name)
         return 0;
     }
     //  1. Check if name is a user-defined function
-    size_t guard = self->last_guard;
+    size_t guard = self->code_head;
     while (guard) {
         assert (self->code [guard] == VM_GUARD);
         if (streq (name, (char *) self->code + guard + 3)) {
@@ -323,9 +350,9 @@ s_compile_call (zs_vm_t *self, byte opcode, const char *name)
 
 
 //  ---------------------------------------------------------------------------
-//  Close a function scope and call the parent function; the function gets the
-//  current output pipe as input, and sends output to the parent output pipe.
-//  Returns 0 if OK or -1 if the function was not defined.
+//  Compile a close scope + execute function. The function gets the current
+//  output pipe as input, and sends output to the parent output pipe. Returns
+//  0 if OK or -1 if the function was not defined.
 
 int
 zs_vm_compile_close (zs_vm_t *self, const char *name)
@@ -335,7 +362,7 @@ zs_vm_compile_close (zs_vm_t *self, const char *name)
 
 
 //  ---------------------------------------------------------------------------
-//  Call a function, chaining to the previous; the function gets the current
+//  Compile a chain scope + execute function. The function gets the current
 //  output pipe as input, and sends its output to a new pipe. Returns 0 if OK
 //  or -1 if the function was not defined.
 
@@ -398,10 +425,10 @@ zs_vm_set_verbose (zs_vm_t *self, bool verbose)
 int
 zs_vm_run (zs_vm_t *self)
 {
-    assert (!self->defining);
+    assert (!self->checkpoint);
 
     //  Run virtual machine until stopped
-    size_t needle = self->main;
+    size_t needle = s_function_body (self, self->code_head);
     while (true) {
         byte opcode = self->code [needle];
         needle++;
@@ -416,11 +443,10 @@ zs_vm_run (zs_vm_t *self)
             self->call_stack [self->call_stack_ptr++] = needle + 2;
             size_t guard = (self->code [needle] << 8) + self->code [needle + 1];
             assert (self->code [guard] == VM_GUARD);
-            char *name = (char *) self->code + guard + 3;
             if (self->verbose)
                 printf ("D [%04zd]: call function=%s stack=%zd\n", needle,
-                        name, self->call_stack_ptr);
-            needle = guard + 4 + strlen (name);
+                        (char *) self->code + guard + 3, self->call_stack_ptr);
+            needle = s_function_body (self, guard);
         }
         else
         if (opcode == VM_RETURN) {
@@ -432,10 +458,10 @@ zs_vm_run (zs_vm_t *self)
         if (opcode == VM_NUMBER) {
             int64_t number;
             memcpy (&number, self->code + needle, 8);
+            zs_pipe_put_number (self->output, number);
             if (self->verbose)
                 printf ("D [%04zd]: number value=%" PRId64 "\n", needle, number);
             needle += 8;
-            zs_pipe_put_number (self->output, number);
         }
         else
         if (opcode == VM_STRING) {

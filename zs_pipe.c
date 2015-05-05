@@ -166,7 +166,7 @@ zs_pipe_get_number (zs_pipe_t *self)
     if (self->current) {
         if (self->current->type == 'n')
             return self->current->number;
-        else 
+        else
             return atol (self->current->string);
     }
     else
@@ -277,7 +277,7 @@ zs_pipe_test (bool verbose)
     assert (zs_pipe_size (pipe) == 3);
     zs_pipe_purge (pipe);
     assert (zs_pipe_size (pipe) == 0);
-    
+
     zs_pipe_destroy (&pipe);
     //  @end
     printf ("OK\n");

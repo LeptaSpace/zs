@@ -53,7 +53,7 @@ zs_core_new (void)
     if (self) {
         self->fsm = fsm_new (self);
         self->lex = zs_lex_new ();
-        
+
         //  Set token type to event map
         self->events [zs_lex_function] = function_event;
         self->events [zs_lex_compose] = compose_event;
@@ -319,7 +319,7 @@ zs_core_test (bool verbose)
 //     zs_core_execute (core, "echo (<hello> <world>)");
 //     zs_core_execute (core, "pi: (22/7)");
 //     zs_core_execute (core, "twopi: (pi 2 times)");
-    
+
     zs_core_destroy (&core);
     //  @end
     printf ("OK\n");

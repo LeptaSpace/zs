@@ -39,4 +39,3 @@ int main (int argc, char *argv [])
     zs_core_destroy (&core);
     return 0;
 }
-    
