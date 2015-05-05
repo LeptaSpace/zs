@@ -376,14 +376,18 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "twopi:( pi 2 times )") == zs_lex_define_fn);
+    assert (zs_lex_first (lex, "twopi:( pi 2 times)") == zs_lex_define_fn);
+    assert (streq (zs_lex_token (lex), "twopi"));
     assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (streq (zs_lex_token (lex), "pi"));
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (streq (zs_lex_token (lex), "times"));
     assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
     assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_complex_fn);
+    assert (streq (zs_lex_token (lex), "something"));
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
@@ -450,8 +454,11 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, "<Hello,>?<World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_complex_fn);
+    assert (streq (zs_lex_token (lex), "echo"));
     assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (streq (zs_lex_token (lex), "some"));
     assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (streq (zs_lex_token (lex), "text"));
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_next (lex) == zs_lex_null);
     assert (zs_lex_first (lex, ",1") == zs_lex_invalid);

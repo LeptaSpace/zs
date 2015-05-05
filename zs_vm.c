@@ -484,7 +484,7 @@ zs_vm_set_verbose (zs_vm_t *self, bool verbose)
 //  ---------------------------------------------------------------------------
 //  Run last defined function, if any, in the VM. This continues forever or
 //  until the function ends. Returns 0 if stopped successfully, or -1 if
-//  stopped due to some error.
+//  stopped due to some error. Each run of the VM starts with clean pipes.
 
 int
 zs_vm_run (zs_vm_t *self)
@@ -499,6 +499,10 @@ zs_vm_run (zs_vm_t *self)
     self->call_stack_ptr = 1;
     if (self->verbose)
         printf ("D [%04zd]: run '%s'\n", needle, s_function_name (self, self->code_head));
+
+    //  Clean pipes before each run
+    zs_pipe_purge (self->input);
+    zs_pipe_purge (self->output);
 
     //  Run virtual machine until stopped
     while (true) {

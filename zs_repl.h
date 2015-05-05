@@ -1,5 +1,5 @@
 /*  =========================================================================
-    zs_core - the ZeroScript core engine
+    zs_repl - the ZeroScript read-evaluate-print loop
 
     Copyright (c) the Contributors as noted in the AUTHORS file.
     This file is part of the ZeroScript language, http://zeroscript.org.
@@ -10,8 +10,8 @@
     =========================================================================
 */
 
-#ifndef ZS_CORE_H_INCLUDED
-#define ZS_CORE_H_INCLUDED
+#ifndef ZS_REPL_H_INCLUDED
+#define ZS_REPL_H_INCLUDED
 
 #include <czmq.h>
 
@@ -20,45 +20,45 @@ extern "C" {
 #endif
 
 //  Opaque class structure
-typedef struct _zs_core_t zs_core_t;
+typedef struct _zs_repl_t zs_repl_t;
 
 //  @interface
 //  Create a new core engine, return the reference if successful, or NULL
 //  if construction failed due to lack of available memory.
-zs_core_t *
-    zs_core_new (void);
+zs_repl_t *
+    zs_repl_new (void);
 
-//  Destroy the zs_core and free all memory used by the object
+//  Destroy the zs_repl and free all memory used by the object
 void
-    zs_core_destroy (zs_core_t **self_p);
+    zs_repl_destroy (zs_repl_t **self_p);
 
 //  Enable verbose tracing of engine
 void
-    zs_core_verbose (zs_core_t *self, bool verbose);
+    zs_repl_verbose (zs_repl_t *self, bool verbose);
 
 //  Execute a buffer of code; to reset the engine you destroy it and create a
 //  new one. Returns 0 if OK, -1 on syntax errors or cataclysmic implosions
 //  of the Sun (can be determined from context).
 int
-    zs_core_execute (zs_core_t *self, const char *input);
+    zs_repl_execute (zs_repl_t *self, const char *input);
 
 //  Return true if the input formed a complete phrase that was successfully
 //  evaulated. If not, the core expects more input.
 bool
-    zs_core_completed (zs_core_t *self);
+    zs_repl_completed (zs_repl_t *self);
 
 //  Return pipe results as string, after successful execution. Caller must
 //  free results when finished.
 char *
-    zs_core_results (zs_core_t *self);
+    zs_repl_results (zs_repl_t *self);
 
 //  After a syntax error, return position of syntax error in text.
 uint
-    zs_core_offset (zs_core_t *self);
+    zs_repl_offset (zs_repl_t *self);
 
 //  Self test of this class
 void
-    zs_core_test (bool animate);
+    zs_repl_test (bool animate);
 //  @end
 
 #ifdef __cplusplus

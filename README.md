@@ -21,7 +21,6 @@ compose:
     function: ( phrase )
 
 
-
 This does not yet work, at all.
 
 Problem: I need a neutral language for the Guide. C is fine yet too much of a barrier to many people.

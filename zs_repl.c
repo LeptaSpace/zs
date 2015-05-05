@@ -1,5 +1,5 @@
 /*  =========================================================================
-    zs_core - the ZeroScript core engine
+    zs_repl - the ZeroScript read-evaluate-print loop
 
     Copyright (c) the Contributors as noted in the AUTHORS file.
     This file is part of the ZeroScript language, http://zeroscript.org.
@@ -12,14 +12,14 @@
 
 /*
 @header
-    The core engine processes input lines.
+    The repl engine processes input lines.
 @discuss
 @end
 */
 
 #include "zs_classes.h"
-#include "zs_core_fsm.h"        //  Finite state machine engine
-#include "zs_core_lib.h"        //  Core library primitives
+#include "zs_repl_fsm.h"        //  Finite state machine engine
+#include "zs_repl_lib.h"        //  Core library atomics
 
 //  This holds an entry in the dictionary
 typedef struct {
@@ -30,59 +30,57 @@ typedef struct {
 
 //  Structure of our class
 
-struct _zs_core_t {
+struct _zs_repl_t {
     fsm_t *fsm;                 //  Our finite state machine
     event_t events [zs_lex_tokens];
     zs_lex_t *lex;              //  Lexer instance
     const char *input;          //  Line of text we're parsing
     int status;                 //  0 = OK, -1 = error
-    zs_exec_t *exec;            //  Execution context
-    zs_call_t *function;        //  Current function if any
+    zs_vm_t *vm;                //  Execution context
     bool completed;             //  Input formed a complete phrase
     uint scope;                 //  Nesting scope, 0..n
 };
 
 //  ---------------------------------------------------------------------------
-//  Create a new core engine, return the reference if successful, or NULL
+//  Create a new repl engine, return the reference if successful, or NULL
 //  if construction failed due to lack of available memory.
 
-zs_core_t *
-zs_core_new (void)
+zs_repl_t *
+zs_repl_new (void)
 {
-    zs_core_t *self = (zs_core_t *) zmalloc (sizeof (zs_core_t));
+    zs_repl_t *self = (zs_repl_t *) zmalloc (sizeof (zs_repl_t));
     if (self) {
         self->fsm = fsm_new (self);
         self->lex = zs_lex_new ();
+        self->vm = zs_vm_new ();
+        s_register_atomics (self->vm);
 
         //  Set token type to event map
-        self->events [zs_lex_function] = function_event;
-        self->events [zs_lex_compose] = compose_event;
+        self->events [zs_lex_simple_fn] = simple_fn_event;
+        self->events [zs_lex_complex_fn] = complex_fn_event;
+        self->events [zs_lex_define_fn] = define_fn_event;
         self->events [zs_lex_string] = string_event;
         self->events [zs_lex_number] = number_event;
-        self->events [zs_lex_open] = open_event;
-        self->events [zs_lex_close] = close_event;
+        self->events [zs_lex_close_list] = close_list_event;
         self->events [zs_lex_invalid] = invalid_event;
-        self->events [zs_lex_null] = eol_event;
-
-        self->exec = zs_exec_new ();
-        s_register_primitives (self->exec);
+        self->events [zs_lex_null] = finished_event;
     }
     return self;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Destroy the zs_core and free all memory used by the object.
+//  Destroy the zs_repl and free all memory used by the object.
 
 void
-zs_core_destroy (zs_core_t **self_p)
+zs_repl_destroy (zs_repl_t **self_p)
 {
     assert (self_p);
     if (*self_p) {
-        zs_core_t *self = *self_p;
+        zs_repl_t *self = *self_p;
         fsm_destroy (&self->fsm);
         zs_lex_destroy (&self->lex);
-        zs_exec_destroy (&self->exec);
+        zs_vm_destroy (&self->vm);
         free (self);
         *self_p = NULL;
     }
@@ -93,9 +91,10 @@ zs_core_destroy (zs_core_t **self_p)
 //  Enable verbose tracing of engine
 
 void
-zs_core_verbose (zs_core_t *self, bool verbose)
+zs_repl_verbose (zs_repl_t *self, bool verbose)
 {
     fsm_set_animate (self->fsm, verbose);
+    zs_vm_set_verbose (self->vm, verbose);
 }
 
 
@@ -105,7 +104,7 @@ zs_core_verbose (zs_core_t *self, bool verbose)
 //  the Sun (can be resolved from context).
 
 int
-zs_core_execute (zs_core_t *self, const char *input)
+zs_repl_execute (zs_repl_t *self, const char *input)
 {
     self->input = input;
     self->completed = false;
@@ -126,7 +125,7 @@ zs_core_execute (zs_core_t *self, const char *input)
 //
 
 static void
-get_next_token (zs_core_t *self)
+get_next_token (zs_repl_t *self)
 {
     zs_lex_token_t token = zs_lex_next (self->lex);
     assert (token < zs_lex_tokens);
@@ -135,77 +134,134 @@ get_next_token (zs_core_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  push_number_to_output
+//  compile_define_shell
 //
 
 static void
-push_number_to_output (zs_core_t *self)
+compile_define_shell (zs_repl_t *self)
 {
-    zs_pipe_put_number (zs_exec_output (self->exec), atoll (zs_lex_token (self->lex)));
+    zs_vm_compile_define (self->vm, "$shell$");
 }
 
 
 //  ---------------------------------------------------------------------------
-//  push_string_to_output
+//  compile_number
 //
 
 static void
-push_string_to_output (zs_core_t *self)
+compile_number (zs_repl_t *self)
 {
-    zs_pipe_put_string (zs_exec_output (self->exec), zs_lex_token (self->lex));
+    //  TODO: full number parsing; whole & real
+    zs_vm_compile_number (self->vm, atoll (zs_lex_token (self->lex)));
 }
 
 
 //  ---------------------------------------------------------------------------
-//  resolve_function_name
+//  compile_string
 //
 
 static void
-resolve_function_name (zs_core_t *self)
+compile_string (zs_repl_t *self)
 {
-    self->function = zs_exec_resolve (self->exec, zs_lex_token (self->lex));
-    if (!self->function)
+    zs_vm_compile_string (self->vm, zs_lex_token (self->lex));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_chain
+//
+
+static void
+compile_chain (zs_repl_t *self)
+{
+    if (zs_vm_compile_chain (self->vm, zs_lex_token (self->lex)))
         fsm_set_exception (self->fsm, invalid_event);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  call_simple_function
+//  compile_open
 //
 
 static void
-call_simple_function (zs_core_t *self)
-{
-    zs_exec_inline (self->exec, self->function);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  open_function_scope
-//
-
-static void
-open_function_scope (zs_core_t *self)
+compile_open (zs_repl_t *self)
 {
     self->scope++;
-    zs_exec_open (self->exec, self->function);
+    if (zs_vm_compile_open (self->vm, zs_lex_token (self->lex)))
+        fsm_set_exception (self->fsm, invalid_event);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  close_function_scope
+//  close_list_if_any
 //
 
 static void
-close_function_scope (zs_core_t *self)
+close_list_if_any (zs_repl_t *self)
 {
     if (self->scope) {
         self->scope--;
-        if (zs_exec_close (self->exec))
-            fsm_set_exception (self->fsm, invalid_event);
+        zs_vm_compile_close (self->vm);
     }
     else
         fsm_set_exception (self->fsm, invalid_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_commit_shell
+//
+
+static void
+compile_commit_shell (zs_repl_t *self)
+{
+    zs_vm_compile_commit (self->vm);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_define
+//
+
+static void
+compile_define (zs_repl_t *self)
+{
+    self->scope++;
+    zs_vm_compile_define (self->vm, zs_lex_token (self->lex));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_commit
+//
+
+static void
+compile_commit (zs_repl_t *self)
+{
+    self->scope--;
+    zs_vm_compile_commit (self->vm);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  run_virtual_machine
+//
+
+static void
+run_virtual_machine (zs_repl_t *self)
+{
+    zs_vm_run (self->vm);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  rollback_the_function
+//
+
+static void
+rollback_the_function (zs_repl_t *self)
+{
+    zs_vm_compile_rollback (self->vm);
 }
 
 
@@ -214,7 +270,7 @@ close_function_scope (zs_core_t *self)
 //
 
 static void
-check_if_completed (zs_core_t *self)
+check_if_completed (zs_repl_t *self)
 {
     if (self->scope == 0)
         fsm_set_exception (self->fsm, completed_event);
@@ -226,7 +282,7 @@ check_if_completed (zs_core_t *self)
 //
 
 static void
-signal_completed (zs_core_t *self)
+signal_completed (zs_repl_t *self)
 {
     self->completed = true;
 }
@@ -237,7 +293,7 @@ signal_completed (zs_core_t *self)
 //
 
 static void
-signal_syntax_error (zs_core_t *self)
+signal_syntax_error (zs_repl_t *self)
 {
     self->status = -1;
     self->completed = true;
@@ -246,10 +302,10 @@ signal_syntax_error (zs_core_t *self)
 
 //  ---------------------------------------------------------------------------
 //  Return true if the input formed a complete phrase that was successfully
-//  evaulated. If not, the core expects more input.
+//  evaulated. If not, the repl expects more input.
 
 bool
-zs_core_completed (zs_core_t *self)
+zs_repl_completed (zs_repl_t *self)
 {
     return self->completed;
 }
@@ -260,9 +316,9 @@ zs_core_completed (zs_core_t *self)
 //  free results when finished.
 
 char *
-zs_core_results (zs_core_t *self)
+zs_repl_results (zs_repl_t *self)
 {
-    return zs_pipe_contents (zs_exec_output (self->exec));
+    return zs_pipe_contents (zs_vm_output (self->vm));
 }
 
 
@@ -270,18 +326,18 @@ zs_core_results (zs_core_t *self)
 //  After a syntax error, return position of syntax error in text.
 
 uint
-zs_core_offset (zs_core_t *self)
+zs_repl_offset (zs_repl_t *self)
 {
     return zs_lex_offset (self->lex);
 }
 
 
 static void
-s_core_assert (zs_core_t *self, const char *input, const char *output)
+s_repl_assert (zs_repl_t *self, const char *input, const char *output)
 {
-    int rc = zs_core_execute (self, input);
+    int rc = zs_repl_execute (self, input);
     assert (rc == 0);
-    char *results = zs_core_results (self);
+    char *results = zs_repl_results (self);
     if (strneq (results, output)) {
         printf ("input='%s' results='%s' expected='%s'\n",
                 input, results, output);
@@ -295,32 +351,22 @@ s_core_assert (zs_core_t *self, const char *input, const char *output)
 //  Selftest
 
 void
-zs_core_test (bool verbose)
+zs_repl_test (bool verbose)
 {
-    printf (" * zs_core: ");
+    printf (" * zs_repl: ");
     if (verbose)
         printf ("\n");
 
     //  @selftest
-    zs_core_t *core = zs_core_new ();
-    zs_core_verbose (core, verbose);
-
-    s_core_assert (core, "1 2 3 sum", "6");
-    s_core_assert (core, "clr sum (1 2 3)", "6");
-    s_core_assert (core, "clr sum (sum (1 2 3) count (4 5 6))", "9");
-    s_core_assert (core, "clr sum (1 2 3", "1 2 3");
-    s_core_assert (core, ")", "6");
-
-//     zs_core_execute (core, "a: (sum (1 2 3))");
-//     zs_core_execute (core, "b: (a 4 5 6 sum)");
-//     zs_core_execute (core, "c: (a b sum)");
-//     zs_core_execute (core, "a b c");
-//     zs_core_execute (core, "<hello> <world>");
-//     zs_core_execute (core, "echo (<hello> <world>)");
-//     zs_core_execute (core, "pi: (22/7)");
-//     zs_core_execute (core, "twopi: (pi 2 times)");
-
-    zs_core_destroy (&core);
+    zs_repl_t *repl = zs_repl_new ();
+    zs_repl_verbose (repl, verbose);
+    s_repl_assert (repl, "1 2 3 sum", "6");
+    s_repl_assert (repl, "sum (1 2 3)", "6");
+    s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
+    s_repl_assert (repl, "clr", "");
+    s_repl_assert (repl, "sum (1 2 3", "");
+    s_repl_assert (repl, ")", "6");
+    zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");
 }

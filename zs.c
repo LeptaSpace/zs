@@ -16,26 +16,26 @@ int main (int argc, char *argv [])
     }
     //  Main thread is read/parse/execute input text
     zsys_init ();
-    zs_core_t *core = zs_core_new ();
-    zs_core_verbose (core, verbose);
+    zs_repl_t *repl = zs_repl_new ();
+    zs_repl_verbose (repl, verbose);
 
     while (!zctx_interrupted) {
         char input [1024 + 2];          //  1024 chars + LF + null
         if (!fgets (input, 1026, stdin))
             break;
 
-        if (zs_core_execute (core, input) == 0) {
-            if (zs_core_completed (core)) {
-                char *results = zs_core_results (core);
+        if (zs_repl_execute (repl, input) == 0) {
+            if (zs_repl_completed (repl)) {
+                char *results = zs_repl_results (repl);
                 printf ("[%s]\n", results);
                 zstr_free (&results);
             }
         }
         else {
-            printf ("%*c\n", zs_core_offset (core), '^');
+            printf ("%*c\n", zs_repl_offset (repl), '^');
             puts ("Syntax error");
         }
     }
-    zs_core_destroy (&core);
+    zs_repl_destroy (&repl);
     return 0;
 }

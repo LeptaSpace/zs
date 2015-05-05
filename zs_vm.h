@@ -112,7 +112,7 @@ void
 
 //  Run last defined function, if any, in the VM. This continues forever or
 //  until the function ends. Returns 0 if stopped successfully, or -1 if
-//  stopped due to some error.
+//  stopped due to some error. Each run of the VM starts with clean pipes.
 int
     zs_vm_run (zs_vm_t *self);
 
