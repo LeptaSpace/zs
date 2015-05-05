@@ -193,18 +193,30 @@ compile_open (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  close_list_if_any
+//  close_list
 //
 
 static void
-close_list_if_any (zs_repl_t *self)
+close_list (zs_repl_t *self)
 {
     if (self->scope) {
         self->scope--;
         zs_vm_compile_close (self->vm);
     }
     else
-        fsm_set_exception (self->fsm, invalid_event);
+        fsm_set_exception (self->fsm, completed_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  check_if_completed
+//
+
+static void
+check_if_completed (zs_repl_t *self)
+{
+    if (self->scope == 0)
+        fsm_set_exception (self->fsm, completed_event);
 }
 
 
@@ -226,7 +238,6 @@ compile_commit_shell (zs_repl_t *self)
 static void
 compile_define (zs_repl_t *self)
 {
-    self->scope++;
     zs_vm_compile_define (self->vm, zs_lex_token (self->lex));
 }
 
@@ -262,18 +273,6 @@ static void
 rollback_the_function (zs_repl_t *self)
 {
     zs_vm_compile_rollback (self->vm);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  check_if_completed
-//
-
-static void
-check_if_completed (zs_repl_t *self)
-{
-    if (self->scope == 0)
-        fsm_set_exception (self->fsm, completed_event);
 }
 
 
@@ -366,6 +365,8 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "clr", "");
     s_repl_assert (repl, "sum (1 2 3", "");
     s_repl_assert (repl, ")", "6");
+    s_repl_assert (repl, "sub: (<hello>)", "");
+    s_repl_assert (repl, "sub", "hello");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");
