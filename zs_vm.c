@@ -125,9 +125,23 @@ struct _zs_vm_t {
 static size_t
 s_function_body (zs_vm_t *self, size_t guard)
 {
-    size_t body = guard + 3;
-    body += strlen ((char *) self->code + body) + 1;
-    return body;
+    if (guard) {
+        size_t body = guard + 3;
+        body += strlen ((char *) self->code + body) + 1;
+        return body;
+    }
+    else
+        return 0;
+}
+
+//  Map function guard to printable name
+static const char *
+s_function_name (zs_vm_t *self, size_t guard)
+{
+    if (guard)
+        return (const char *) self->code + guard + 3;
+    else
+        return "";
 }
 
 
@@ -144,9 +158,6 @@ zs_vm_new (void)
         self->output = zs_pipe_new ();
         self->code_max = 32000;
         self->code = malloc (self->code_max);
-
-        //  When main function returns, VM will stop
-        self->call_stack [self->call_stack_ptr++] = 0;
         self->code [self->code_size++] = VM_STOP;
     }
     return self;
@@ -257,6 +268,7 @@ void
 zs_vm_compile_define (zs_vm_t *self, const char *name)
 {
     assert (!self->checkpoint);
+    printf ("<DEFINE code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
     //  This is provisional on a successful commit
     self->checkpoint = self->code_size;
     //  Store offset to previous function guard, if any
@@ -283,6 +295,7 @@ zs_vm_compile_commit (zs_vm_t *self)
     //  The function is now successfully compiled in the bytecode
     self->code_head = self->checkpoint;
     self->checkpoint = 0;
+    printf (">COMMIT code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
 }
 
 
@@ -296,11 +309,26 @@ zs_vm_compile_commit (zs_vm_t *self)
 int
 zs_vm_compile_rollback (zs_vm_t *self)
 {
-    if (self->checkpoint)
+    int rc = 0;
+    printf ("<ROLLBK code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
+    if (self->checkpoint) {
         self->code_size = self->checkpoint;
-    else {
+        self->checkpoint = 0;
     }
-    return -1;
+    else
+    if (self->code_head > 0) {
+        size_t guard = self->code_head;
+        assert (self->code [guard] == VM_GUARD);
+        size_t offset = (self->code [guard + 1] << 8) + self->code [guard + 2];
+        assert (guard >= offset);
+        self->code_head = guard - offset;
+        self->code_size = guard;
+    }
+    else
+        rc = -1;
+    printf (">ROLLBK code_size=%zd code_head=%zd\n", self->code_size, self->code_head);
+
+    return rc;
 }
 
 
@@ -325,7 +353,7 @@ s_compile_call (zs_vm_t *self, byte opcode, const char *name)
     size_t guard = self->code_head;
     while (guard) {
         assert (self->code [guard] == VM_GUARD);
-        if (streq (name, (char *) self->code + guard + 3)) {
+        if (streq (name, s_function_name (self, guard))) {
             self->code [self->code_size++] = opcode;
             self->code [self->code_size++] = VM_CALL;
             self->code [self->code_size++] = (byte) (guard >> 8);
@@ -427,8 +455,16 @@ zs_vm_run (zs_vm_t *self)
 {
     assert (!self->checkpoint);
 
-    //  Run virtual machine until stopped
+    //  We call the last function that was defined, which is at code_head.
+    //  When this function returns, the VM ends at needle = 0, and stops.
+    assert (self->code [0] == VM_STOP);
     size_t needle = s_function_body (self, self->code_head);
+    self->call_stack [0] = 0;
+    self->call_stack_ptr = 1;
+    if (self->verbose)
+        printf ("D [%04zd]: run '%s'\n", needle, s_function_name (self, self->code_head));
+
+    //  Run virtual machine until stopped
     while (true) {
         byte opcode = self->code [needle];
         needle++;
@@ -445,7 +481,7 @@ zs_vm_run (zs_vm_t *self)
             assert (self->code [guard] == VM_GUARD);
             if (self->verbose)
                 printf ("D [%04zd]: call function=%s stack=%zd\n", needle,
-                        (char *) self->code + guard + 3, self->call_stack_ptr);
+                        s_function_name (self, guard), self->call_stack_ptr);
             needle = s_function_body (self, guard);
         }
         else
@@ -636,7 +672,24 @@ zs_vm_test (bool verbose)
     zs_vm_compile_commit (vm);
     if (verbose)
         zs_vm_dump (vm);
+
     zs_vm_run (vm);
+
+    int rc = zs_vm_compile_rollback (vm);
+    assert (rc == 0);
+    zs_vm_run (vm);
+
+    rc = zs_vm_compile_rollback (vm);
+    assert (rc == 0);
+    zs_vm_run (vm);
+
+    rc = zs_vm_compile_rollback (vm);
+    assert (rc == 0);
+    zs_vm_run (vm);
+
+    rc = zs_vm_compile_rollback (vm);
+    assert (rc == -1);
+//     zs_vm_run (vm);
 
     zs_vm_destroy (&vm);
     //  @end
