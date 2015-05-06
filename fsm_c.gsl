@@ -9,6 +9,8 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
+#   Document UUID: 85d22a41-95c2-4b98-8187-e0df5925d0f7.
+
 class.title ?= "No title"
 
 #   Resolve includes
