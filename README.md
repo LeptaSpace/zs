@@ -72,7 +72,7 @@ Now to stuff I hate. It's a long list so I'll try to keep it relevant.
 
 Both Forth and Lisp offer you their salaciously unfiltered virtual machines, and yet both could be simpler. I do not like reverse Polish notation. Stacks are fine data structures, yet they are not intuitive for humans. This hurts my brain, and I don't want to have to try to explain it to anyone:
 
-    1 2 3 4 5 + + + *
+    1 2 3 4 5 + + + +
 
 Forth is too low on the abstraction level. Do I want to have to explain things like word sizes to my kids just so they can switch on the heating? Clearly not. We can't make throwable code if we care about bits and bytes. And we have C to deal with that part.
 
@@ -84,7 +84,7 @@ Which I'd rather write like:
 
     command (argument argument)
 
-So no stacks, RPNs, or lists of lists. No recursive descent parsers either. A language that needs recursion to parse it is too complex.
+So no stacks, RPNs, or lists of lists. No recursive descent parsers either. A language that needs recursion to parse it is too complex. Come to think of it, arrays and other Von Neuman artifacts annoy me too.
 
 Lastly, I dislike error handling. Partly it's from laziness. More though, it's from experience. Oh, great, you got an error code from a library call! What do you do now? It's like getting a phone call from your takeaway pizza place telling you their oven is switched off. What do you do now? Wait, abort, or retry?
 
@@ -115,6 +115,32 @@ The language looks like this (taken from the VM self test):
 
 * Strings are enclosed in < and > rather than the stupidly ambiguous " and ".
 * The rest should be obvious at first reading, that is the point.
+
+## The Virtual Machine
+
+I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
+
+So we use a token threaded bytecode interpreter. That is, a byte is an instruction. The inner interpreter steps through opcodes one by one, until and if the machine finishes. Where opcodes take parameters, these come just after, byte by byte.
+
+The fastest way to decode such opcodes (suddenly I care about performance, and don't even ask, it's a complex tradeoff of short and long term costs/benefits that'd take pages to explain) is a switch statement. No, in fact it's a series of "if"s. So the most frequent opcodes, those that can mess with the machine itself, get handled directly in the VM.
+
+I like the technique of slicing answers into "cheap" and "nasty". Cheap is easy to change and changes often. Nasty is hard to change and changes rarely. Opcodes 240-254 are built-in opcodes; changing them requires modifying the VM source itself. These built-ins get to play with the instruction pointer, or "needle". That means the needle can be held in a register. This helps performance, at least theoretically.
+
+Opcodes 0-239 are "atomics", and point to a look-up table of function addresses. As we register new atomics, each gets assigned a new number. The compiler uses that number (0-239) as opcode. These opcodes are in separate source files, I expect. They get a VM context to talk to, yet they cannot see or change the needle.
+
+255 is the opcode for "do more complex stuff", which means atomics added later. Perhaps the byte after the 255 will be the class number. Who knows, or cares at this stage. Future extensibility! 240 core atomics is enough for now. The future can use three-byte or longer opcodes.
+
+So:
+
+* 240-254 are built-in opcodes, essential to machine operation. Decoding costs must be minimal. These are handled by a long if statement (or switch) in the inner loop. These opcodes can modify the instruction pointer.
+
+* 0..239 are class 0 atomics, assumed to be most commonly used and the core runtime for ZeroScript machines. They are easy to extend by modifying the VM source code. That means they should be common to all ZeroScript runtimes. Decoding costs are very low.
+
+* 255 + whatever are higher class atomics. We can assume these change externally, i.e. via dynamic load libraries. We assume decoding costs are insignificant compared to to the work the atomics do.
+
+## Other Goals
+
+This experiment started with the idea of a domain specific language for ZeroMQ examples. This is still a good idea. I'd like a language that compiles into clean C, Ruby, Python, whatever, using our code generation skills. It would solve a lot of problems in teaching ZeroMQ.
 
 ## Bibliography
 
