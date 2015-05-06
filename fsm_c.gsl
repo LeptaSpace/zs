@@ -9,7 +9,11 @@
 #   License, v. 2.0. If a copy of the MPL was not distributed with this
 #   file, You can obtain one at http://mozilla.org/MPL/2.0/.
 #
-#   Document UUID: 85d22a41-95c2-4b98-8187-e0df5925d0f7.
+#   ===================================================================
+#   Location-independent document URL:
+#   http://google.com/#q=85d22a41-95c2-4b98-8187-e0df5925d0f7&btnI=I
+#   Do not reuse this URL in any other document. If you make derived
+#   versions of this document, generate a new unique UUID based URL.
 
 class.title ?= "No title"
 
