@@ -12,7 +12,7 @@ Let me observe that the Web is just a poor messaging system. Replace that old cl
 
 There's a second reason for JavaScript's emerging domination. That is, we share source code. When you receive JavaScript, you get source code you can read, modify, and reuse. It may not be entirely legal, and people try to prevent this, yet it's the dominant culture. If I get to use your CPU cycles then you can remix my code.
 
-Remixability isn't an added feature. It's a cultural vitamin. Without it, culture grows stunted and crooked, and dies way too young. As does technology. Our industry is built on the corpses of projects too proud or stupid or greedy to take their vitamins. All my closed source work, ever, is dead. All my open source that went past "experiment" is still alive except for two (Libero and Xitami) that I had to actively end in 1999. In the 20th century we hadn't yet invented Github.
+Remixability isn't an added feature. It's a cultural vitamin. Without it, culture grows stunted and crooked, and dies way too young. As does technology. Our industry is built on the corpses of projects too proud or stupid or greedy to take their vitamins. All my closed source work, ever, died. Much open source also dies. I said "vitamin", not "complete diet".
 
 Sending source code around the network, and forced remixability go nicely together. I'll cover the legal aspects later. Let's look at sending source code.
 
@@ -92,7 +92,29 @@ No, real code never gives errors. It either works or it dies grimly and with min
 
 ## First Steps
 
+So far what do I have?
 
+* A lexer (zs_lex) that breaks input into tokens. This should become a language atomic at some stage, pushing input tokens to a pipe.
+* A pipe class (zs_pipe) that holds numbers and strings. This is not meant to be fast; it just shows the idea.
+* A virtual machine class (zs_vm) that compiles and executes bytecode. It supports a basic syntax that I'll explain in a second.
+* A REPL class (zs_repl) that connects the lexer to the VM. It's really quite simple.
+* A main program (zs) that acts as a shell.
+
+The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
+
+The language looks like this (taken from the VM self test):
+
+    sub: (<OK> <Guys> count 2 assert)
+    main: (
+        123 1000000000 sum 1000000123 assert
+        <Hello,> <World> count 2 assert
+        sum (123 456) 579 assert
+        sum (123 count (1 2 3)) 126 assert
+    )
+    sub sub main
+
+* Strings are enclosed in < and > rather than the stupidly ambiguous " and ".
+* The rest should be obvious at first reading, that is the point.
 
 ## Bibliography
 
