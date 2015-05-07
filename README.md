@@ -74,9 +74,25 @@ Both Forth and Lisp offer you their salaciously unfiltered virtual machines, and
 
     1 2 3 4 5 + + + +
 
+Whereas my young daughter correctly and immediately understood this without any explanation:
+
+    1 2 3 4 5 sum
+
+And then extrapolated to "you could also say average, or median!"
+
+What should this do?
+
+    1 2 3 4 5 echo
+
+Answer: "1 2 3 4 5" and not "5 4 3 2 1".
+
 Forth is too low on the abstraction level. Do I want to have to explain things like word sizes to my kids just so they can switch on the heating? Clearly not. We can't make throwable code if we care about bits and bytes. And we have C to deal with that part.
 
-I never used Lisp, so my criticisms here are vague and opinionated. I dislike recursion except when it's the obvious algorithm, which means for navigating recursive data structures like trees. I'm not a great fan of trees, as nested structures tend to confuse people. Long ago I learned most people can learn three levels of nesting: this one, the one above, and the one below. I've no opinion on Lisp's parenthesis except they feel like they're in the wrong place:
+I never used Lisp, so my criticisms here are vague and opinionated. I dislike recursion except when it's the obvious algorithm, which means for navigating recursive data structures like trees. I'm not a great fan of trees, as nested structures tend to confuse people. Long ago I learned most people can learn three levels of nesting: this one, the one above, and the one below. Recursion also reinforces the common fallacy that because things at different levels are self-similar, *they are the same*. Star systems may spin like atoms. However they are not the same thing.
+
+From long, long experience working with hierachical data models, I've learned that the simplest and most useful model is simply "above, here, below". This is my data. This is the parent. Here are its children. Do the appropriate work, and climb up and down the tree as needed.
+
+I've no opinion on Lisp's parenthesis except they feel like they're in the wrong place:
 
     (command argument argument)
 
@@ -84,7 +100,7 @@ Which I'd rather write like:
 
     command (argument argument)
 
-So no stacks, RPNs, or lists of lists. No recursive descent parsers either. A language that needs recursion to parse it is too complex. Come to think of it, arrays and other Von Neuman artifacts annoy me too.
+So no stacks, RPNs, or lists of lists of lists. No recursive descent parsers either. A language that needs recursion to parse it is too complex. Come to think of it, arrays and other Von Neuman artifacts annoy me too. Natural things come in sets, queues, clusters, crowds, and clouds.
 
 Lastly, I dislike error handling. Partly it's from laziness. More though, it's from experience. Oh, great, you got an error code from a library call! What do you do now? It's like getting a phone call from your takeaway pizza place telling you their oven is switched off. What do you do now? Wait, abort, or retry?
 
@@ -130,17 +146,47 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which means atomics added later. Perhaps the byte after the 255 will be the class number. Who knows, or cares at this stage. Future extensibility! 240 core atomics is enough for now. The future can use three-byte or longer opcodes.
 
-So:
+## Extensibility
 
-* 240-254 are built-in opcodes, essential to machine operation. Decoding costs must be minimal. These are handled by a long if statement (or switch) in the inner loop. These opcodes can modify the instruction pointer.
+So, my goal here is to make it possible to add atomics in three places: inside the VM, very close to it, and outside it. Internal atomics are always going to be delicate, as they can easily break the VM. The 15-opcode address space is a Brutalist cage meant to stop random cruft getting in there.
 
-* 0..239 are class 0 atomics, assumed to be most commonly used and the core runtime for ZeroScript machines. They are easy to extend by modifying the VM source code. That means they should be common to all ZeroScript runtimes. Decoding costs are very low.
+The API for extensible atomics is as simple as I could make it. An atomic is a single C function, which receives a VM reference as argument, and returns 0 (silence is assent) or -1 (meaning "stop the machine!"). A function registers itself, it if wants to.
 
-* 255 + whatever are higher class atomics. We can assume these change externally, i.e. via dynamic load libraries. We assume decoding costs are insignificant compared to to the work the atomics do.
+So for example the "check" atomic runs the ZeroScript self-tests. Here's how we probe the atomic:
+
+    zs_vm_probe (self, s_check);
+
+And here's the code for that function:
+
+    static int
+    s_check (zs_vm_t *self)
+    {
+        if (zs_vm_probing (self))
+            zs_vm_register (self, "check", "Run internal checks");
+        else {
+            int verbose = (zs_pipe_get_number (zs_vm_input (self)) != 0);
+            zs_lex_test (verbose);
+            zs_pipe_test (verbose);
+            zs_vm_test (verbose);
+            zs_repl_test (verbose);
+            zs_pipe_put_string (zs_vm_output (self), "Checks passed successfully");
+        }
+        return 0;
+    }
+
+For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
+
+## Arguments
+
+If you want to talk about minor details like my use of < and > for strings, be my guest. There is no real agenda here, except to keep parsing as simple as possible for now. Asymmetric delimiters are trivial to parse. Curly quotes are too difficult to type. So < and > are a workable choice for now. It's also nice to be able to put ZeroScript strings inside C strings without any special escaping. Shrug.
+
+If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
 ## Other Goals
 
 This experiment started with the idea of a domain specific language for ZeroMQ examples. This is still a good idea. I'd like a language that compiles into clean C, Ruby, Python, whatever, using our code generation skills. It would solve a lot of problems in teaching ZeroMQ.
+
+Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
 ## Bibliography
 
