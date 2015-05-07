@@ -1,8 +1,8 @@
 # ZeroScript
 
-<Seriously, this is renewing my hope in technology. Thanks @hintjens> -- Jason J. Gullickson ‏@jasonbot2000
+Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
-<Some very interesting thoughts ... esp. for #IoT applications> -- Till Hänisch ‏@TillHaenisch
+Some very interesting thoughts ... esp. for #IoT applications -- Till Hänisch ‏@TillHaenisch
 
 ## This an Experiment
 
