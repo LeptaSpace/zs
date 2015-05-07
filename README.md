@@ -1,5 +1,9 @@
 # ZeroScript
 
+<Seriously, this is renewing my hope in technology. Thanks @hintjens> -- Jason J. Gullickson ‏@jasonbot2000
+
+<Some very interesting thoughts ... esp. for #IoT applications> -- Till Hänisch ‏@TillHaenisch
+
 ## This an Experiment
 
 I want a language that makes it trivially easy to write very large scale distributed apps. So easy that I can teach this to my kids and watch them program a thousand devices. My son is four. He uses a computer every day, and plays with his sister's discarded smartphone. Every 18 months, he'll be playing with twice as many devices. By eighteen he'll have a thousand on his desk. He's my target.
@@ -88,9 +92,9 @@ Answer: "1 2 3 4 5" and not "5 4 3 2 1".
 
 Forth is too low on the abstraction level. Do I want to have to explain things like word sizes to my kids just so they can switch on the heating? Clearly not. We can't make throwable code if we care about bits and bytes. And we have C to deal with that part.
 
-I never used Lisp, so my criticisms here are vague and opinionated. I dislike recursion except when it's the obvious algorithm, which means for navigating recursive data structures like trees. I'm not a great fan of trees, as nested structures tend to confuse people. Long ago I learned most people can learn three levels of nesting: this one, the one above, and the one below. Recursion also reinforces the common fallacy that because things at different levels are self-similar, *they are the same*. Star systems may spin like atoms. However they are not the same thing.
+I never used Lisp, so my criticisms here are vague and opinionated. I dislike recursion except when it's the obvious algorithm, which means for navigating recursive data structures like trees. I'm not a great fan of trees, as nested structures tend to confuse people.
 
-From long, long experience working with hierachical data models, I've learned that the simplest and most useful model is simply "above, here, below". This is my data. This is the parent. Here are its children. Do the appropriate work, and climb up and down the tree as needed.
+Long ago I learned most people can learn three levels of nesting: this one, the one above, and the one below. Recursion also reinforces the common fallacy that because things at different levels are self-similar, *they are the same*. Star systems may spin like atoms. However they are not the same thing. This is my data. This is the parent. Here are its children. Do the appropriate work, and climb up and down the tree as needed.
 
 I've no opinion on Lisp's parenthesis except they feel like they're in the wrong place:
 
@@ -102,9 +106,11 @@ Which I'd rather write like:
 
 So no stacks, RPNs, or lists of lists of lists. No recursive descent parsers either. A language that needs recursion to parse it is too complex. Come to think of it, arrays and other Von Neuman artifacts annoy me too. Natural things come in sets, queues, clusters, crowds, and clouds.
 
-Lastly, I dislike error handling. Partly it's from laziness. More though, it's from experience. Oh, great, you got an error code from a library call! What do you do now? It's like getting a phone call from your takeaway pizza place telling you their oven is switched off. What do you do now? Wait, abort, or retry?
+I dislike error handling. Partly it's from laziness. More though, it's from experience. Oh, great, you got an error code from a library call! What do you do now? It's like getting a phone call from your takeaway pizza place telling you their oven is switched off. What do you do now? Wait, abort, or retry?
 
 No, real code never gives errors. It either works or it dies grimly and with minimal noise. The tolerance of ambiguity causes the very worst crashes. So I want the Erlang approach, where code goes off and tries stuff, and either succeeds or kills itself.
+
+I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
 
 ## First Steps
 
@@ -142,13 +148,15 @@ The fastest way to decode such opcodes (suddenly I care about performance, and d
 
 I like the technique of slicing answers into "cheap" and "nasty". Cheap is easy to change and changes often. Nasty is hard to change and changes rarely. Opcodes 240-254 are built-in opcodes; changing them requires modifying the VM source itself. These built-ins get to play with the instruction pointer, or "needle". That means the needle can be held in a register. This helps performance, at least theoretically.
 
-Opcodes 0-239 are "atomics", and point to a look-up table of function addresses. As we register new atomics, each gets assigned a new number. The compiler uses that number (0-239) as opcode. These opcodes are in separate source files, I expect. They get a VM context to talk to, yet they cannot see or change the needle.
+Opcodes 0-239 are "atomics", and point to a look-up table of function addresses. As we register new atomics, each gets assigned a new number. The compiler uses that number (0-239) as opcode. These atomics are in their own source files. They get a VM context to talk to, although they cannot see or change the needle.
 
-255 is the opcode for "do more complex stuff", which means atomics added later. Perhaps the byte after the 255 will be the class number. Who knows, or cares at this stage. Future extensibility! 240 core atomics is enough for now. The future can use three-byte or longer opcodes.
+255 is the opcode for "do more complex stuff", which I'll now explain.
 
 ## Extensibility
 
-So, my goal here is to make it possible to add atomics in three places: inside the VM, very close to it, and outside it. Internal atomics are always going to be delicate, as they can easily break the VM. The 15-opcode address space is a Brutalist cage meant to stop random cruft getting in there.
+Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
+
+My goal here is to make it possible to add atomics in three places: inside the VM, very close to it, and outside it. Internal atomics are always going to be delicate, as they can easily break the VM. The 15-opcode address space is a Brutalist cage meant to stop random cruft getting in there.
 
 The API for extensible atomics is as simple as I could make it. An atomic is a single C function, which receives a VM reference as argument, and returns 0 (silence is assent) or -1 (meaning "stop the machine!"). A function registers itself, it if wants to.
 
@@ -176,7 +184,9 @@ And here's the code for that function:
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
-## Arguments
+## Arguments and Flamewars
+
+The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
 
 If you want to talk about minor details like my use of < and > for strings, be my guest. There is no real agenda here, except to keep parsing as simple as possible for now. Asymmetric delimiters are trivial to parse. Curly quotes are too difficult to type. So < and > are a workable choice for now. It's also nice to be able to put ZeroScript strings inside C strings without any special escaping. Shrug.
 
@@ -184,7 +194,15 @@ If you want to accuse me of inventing new language to solve fundamental problems
 
 ## Other Goals
 
+Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
+
 This experiment started with the idea of a domain specific language for ZeroMQ examples. This is still a good idea. I'd like a language that compiles into clean C, Ruby, Python, whatever, using our code generation skills. It would solve a lot of problems in teaching ZeroMQ.
+
+Imagine a ZeroScript runtime for embedded systems, so we can throw apps at 32KB devices. I really can't wait to try this. It changes the sense of "programmable devices". If you know Forth, you know it was used exactly for this kind of work (telescopes), long decades ago.
+
+Imagine wrapping up libraries like Zyre, so ZeroScript apps can find each other on a network and throw themselves at each other.
+
+Since each box will have an arbitrary set of atomics, bytecode is not portable. However the compilation process is lossless, so that we can produce source code back from bytecode.
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
