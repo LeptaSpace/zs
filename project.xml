@@ -1,0 +1,27 @@
+<project
+    name = "zs"
+    description = "ZeroScript experiment"
+    script = "zproject.gsl"
+    email = "pieter@hintjens.com"
+    >
+    <include filename = "license.xml" />
+    <version major = "0" minor = "0" patch = "0" />
+
+    <use project = "czmq" />
+
+    <class name = "zs_pipe" />
+
+    <class name = "zs_lex" private = "1" />
+    <model name = "zs_lex" />
+    <extra name = "zs_lex_fsm.h" />
+
+    <class name = "zs_vm" />
+
+    <class name = "zs_repl" />
+    <model name = "zs_repl" />
+    <extra name = "zs_repl_fsm.h" />
+    <extra name = "zs_repl_lib.h" />
+
+    <main name = "zs" />
+</project>
+

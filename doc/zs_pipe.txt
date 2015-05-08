@@ -1,28 +1,13 @@
-/*  =========================================================================
-    zs_pipe - ZeroScript data pipe
+zs_pipe(3)
+==========
 
-    Copyright (c) the Contributors as noted in the AUTHORS file.
-    This file is part of the ZeroScript language, http://zeroscript.org.
+NAME
+----
+zs_pipe - ZeroScript data pipe
 
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    =========================================================================
-*/
-
-#ifndef ZS_PIPE_H_INCLUDED
-#define ZS_PIPE_H_INCLUDED
-
-#include <czmq.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-//  Opaque class structure
-typedef struct _zs_pipe_t zs_pipe_t;
-
-//  @interface
+SYNOPSIS
+--------
+----
 //  Create a new zs_pipe, return the reference if successful, or NULL
 //  if construction failed due to lack of available memory.
 zs_pipe_t *
@@ -74,10 +59,40 @@ void
 //  Self test of this class
 void
     zs_pipe_test (bool animate);
-//  @end
+----
 
-#ifdef __cplusplus
-}
-#endif
+DESCRIPTION
+-----------
 
-#endif
+A pipe is an ordered list of strings and numbers.
+
+Please add @discuss section in ../src/zs_pipe.c.
+
+EXAMPLE
+-------
+.From zs_pipe_test method
+----
+zs_pipe_t *pipe = zs_pipe_new ();
+
+zs_pipe_put_number (pipe, 12345);
+assert (zs_pipe_isnumber (pipe));
+zs_pipe_put_string (pipe, "Hello World");
+assert (zs_pipe_size (pipe) == 2);
+
+assert (zs_pipe_get_number (pipe) == 12345);
+const char *string = zs_pipe_get_string (pipe);
+assert (streq (string, "Hello World"));
+assert (zs_pipe_size (pipe) == 0);
+
+char *results = zs_pipe_contents (pipe);
+assert (streq (results, ""));
+
+zs_pipe_put_number (pipe, 12345);
+zs_pipe_put_number (pipe, 12345);
+zs_pipe_put_number (pipe, 12345);
+assert (zs_pipe_size (pipe) == 3);
+zs_pipe_purge (pipe);
+assert (zs_pipe_size (pipe) == 0);
+
+zs_pipe_destroy (&pipe);
+----

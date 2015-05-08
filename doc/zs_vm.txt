@@ -1,0 +1,237 @@
+zs_vm(3)
+========
+
+NAME
+----
+zs_vm - ZeroScript virtual machine
+
+SYNOPSIS
+--------
+----
+//  Create a new empty virtual machine. Returns the reference if successful,
+//  or NULL if construction failed due to lack of available memory.
+zs_vm_t *
+    zs_vm_new (void);
+
+//  Destroy the virtual machine and free all memory used by it.
+void
+    zs_vm_destroy (zs_vm_t **self_p);
+
+//  Probe atomic to ask it to register itself; we use a self-registration
+//  system where all information about an atomic is encapsulated in its
+//  source code, rather than spread throughout the codebase. It's valid to
+//  probe dictionary at any time.
+void
+    zs_vm_probe (zs_vm_t *self, zs_vm_fn_t *atomic);
+
+//  Return true if we're probing dictionary; this tells dictionary to
+//  register rather than to run.
+bool
+    zs_vm_probing (zs_vm_t *self);
+
+//  Primitive registers itself with the execution context. This is only valid
+//  if zs_vm_probing () is true. Returns 0 if registration worked, -1 if it
+//  failed due to an internal error.
+int
+    zs_vm_register (zs_vm_t *self, const char *name, const char *hint);
+
+//  Compile a number constant into the virtual machine.
+//  Numbers are stored thus:
+void
+    zs_vm_compile_number (zs_vm_t *self, int64_t number);
+
+//  Compile a string constant into the virtual machine.
+void
+    zs_vm_compile_string (zs_vm_t *self, const char *string);
+
+//  Compile a new function definition; end with a commit.
+void
+    zs_vm_compile_define (zs_vm_t *self, const char *name);
+
+//  Close the current function definition.
+void
+    zs_vm_compile_commit (zs_vm_t *self);
+
+//  Cancel the current or last function definition and reset the virtual
+//  machine to the state before the previous _define. You can call this
+//  repeatedly to delete function definitions until the machine is empty.
+//  Returns 0 if OK, -1 if there was no function to rollback (the machine
+//  is then empty).
+int
+    zs_vm_compile_rollback (zs_vm_t *self);
+
+//  Compile an open scope operation; you must match this with a close.
+//  Returns 0 if OK or -1 if the function was not defined.
+int
+    zs_vm_compile_open (zs_vm_t *self, const char *name);
+
+//  Compile a close scope + execute function. The function gets the current
+//  output pipe as input, and sends output to the parent output pipe.
+void
+    zs_vm_compile_close (zs_vm_t *self);
+
+//  Compile a chain scope + execute function. The function gets the current
+//  output pipe as input, and sends its output to a new pipe. Returns 0 if OK
+//  or -1 if the function was not defined.
+int
+    zs_vm_compile_chain (zs_vm_t *self, const char *name);
+
+//  Return input pipe for the execution context
+zs_pipe_t *
+    zs_vm_input (zs_vm_t *self);
+
+//  Return output pipe for the execution context
+zs_pipe_t *
+    zs_vm_output (zs_vm_t *self);
+
+//  Dump VM contents (state and code)
+void
+    zs_vm_dump (zs_vm_t *self);
+
+//  Enable tracing of VM compilation and execution.
+void
+    zs_vm_set_verbose (zs_vm_t *self, bool verbose);
+
+//  Run last defined function, if any, in the VM. This continues forever or
+//  until the function ends. Returns 0 if stopped successfully, or -1 if
+//  stopped due to some error. Each run of the VM starts with clean pipes.
+int
+    zs_vm_run (zs_vm_t *self);
+
+//  Self test of this class
+void
+    zs_vm_test (bool animate);
+----
+
+DESCRIPTION
+-----------
+
+This class encodes and executes a ZeroScript application using a threaded
+bytecode virtual machine. Actual parsing is done by zs_repl and zs_lex.
+
+Notes about input/output:
+- each function receives an input pipe and an output pipe
+- pipes are connected automatically as in Unix command line |
+- constants are added to current output pipe
+
+Notes about the virtual machine:
+- token threaded bytecode interpreter
+- machine uses bytecodes with parameters following each opcode
+- 240-254 are built-in opcodes
+    - essential to machine operation
+    - decoding costs must be minimized
+    - handled by if/switch in core interpreter
+    - can modify instruction pointer (needle)
+- 0..239 are class 0 atomics
+    - no class name (short obvious names)
+    - assumed to be most commonly used
+    - core runtime for ZeroScript machines
+    - easy to extend by modifying codebase
+    - decoding costs are very low
+- 255 + n are higher class atomics
+    - naming proposal is class.function
+    - classes are numbered by VM 1..n
+    - assumed to change externally
+    - designed to be added dynamically
+    - decoding costs are insignificant
+
+TODO:
+    - allow extension classes
+    - control atomics
+
+EXAMPLE
+-------
+.From zs_vm_test method
+----
+int rc;
+zs_vm_t *vm = zs_vm_new ();
+zs_vm_set_verbose (vm, verbose);
+
+zs_vm_probe (vm, s_sum);
+zs_vm_probe (vm, s_count);
+zs_vm_probe (vm, s_assert);
+
+//  --------------------------------------------------------------------
+//  sub: (<OK> <Guys> count 2 assert)
+
+zs_vm_compile_define (vm, "sub");
+zs_vm_compile_string (vm, "OK");
+zs_vm_compile_string (vm, "Guys");
+zs_vm_compile_chain  (vm, "count");
+zs_vm_compile_number (vm, 2);
+zs_vm_compile_chain  (vm, "assert");
+zs_vm_compile_commit (vm);
+
+//  --------------------------------------------------------------------
+//  main: (
+//      123 1000000000 sum 1000000123 assert
+//      <Hello,> <World> count 2 assert
+//      sum (123 456) 579 assert
+//      sum (123 count (1 2 3)) 126 assert
+//  )
+zs_vm_compile_define (vm, "main");
+
+zs_vm_compile_number (vm, 123);
+zs_vm_compile_number (vm, 1000000000);
+zs_vm_compile_chain  (vm, "sum");
+zs_vm_compile_number (vm, 1000000123);
+zs_vm_compile_chain  (vm, "assert");
+
+zs_vm_compile_string (vm, "Hello,");
+zs_vm_compile_string (vm, "World");
+zs_vm_compile_chain  (vm, "count");
+zs_vm_compile_number (vm, 2);
+zs_vm_compile_chain  (vm, "assert");
+
+rc = zs_vm_compile_open (vm, "sum");
+assert (rc == 0);
+zs_vm_compile_number (vm, 123);
+zs_vm_compile_number (vm, 456);
+zs_vm_compile_close  (vm);
+zs_vm_compile_number (vm, 579);
+zs_vm_compile_chain  (vm, "assert");
+
+rc = zs_vm_compile_open (vm, "sum");
+assert (rc == 0);
+zs_vm_compile_number (vm, 123);
+rc = zs_vm_compile_open (vm, "count");
+assert (rc == 0);
+zs_vm_compile_number (vm, 1);
+zs_vm_compile_number (vm, 2);
+zs_vm_compile_number (vm, 3);
+zs_vm_compile_close  (vm);
+zs_vm_compile_close  (vm);
+zs_vm_compile_number (vm, 126);
+zs_vm_compile_chain  (vm, "assert");
+zs_vm_compile_commit (vm);
+
+//  --------------------------------------------------------------------
+//  sub sub main
+zs_vm_compile_define (vm, "go");
+zs_vm_compile_chain  (vm, "sub");
+zs_vm_compile_chain  (vm, "sub");
+zs_vm_compile_chain  (vm, "main");
+zs_vm_compile_commit (vm);
+if (verbose)
+    zs_vm_dump (vm);
+
+zs_vm_run (vm);
+
+rc = zs_vm_compile_rollback (vm);
+assert (rc == 0);
+zs_vm_run (vm);
+
+rc = zs_vm_compile_rollback (vm);
+assert (rc == 0);
+zs_vm_run (vm);
+
+rc = zs_vm_compile_rollback (vm);
+assert (rc == 0);
+zs_vm_run (vm);
+
+rc = zs_vm_compile_rollback (vm);
+assert (rc == -1);
+zs_vm_run (vm);
+
+zs_vm_destroy (&vm);
+----

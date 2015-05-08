@@ -20,7 +20,9 @@ extern "C" {
 #endif
 
 //  Opaque class structure
+#ifndef ZS_VM_T_DEFINED
 typedef struct _zs_vm_t zs_vm_t;
+#endif
 
 //  Virtual machine atomic function type
 typedef int (zs_vm_fn_t) (zs_vm_t *self);

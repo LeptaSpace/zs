@@ -1,28 +1,13 @@
-/*  =========================================================================
-    zs_repl - the ZeroScript read-evaluate-print loop
+zs_repl(3)
+==========
 
-    Copyright (c) the Contributors as noted in the AUTHORS file.
-    This file is part of the ZeroScript language, http://zeroscript.org.
+NAME
+----
+zs_repl - the ZeroScript read-evaluate-print loop
 
-    This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    =========================================================================
-*/
-
-#ifndef ZS_REPL_H_INCLUDED
-#define ZS_REPL_H_INCLUDED
-
-#include <czmq.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-//  Opaque class structure
-typedef struct _zs_repl_t zs_repl_t;
-
-//  @interface
+SYNOPSIS
+--------
+----
 //  Create a new core engine, return the reference if successful, or NULL
 //  if construction failed due to lack of available memory.
 zs_repl_t *
@@ -59,10 +44,29 @@ uint
 //  Self test of this class
 void
     zs_repl_test (bool animate);
-//  @end
+----
 
-#ifdef __cplusplus
-}
-#endif
+DESCRIPTION
+-----------
 
-#endif
+The repl engine processes input lines.
+
+Please add @discuss section in ../src/zs_repl.c.
+
+EXAMPLE
+-------
+.From zs_repl_test method
+----
+zs_repl_t *repl = zs_repl_new ();
+zs_repl_verbose (repl, verbose);
+s_repl_assert (repl, "1 2 3 sum", "6");
+s_repl_assert (repl, "sum (1 2 3)", "6");
+s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
+s_repl_assert (repl, "clr", "");
+s_repl_assert (repl, "sum (1 2 3", "");
+s_repl_assert (repl, ")", "6");
+s_repl_assert (repl, "clr", "");
+s_repl_assert (repl, "sub: (<hello>)", "");
+s_repl_assert (repl, "sub", "hello");
+zs_repl_destroy (&repl);
+----

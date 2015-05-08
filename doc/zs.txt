@@ -1,0 +1,26 @@
+zs(1)
+=====
+
+NAME
+----
+zs - no title found
+
+SYNOPSIS
+--------
+----
+Please add @interface section in ../src/zs.c.
+----
+
+DESCRIPTION
+-----------
+
+Please add @header section in ../src/zs.c.
+
+Please add @discuss section in ../src/zs.c.
+
+EXAMPLE
+-------
+.From zs_test method
+----
+Please add @selftest section in ../src/zs.c.
+----

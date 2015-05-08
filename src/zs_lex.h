@@ -1,8 +1,8 @@
 /*  =========================================================================
-    zs_lex - the ZeroScript lexer
+    zs_lex -
 
     Copyright (c) the Contributors as noted in the AUTHORS file.
-    This file is part of the ZeroScript language, http://zeroscript.org.
+    This file is part of the ZeroScript experiment.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,14 +13,13 @@
 #ifndef ZS_LEX_H_INCLUDED
 #define ZS_LEX_H_INCLUDED
 
-#include <czmq.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-//  Opaque class structure
+#ifndef ZS_LEX_T_DEFINED
 typedef struct _zs_lex_t zs_lex_t;
+#endif
 
 typedef enum {
     zs_lex_simple_fn,       //  function
@@ -33,7 +32,6 @@ typedef enum {
     zs_lex_null,            //  Nothing to return
     zs_lex_tokens           //  Size of this set
 } zs_lex_token_t;
-
 
 //  @interface
 //  Create a new zs_lex, return the reference if successful, or NULL
