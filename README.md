@@ -4,6 +4,9 @@ Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. 
 
 Some very interesting thoughts ... esp. for #IoT applications -- Till Hänisch ‏@TillHaenisch
 
+Is this a joke or are you serious? -- flyingfisch (entirely out of context)
+
+
 ## This an Experiment
 
 I want a language that makes it trivially easy to write very large scale distributed apps. So easy that I can teach this to my kids and watch them program a thousand devices. My son is four. He uses a computer every day, and plays with his sister's discarded smartphone. Every 18 months, he'll be playing with twice as many devices. By eighteen he'll have a thousand on his desk. He's my target.
