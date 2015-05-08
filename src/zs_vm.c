@@ -219,7 +219,7 @@ zs_vm_new (void)
         self->input = zs_pipe_new ();
         self->output = zs_pipe_new ();
         self->code_max = 32000;         //  Arbitrary; TODO: extensible
-        self->code = malloc (self->code_max);
+        self->code = (byte *) malloc (self->code_max);
         self->code [self->code_size++] = VM_STOP;
     }
     return self;

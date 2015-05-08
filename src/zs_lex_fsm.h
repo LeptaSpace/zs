@@ -143,25 +143,41 @@ fsm_destroy (fsm_t **self_p)
 static void
 fsm_set_next_event (fsm_t *self, event_t next_event)
 {
-    self->next_event = next_event;
+    if (self)
+        self->next_event = next_event;
 }
 
 static void
 fsm_set_exception (fsm_t *self, event_t exception)
 {
-    self->exception = exception;
+    if (self)
+        self->exception = exception;
 }
 
 static void
 fsm_set_animate (fsm_t *self, bool animate)
 {
-    self->animate = animate;
+    if (self)
+        self->animate = animate;
 }
 
 static uint64_t
 fsm_cycles (fsm_t *self)
 {
-    return self->cycles;
+    if (self)
+        return self->cycles;
+    else
+        return 0;
+}
+
+//  Stops annoying compiler warnings on unused functions
+void
+zs_lex_not_used (fsm_t *self)
+{
+    fsm_set_next_event (NULL, NULL_event);
+    fsm_set_exception (NULL, NULL_event);
+    fsm_set_animate (NULL, 0);
+    fsm_cycles (NULL);
 }
 
 

@@ -1,0 +1,60 @@
+#### zs_repl - the ZeroScript read-evaluate-print loop
+
+The repl engine processes input lines.
+
+Please add @discuss section in ../src/zs_repl.c.
+
+This is the class interface:
+
+    //  Create a new core engine, return the reference if successful, or NULL
+    //  if construction failed due to lack of available memory.
+    zs_repl_t *
+        zs_repl_new (void);
+    
+    //  Destroy the zs_repl and free all memory used by the object
+    void
+        zs_repl_destroy (zs_repl_t **self_p);
+    
+    //  Enable verbose tracing of engine
+    void
+        zs_repl_verbose (zs_repl_t *self, bool verbose);
+    
+    //  Execute a buffer of code; to reset the engine you destroy it and create a
+    //  new one. Returns 0 if OK, -1 on syntax errors or cataclysmic implosions
+    //  of the Sun (can be determined from context).
+    int
+        zs_repl_execute (zs_repl_t *self, const char *input);
+    
+    //  Return true if the input formed a complete phrase that was successfully
+    //  evaulated. If not, the core expects more input.
+    bool
+        zs_repl_completed (zs_repl_t *self);
+    
+    //  Return pipe results as string, after successful execution. Caller must
+    //  free results when finished.
+    char *
+        zs_repl_results (zs_repl_t *self);
+    
+    //  After a syntax error, return position of syntax error in text.
+    uint
+        zs_repl_offset (zs_repl_t *self);
+    
+    //  Self test of this class
+    void
+        zs_repl_test (bool animate);
+
+This is the class self test code:
+
+    zs_repl_t *repl = zs_repl_new ();
+    zs_repl_verbose (repl, verbose);
+    s_repl_assert (repl, "1 2 3 sum", "6");
+    s_repl_assert (repl, "sum (1 2 3)", "6");
+    s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
+    s_repl_assert (repl, "clr", "");
+    s_repl_assert (repl, "sum (1 2 3", "");
+    s_repl_assert (repl, ")", "6");
+    s_repl_assert (repl, "clr", "");
+    s_repl_assert (repl, "sub: (<hello>)", "");
+    s_repl_assert (repl, "sub", "hello");
+    zs_repl_destroy (&repl);
+

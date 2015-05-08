@@ -1,0 +1,9 @@
+# Travis CI script
+language: c
+
+env:
+- BUILD_TYPE=default
+- BUILD_TYPE=qt-android
+
+# Build and check this project according to the BUILD_TYPE
+script: ./ci_build.sh

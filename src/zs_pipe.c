@@ -132,7 +132,7 @@ zs_pipe_size (zs_pipe_t *self)
 bool
 zs_pipe_isnumber (zs_pipe_t *self)
 {
-    value_t *value = zlistx_first (self->values);
+    value_t *value = (value_t *) zlistx_first (self->values);
     if (value)
         return value->type == 'n';
     else
@@ -146,7 +146,7 @@ zs_pipe_isnumber (zs_pipe_t *self)
 bool
 zs_pipe_isstring (zs_pipe_t *self)
 {
-    value_t *value = zlistx_first (self->values);
+    value_t *value = (value_t *) zlistx_first (self->values);
     if (value)
         return value->type == 's';
     else
@@ -217,7 +217,7 @@ zs_pipe_contents (zs_pipe_t *self)
         value = (value_t *) zlistx_next (self->values);
     }
     //  Now format the result
-    char *result = zmalloc (result_size);
+    char *result = (char *) zmalloc (result_size);
     value = (value_t *) zlistx_first (self->values);
     while (value) {
         if (*result)
