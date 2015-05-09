@@ -46,7 +46,7 @@ It must be "concurrent" by default. Obviously things happen all over the place, 
 
 Lastly, it should be fun to make stuff, share stuff. I want the process of using the language to flow through a learn-play-work-teach cycle. Again, it must happen from first contact. Here's how you make a brick. Here's what the brick can do. Try it! It's safe! Now you can use the brick.
 
-## Inspirations
+### Inspirations
 
 I remember the moment that computers turned fun, and I turned from being a failing CompSci student to top of the class. My mother bought me a VIC 20 and I started programming it. Then Commodore gave me a C-64 to play with, just because. I wrote games and sold them on cassette, paying my way through studies and beer. But BASIC ran too slowly, and assembler was too much work (and ran too fast, seriously). So for my thesis I wrote a language for making games.
 
@@ -80,7 +80,7 @@ So in my language, the default flow is output-to-input, pipes carrying messages 
 
 Other inspirations are obvious: Erlang, Go, Rust (aka "Rushed"), and Clojure. I've noticed from several ZeroMQ workshops that people using Clojure always seem to get their examples done fastest. I suspect it's the REPL again. Whatever, when someone can write ZeroMQ code faster than me, it's time for me to shift to newer tools. And that means moving away from C, at least for the 90% of cases that don't need a systems language.
 
-## Irritations
+### Irritations
 
 Now to stuff I hate. It's a long list so I'll try to keep it relevant.
 
@@ -122,7 +122,7 @@ No, real code never gives errors. It either works or it dies grimly and with min
 
 I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
 
-## First Steps
+### First Steps
 
 So far what do I have?
 
@@ -148,7 +148,7 @@ The language looks like this (taken from the VM self test):
 * Strings are enclosed in < and > rather than the stupidly ambiguous " and ".
 * The rest should be obvious at first reading, that is the point.
 
-## The Virtual Machine
+### The Virtual Machine
 
 I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
 
@@ -162,7 +162,7 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which I'll now explain.
 
-## Extensibility
+### Extensibility
 
 Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
 
@@ -194,7 +194,7 @@ And here's the code for that function:
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
-## Arguments and Flamewars
+### Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
 
@@ -202,7 +202,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
-## Other Goals
+### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
 
@@ -220,7 +220,9 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
 
-## Ownership and License
+## Technicalities
+
+### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
 
@@ -230,7 +232,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-## Building and Installing
+### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
 
@@ -260,6 +262,6 @@ Here's how to build ZeroScript from GitHub:
 
 You will need the pkg-config, libtool, and autoreconf packages.
 
-## This Document
+### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).
