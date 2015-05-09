@@ -1,141 +1,52 @@
+loops/conditionals
 
-Things to do
-    profile FSMs to see execution counts
-    profile vm to see execution counts
-    compress FSM to tables, perhaps
-    decompile VM
+0, 1 many - conditionals and loops are the same; we repeat a function N times
 
-ZeroScript code is always remixable
-If you can run it, you can improve it
-    Secrecy is Theft
+    compute { execute }
+    sum { echo <*> }
 
-ZeroScript.org
+    forever { sleep (1) temperature }
+    until (12 PM) { sleep (1) temperature }
 
-phrase:
+    above (30 C) { cooling (on) }
+    below (15 C) { heating (on) }
 
-    ( function [ '(' phrase ')' ] | number | string ) ...
+Numbers and units
 
-compose:
+    digits suffix
 
-    function: ( phrase )
+    123 K 1 K sum
 
-virtual machine:
+    should give
+    123000 1000 sum
 
-    code
-        zs_call_t *code []
-    data
-        byte *data []
+    suffix is an atomic that changes the last value
 
-    resize during compilation, if needed
-
-    pipe primitives
-        pipe_shift      drop input, move output to input, new output
-        pipe_push       push output, new pipe pair
-        pipe_pop        drop input, move output to input, pop output
-        pipe_purge      purge input and output
+    ++ 100 200 300 K
+    ++ functions operate on entire pipe by default?
 
 
-    token      ---> code        data
-    123             number_8    123
-    123456780       number_64   1234567890
-    sum             pipe_link
-                    sum
+    however...
 
-    sum (           pipe_push
-        123         number_8    123
-        456         number_8    456
-    )               pipe_pop
-                    sum
-
-    sum (           pipe_push
-        123         number_8    123
-        count       pipe_link
-                    count
-    )               pipe_pop
-                    sum
-
-composition:
-
-    How do we execute a composed function?
-
-    some: (
-        123         number_8    123
-    )               return
-    some            call        some
-
-//  register class
-//  register method
-
-loops
-conditionals
-matching
-real numbers vs. whole numbers
-no overloading
-    different functions for 1.2+1.2 and 2+2
-
-NO RECURSION
-    devil's spawn!!
-
-- no language feature should take more than a few lines to explain
+    1 M 2 K sum should give 1002000
 
 
-    -- can we redefine a function?
-        - yes, useful
-        - requires linked list dictionary
-        - compilation speed no problem
-
->>** allow # comments in lines, outside strings obviously
-
-    native data types
-        integers
-        strings
-        zmsg
-        zchunk
-
-    chunks (useful on pipes)
-
-    //  Compile long string constant
-    //  [len32][string][0]
-    string = "Hello, World (long version)";
-    length = strlen (string) + 1;
-    code [code_size++] = s_string_32;
-    memcpy (data + data_size, &length, 4);
-    data_size += 4;
-    memcpy (data + data_size, (byte *) string, length);
-    data_size += length;
+pushing pipes
+    - when executing function, don't destroy existing input
+    - push it and then pop it again
+    - our structure is a stack of pipes
+    - one thread always writes to one place
 
 
-invoke:
-
-    values function
-    function ( values )
-    ( values function )
 
 
-    1 2 3 sum
-        number 1 -> push to output pipe
-        number 2 -> push to output pipe
-        number 3 -> push to output pipe
-        sum ->
-            lookup
-            switch output pipe to input pipe
-            start new output pipe
-            execute 'sum'
-    print output pipe
 
-    sum (1 2 3)
-        function ( -> one token
 
-        function ( function ( function ( function () ) ) )
+    { again }
+    pulse ( something )
+        - take number off pipe
+        - repeat ... times
 
-        -> stack functions
-        ( means open stack
-        ) means pop & execute stack
-        -> anything else
-            pop & execute function stack
+    [ maybe ]
+    then ( something )
 
-    sum (sum (1 2 3) count (4 5 6))
-
-    myfunction (args)
-    conditional on match args -> matching
-    or pass args to something else -> just invoke it

@@ -41,13 +41,11 @@
         <action name = "compile close" />
         <action name = "get next token" />
     </event>
-    <event name = "finished">
-        <action name = "check if completed" />
-    </event>
     <event name = "completed" next = "starting">
         <action name = "compile commit shell" />
         <action name = "run virtual machine" />
         <action name = "rollback the function" />
+        <action name = "signal completed" />
     </event>
 </state>
 
@@ -77,6 +75,9 @@
 </state>
 
 <state name = "defaults">
+    <event name = "finished">
+        <action name = "check if completed" />
+    </event>
     <event name = "number" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
@@ -104,14 +105,6 @@
     <event name = "invalid" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
-    </event>
-    <event name = "finished" next = "starting">
-        <action name = "rollback the function" />
-        <action name = "check if completed" />
-    </event>
-    <event name = "completed" next = "starting">
-        <action name = "rollback the function" />
-        <action name = "signal completed" />
     </event>
 </state>
 

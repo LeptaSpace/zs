@@ -20,6 +20,7 @@ int main (int argc, char *argv [])
     zs_repl_verbose (repl, verbose);
 
     while (!zctx_interrupted) {
+        printf ("> ");                  //  Our normal prompt
         char input [1024 + 2];          //  1024 chars + LF + null
         if (!fgets (input, 1026, stdin))
             break;
@@ -27,12 +28,14 @@ int main (int argc, char *argv [])
         if (zs_repl_execute (repl, input) == 0) {
             if (zs_repl_completed (repl)) {
                 char *results = zs_repl_results (repl);
-                printf ("[%s]\n", results);
+                puts (results);
                 zstr_free (&results);
             }
+            else
+                printf ("...");
         }
         else {
-            printf ("%*c\n", zs_repl_offset (repl), '^');
+            printf ("  %*c\n", zs_repl_offset (repl), '^');
             puts ("Syntax error");
         }
     }

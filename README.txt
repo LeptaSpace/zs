@@ -216,6 +216,13 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
+## Design Notes
+
+* Any language aspect that takes more than 10 minutes to understand is too complex.
+* Function names are case-sensitive because the real world is case sensitive (1 M vs. 1 m).
+* Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
+* Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
+
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
