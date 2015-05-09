@@ -1,7 +1,6 @@
-.set GIT=https://github.com/zeromq/czmq
-.sub 0MQ=ØMQ
+.set GIT=https://github.com/LeptaSpace/zs
 
-# CZMQ - High-level C binding for 0MQ
+# This an Experiment... ZeroScript
 
 [![Build Status](https://travis-ci.org/zeromq/czmq.png?branch=master)](https://travis-ci.org/zeromq/czmq)
 
@@ -9,76 +8,236 @@
 
 .toc 3
 
-## Overview
+Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
-### Scope and Goals
+Some very interesting thoughts ... esp. for #IoT applications -- Till Hänisch ‏@TillHaenisch
 
-CZMQ has these goals:
+Is this a joke or are you serious? -- flyingfisch (entirely out of context)
 
-* To wrap the 0MQ core API in semantics that lead to shorter, more readable applications.
-* To hide as far as possible the differences between different versions of 0MQ (2.x, 3.x, 4.x).
-* To provide a space for development of more sophisticated API semantics.
-* To wrap the 0MQ security features with high-level tools and APIs.
-* To become the basis for other language bindings built on top of CZMQ.
+## This an Experiment
 
-CZMQ grew out of concepts developed in [ØMQ - The Guide](http://zguide.zeromq.org).
+I want a language that makes it trivially easy to write very large scale distributed apps. So easy that I can teach this to my kids and watch them program a thousand devices. My son is four. He uses a computer every day, and plays with his sister's discarded smartphone. Every 18 months, he'll be playing with twice as many devices. By eighteen he'll have a thousand on his desk. He's my target.
 
-[diagram]
-                              +---------------+
-                              |               |
-                              | C application |
-                              |               |
-                              +-----+---+-----+
-                                    |   |
-                                    |   |
-                       +------------+   |
-                       |                |
-                       v                |
-  Open context    +---------+           |
-  Create sockets  |         |           |    Connect, bind sockets
-  Close sockets   |  CZMQ   |           |    get/set socket options
-  Send/receive    |    cYEL |           |
-  Multithreading  +----+----+           |
-  Reactor pattern      |                |
-  Hash container       +------------+   |
-  List container                    |   |
-  System clock                      v   v
-  Close context                  +---------+
-                                 |         |
-                                 | libzmq  |
-                                 |         |
-                                 +---------+
+Wouldn't it be nice if we could send the code to the data? I mean, this is Web 2.0. I believe it's why JavaScript is such a popular language. Solves the right problem. To deploy JavaScript you push it to a web server. You don't need a compiler, linker, packages, containers, downloads, installers. The tools of our industry, so wrong in so many ways. I like C, yet am keenly aware of the layers of friction between me and my goal of making machines do fun stuff.
 
-[/diagram]
+So JavaScript is successful despite the actual language, because you can ship the code to a hundred million boxes with no more effort than shipping it to a single one. This is incredibly powerful. Failure costs nothing, and success scales without limit.
 
-### Ownership and License
+Let me observe that the Web is just a poor messaging system. Replace that old clunky HTTP with something like ZeroMQ, and you remove even the remaining cost to scaling. Suddenly you don't need massive servers at the heart of your networks. We can move from Soviet-style central planning to a real market. "You want some code? I got some code."
+
+There's a second reason for JavaScript's emerging domination. That is, we share source code. When you receive JavaScript, you get source code you can read, modify, and reuse. It may not be entirely legal, and people try to prevent this, yet it's the dominant culture. If I get to use your CPU cycles then you can remix my code.
+
+Remixability isn't an added feature. It's a cultural vitamin. Without it, culture grows stunted and crooked, and dies way too young. As does technology. Our industry is built on the corpses of projects too proud or stupid or greedy to take their vitamins. All my closed source work, ever, died. Much open source also dies. I said "vitamin", not "complete diet".
+
+Sending source code around the network, and forced remixability go nicely together. I'll cover the legal aspects later. Let's look at sending source code.
+
+Sending source code -- rather than bytecode or worse, machine code -- means that code becomes a valid question, "can you do this?" Let's say I send this to every device in the house:
+
+    temperature name location
+
+A handful will reply, and most will just ignore the request. It's like shouting "who wants beer?" in a cafe in Seoul. You will pick out the English speakers, and the rest of the house will pretend you're not there.
+
+The real world is fuzzy. It's approximate. And it's incredibly lazy. I don't know exactly how many mobile phones I own. Three, maybe. Five, if I count my kids' phones. How can I possibly manage the apps they run? The "personal computer" does not scale. The Web already smashed that paradigm in the last century. Kudos to Sun for recognizing this and pushing it so hard for so long. "The network is the operating system" was Sun's slogan.
+
+My kids are also lazy, so this new language has to be simple. I don't mean trivial. It can be as deep as the ocean. The deeper the better, in fact. However it should start with a gentle paddle in toe-deep water.
+
+We already covered "throwable" (shouting code at a crowd of devices and seeing what happens) and "remixable" (shouting source code, not some stripped form). It has to embrace fuzzy reality, where failure is valid data. I've learned that a successful open source community is a learning machine that needs a steady diet of small, fun failures. This is how I want to build distributed systems.
+
+It must be "concurrent" by default. Obviously things happen all over the place, because that's how reality works. Every atom spins alone, every brain sees its own world. Why is our software  mostly glued to a fake view of a monolithic world? Get rid of that view, and there's nothing to learn.
+
+Lastly, it should be fun to make stuff, share stuff. I want the process of using the language to flow through a learn-play-work-teach cycle. Again, it must happen from first contact. Here's how you make a brick. Here's what the brick can do. Try it! It's safe! Now you can use the brick.
+
+## Inspirations
+
+I remember the moment that computers turned fun, and I turned from being a failing CompSci student to top of the class. My mother bought me a VIC 20 and I started programming it. Then Commodore gave me a C-64 to play with, just because. I wrote games and sold them on cassette, paying my way through studies and beer. But BASIC ran too slowly, and assembler was too much work (and ran too fast, seriously). So for my thesis I wrote a language for making games.
+
+My inspiration was the book, "Threaded Interpretive Languages", by R. G. Loeliger. This remains one of the best books ever written on our art. The book is very hard to find in paper. Luckily there's [a PDF available](http://sinclairql.speccy.org/archivo/docs/books/Threaded_interpretive_languages.pdf).
+
+The C-64's 6502 CPU was a [work of minimalist art](http://e-tradition.net/bytes/6502/6502_instruction_set.html). It only has two general 8-bit registers, X and Y. It has a stack pointer and an accumulator. The instructions are: add, and, branch, compare, decrement, exor, increment, jump, load, shift, push, pop, rotate, store, and subtract. No multiply or divide.
+
+On top of that I built a layer of assembly primitives, and then an assembler and an editor, and then games. Loeliger described how to build Forth, or something like it. Forth is what we should have been studying at university, instead of Pascal.
+
+The thing about Forth, like Lisp, is that your language is the machine. No abstraction stands between your words and the behavior of the "computer". I put that into quotes because obviously you're talking to a virtual computer. Nonetheless, you write executable code. Put that into a read-evaluate-print-loop (REPL) and you get something mind-blowing and addictive.
+
+Forth is also notable for other reasons. It has a tiny core syntax and almost no grammar. The bulk of the language is self-hosting. This means it runs well in very small environments. This is relevant in 2015 because the world is increasingly filled with tiny dirt-cheap computers begging to be programmed. Just not in Java, please.
+
+When I write C I always try to recreate that REPL feeling. I make little scripts that compile, link, run, and print "OK" when the test passes. It works yet it's still slower and clumsier than I'd like, and my precious code still sits on the wrong side of a high, non-portable compile-link-deploy wall.
+
+I like REPL shells that recreate my ideal learn-play-work-teach cycle. It makes programming fun (again). And when programming is fun, and easy, and addictive, then we can dream of a world where to use a device and to program it are the same. A world where we own our software just as we own our languages, our recipes, our poems, our songs.
+
+There are a few other things I really enjoy, from a long career writing software in anger. Perhaps the most powerful is the Finite State Machine (FSM). It's hard to over-state how profitable FSMs have been for me, in taming complex problems and making software that just worked, and never crashed.
+
+My first free software tool was [Libero](http://legacy.imatix.com/html/libero/), which I used in many projects and which had a loyal following. Its charm was that one wrote FSMs as simple text, which Libero turned into code. This was also my first code generator in C, and could produce FSMs in any language. We did C, Pascal, Java, and even PL/SQL and COBOL.
+
+Libero has no bugs as far as I know, and the bits did not rot. However we got much better at code generation, so today I can build [a FSM code generator](https://github.com/hintjens/zs/blob/master/fsm_c.gsl) in a few hours, whereas Libero took me months of work.
+
+The Libero-style state machine is a high level event-driven control language. It replaces iterations and conditionals. At its heart it says, "when I am in state S and I get event E, then do actions A, B, and C". The biggest downside with writing FSMs is that we need two languages; one for the control and one for the actions. I'd like to make this a single language.
+
+I like events and especially, queues of events, which are pipes carrying messages and commands. We explored this in CZMQ 3.0, with actors. These turn out to work incredibly well in C, a language that has no native support for concurrency. We learned how to build very solid message-based APIs, between pieces in the same program.
+
+I'll explore actors in more detail later. For now, let me pin "pipes" on the wall, and remind you of the widely known and under-appreciated concurrent REPL environment called the Unix shell. When you connect commands with pipes, these run concurrently, the output from one becoming the input to the next. It is a simple and obvious model, and fits many of our criteria for distributed code. State sits in the messages, not the code. Each piece can run asynchronously.
+
+So in my language, the default flow is output-to-input, pipes carrying messages and commands from one piece to the next. It's a starting point: I'm sure we'll need more sophsticated queues later.
+
+Other inspirations are obvious: Erlang, Go, Rust (aka "Rushed"), and Clojure. I've noticed from several ZeroMQ workshops that people using Clojure always seem to get their examples done fastest. I suspect it's the REPL again. Whatever, when someone can write ZeroMQ code faster than me, it's time for me to shift to newer tools. And that means moving away from C, at least for the 90% of cases that don't need a systems language.
+
+## Irritations
+
+Now to stuff I hate. It's a long list so I'll try to keep it relevant.
+
+Both Forth and Lisp offer you their salaciously unfiltered virtual machines, and yet both could be simpler. I do not like reverse Polish notation. Stacks are fine data structures, yet they are not intuitive for humans. This hurts my brain, and I don't want to have to try to explain it to anyone:
+
+    1 2 3 4 5 + + + +
+
+Whereas my young daughter correctly and immediately understood this without any explanation:
+
+    1 2 3 4 5 sum
+
+And then extrapolated to "you could also say average, or median!"
+
+What should this do?
+
+    1 2 3 4 5 echo
+
+Answer: "1 2 3 4 5" and not "5 4 3 2 1".
+
+Forth is too low on the abstraction level. Do I want to have to explain things like word sizes to my kids just so they can switch on the heating? Clearly not. We can't make throwable code if we care about bits and bytes. And we have C to deal with that part.
+
+I never used Lisp, so my criticisms here are vague and opinionated. I dislike recursion except when it's the obvious algorithm, which means for navigating recursive data structures like trees. I'm not a great fan of trees, as nested structures tend to confuse people.
+
+Long ago I learned most people can learn three levels of nesting: this one, the one above, and the one below. Recursion also reinforces the common fallacy that because things at different levels are self-similar, *they are the same*. Star systems may spin like atoms. However they are not the same thing. This is my data. This is the parent. Here are its children. Do the appropriate work, and climb up and down the tree as needed.
+
+I've no opinion on Lisp's parenthesis except they feel like they're in the wrong place:
+
+    (command argument argument)
+
+Which I'd rather write like:
+
+    command (argument argument)
+
+So no stacks, RPNs, or lists of lists of lists. No recursive descent parsers either. A language that needs recursion to parse it is too complex. Come to think of it, arrays and other Von Neuman artifacts annoy me too. Natural things come in sets, queues, clusters, crowds, and clouds.
+
+I dislike error handling. Partly it's from laziness. More though, it's from experience. Oh, great, you got an error code from a library call! What do you do now? It's like getting a phone call from your takeaway pizza place telling you their oven is switched off. What do you do now? Wait, abort, or retry?
+
+No, real code never gives errors. It either works or it dies grimly and with minimal noise. The tolerance of ambiguity causes the very worst crashes. So I want the Erlang approach, where code goes off and tries stuff, and either succeeds or kills itself.
+
+I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
+
+## First Steps
+
+So far what do I have?
+
+* A lexer (zs_lex) that breaks input into tokens. This should become a language atomic at some stage, pushing input tokens to a pipe.
+* A pipe class (zs_pipe) that holds numbers and strings. This is not meant to be fast; it just shows the idea.
+* A virtual machine class (zs_vm) that compiles and executes bytecode. It supports a basic syntax that I'll explain in a second.
+* A REPL class (zs_repl) that connects the lexer to the VM. It's really quite simple.
+* A main program (zs) that acts as a shell.
+
+The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
+
+The language looks like this (taken from the VM self test):
+
+    sub: (<OK> <Guys> count 2 assert)
+    main: (
+        123 1000000000 sum 1000000123 assert
+        <Hello,> <World> count 2 assert
+        sum (123 456) 579 assert
+        sum (123 count (1 2 3)) 126 assert
+    )
+    sub sub main
+
+* Strings are enclosed in < and > rather than the stupidly ambiguous " and ".
+* The rest should be obvious at first reading, that is the point.
+
+## The Virtual Machine
+
+I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
+
+So we use a token threaded bytecode interpreter. That is, a byte is an instruction. The inner interpreter steps through opcodes one by one, until and if the machine finishes. Where opcodes take parameters, these come just after, byte by byte.
+
+The fastest way to decode such opcodes (suddenly I care about performance, and don't even ask, it's a complex tradeoff of short and long term costs/benefits that'd take pages to explain) is a switch statement. No, in fact it's a series of "if"s. So the most frequent opcodes, those that can mess with the machine itself, get handled directly in the VM.
+
+I like the technique of slicing answers into "cheap" and "nasty". Cheap is easy to change and changes often. Nasty is hard to change and changes rarely. Opcodes 240-254 are built-in opcodes; changing them requires modifying the VM source itself. These built-ins get to play with the instruction pointer, or "needle". That means the needle can be held in a register. This helps performance, at least theoretically.
+
+Opcodes 0-239 are "atomics", and point to a look-up table of function addresses. As we register new atomics, each gets assigned a new number. The compiler uses that number (0-239) as opcode. These atomics are in their own source files. They get a VM context to talk to, although they cannot see or change the needle.
+
+255 is the opcode for "do more complex stuff", which I'll now explain.
+
+## Extensibility
+
+Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
+
+My goal here is to make it possible to add atomics in three places: inside the VM, very close to it, and outside it. Internal atomics are always going to be delicate, as they can easily break the VM. The 15-opcode address space is a Brutalist cage meant to stop random cruft getting in there.
+
+The API for extensible atomics is as simple as I could make it. An atomic is a single C function, which receives a VM reference as argument, and returns 0 (silence is assent) or -1 (meaning "stop the machine!"). A function registers itself, it if wants to.
+
+So for example the "check" atomic runs the ZeroScript self-tests. Here's how we probe the atomic:
+
+    zs_vm_probe (self, s_check);
+
+And here's the code for that function:
+
+    static int
+    s_check (zs_vm_t *self)
+    {
+        if (zs_vm_probing (self))
+            zs_vm_register (self, "check", "Run internal checks");
+        else {
+            int verbose = (zs_pipe_get_number (zs_vm_input (self)) != 0);
+            zs_lex_test (verbose);
+            zs_pipe_test (verbose);
+            zs_vm_test (verbose);
+            zs_repl_test (verbose);
+            zs_pipe_put_string (zs_vm_output (self), "Checks passed successfully");
+        }
+        return 0;
+    }
+
+For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
+
+## Arguments and Flamewars
+
+The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
+
+If you want to talk about minor details like my use of < and > for strings, be my guest. There is no real agenda here, except to keep parsing as simple as possible for now. Asymmetric delimiters are trivial to parse. Curly quotes are too difficult to type. So < and > are a workable choice for now. It's also nice to be able to put ZeroScript strings inside C strings without any special escaping. Shrug.
+
+If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
+
+## Other Goals
+
+Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
+
+This experiment started with the idea of a domain specific language for ZeroMQ examples. This is still a good idea. I'd like a language that compiles into clean C, Ruby, Python, whatever, using our code generation skills. It would solve a lot of problems in teaching ZeroMQ.
+
+Imagine a ZeroScript runtime for embedded systems, so we can throw apps at 32KB devices. I really can't wait to try this. It changes the sense of "programmable devices". If you know Forth, you know it was used exactly for this kind of work (telescopes), long decades ago.
+
+Imagine wrapping up libraries like Zyre, so ZeroScript apps can find each other on a network and throw themselves at each other.
+
+Since each box will have an arbitrary set of atomics, bytecode is not portable. However the compilation process is lossless, so that we can produce source code back from bytecode.
+
+Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
+
+## Bibliography
+
+* http://www.complang.tuwien.ac.at/forth/threaded-code.html
+
+## Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
 
-CZMQ uses the [C4.1 (Collective Code Construction Contract)](http://rfc.zeromq.org/spec:22) process for contributions.
+ZeroScript uses the [C4.1 (Collective Code Construction Contract)](http://rfc.zeromq.org/spec:22) process for contributions.
 
-CZMQ uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.org/spec:21) guide for code style.
+ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.org/spec:21) guide for code style.
 
-To report an issue, use the [CZMQ issue tracker](https://github.com/zeromq/czmq/issues) at github.com.
+To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-## Using CZMQ
+## Building and Installing
 
-### Building and Installing
-
-Here's how to build CZMQ from GitHub (building from packages is very similar, you don't clone a repo but unpack a tarball), including the libsodium (for security) and libzmq (ZeroMQ core) libraries:
-
-    git clone git://github.com/jedisct1/libsodium.git
-    cd libsodium
-    ./autogen.sh
-    ./configure && make check
-    sudo make install
-    sudo ldconfig
-    cd ..
+Here's how to build ZeroScript from GitHub:
 
     git clone git://github.com/zeromq/libzmq.git
     cd libzmq
     ./autogen.sh
-    ./configure && make check
+    ./configure && make -j 4 check
     sudo make install
     sudo ldconfig
     cd ..
@@ -86,336 +245,21 @@ Here's how to build CZMQ from GitHub (building from packages is very similar, yo
     git clone git://github.com/zeromq/czmq.git
     cd czmq
     ./autogen.sh
-    ./configure && make check
+    ./configure && make -j 4 check
     sudo make install
     sudo ldconfig
     cd ..
 
-In general CZMQ works best with the latest libzmq master. If you already have an older version of libzmq installed on your system, e.g. in /usr/, then you can install libzmq master to your home directory ($HOME/local):
-
-    #   Building libzmq in our home directory
-    ./configure --prefix=$HOME/local
-
-And then to build CZMQ against this installation of libzmq:
-
-    export CFLAGS=-I$HOME/local/include
-    export LDFLAGS=-L$HOME/local/lib64
-    ./configure
-
-You will need the pkg-config, libtool, and autoreconf packages. After building, run the CZMQ selftests:
-
-    make check
-
-### Linking with an Application
-
-Include `czmq.h` in your application and link with libczmq. Here is a typical gcc link command:
-
-    gcc -lczmq -lzmq myapp.c -o myapp
-
-### Use from Other Languages
-
-This is a list of known higher-level wrappers around CZMQ:
-
-* https://github.com/1100110/CZMQ - D bindings
-* https://github.com/methodmissing/rbczmq - Ruby
-* https://github.com/zeromq/pyczmq - Python
-* https://github.com/lhope/cl-czmq - Common Lisp
-* https://github.com/fmp88/ocaml-czmq - Ocaml
-* https://github.com/gar1t/erlang-czmq - Erlang
-* https://github.com/mtortonesi/ruby-czmq-ffi - Ruby FFI
-* https://github.com/zeromq/goczmq - Go
-
-### API v3 Summary
-
-This is the API provided by CZMQ v3.x, in alphabetical order.
-
-.pull doc/zactor.doc
-.pull doc/zauth.doc
-.pull doc/zbeacon.doc
-.pull doc/zcert.doc
-.pull doc/zcertstore.doc
-.pull doc/zchunk.doc
-.pull doc/zclock.doc
-.pull doc/zconfig.doc
-.pull doc/zdigest.doc
-.pull doc/zdir.doc
-.pull doc/zdir_patch.doc
-.pull doc/zfile.doc
-.pull doc/zframe.doc
-.pull doc/zgossip.doc
-.pull doc/zhash.doc
-.pull doc/ziflist.doc
-.pull doc/zlist.doc
-.pull doc/zloop.doc
-.pull doc/zmonitor.doc
-.pull doc/zmsg.doc
-.pull doc/zpoller.doc
-.pull doc/zproxy.doc
-.pull doc/zrex.doc
-.pull doc/zsock.doc
-.pull doc/zsock_option.doc
-.pull doc/zstr.doc
-.pull doc/zsys.doc
-.pull doc/zuuid.doc
-
-### API v2 Summary
-
-This is the deprecated API provided by CZMQ v2.x, in alphabetical order.
-
-.pull doc/zauth_v2.doc
-.pull doc/zctx.doc
-.pull doc/zmonitor_v2.doc
-.pull doc/zmutex.doc
-.pull doc/zproxy_v2.doc
-.pull doc/zsocket.doc
-.pull doc/zsockopt.doc
-.pull doc/zthread.doc
-
-## Error Handling
-
-The CZMQ policy is to reduce the error flow to 0/-1 where possible. libzmq still does a lot of errno setting. CZMQ does not do that, as it creates a fuzzy API. Things either work as expected, or they fail, and the application's best strategy is usually to assert on non-zero return codes.
-
-Some older libraries still return plethora of error codes, to indicate different types of failure. This ironically makes both library and application more likely to be buggy. The reason is simply that it needs more code on both sides of the API, and the more code, the more bugs.
-
-The use of black/white error handling fits the CLASS style for APIs where each call is explicit and without side effects of any kind, and where damage is either impossible, or fatal.
-
-The one exception is running out of resources (memory, sockets). In that case, there are two strategies that work, for different types of app. One is to assert, to force better sizing of the machine and/or limits such as max connections. Two is to degrade carefully, e.g. refuse new connections, however that is considerably harder to do correctly and probably unrealistic for most developers.
-
-Some CZMQ methods used to actually assert, e.g. in zsocket_bind, if the action failed, instead of returning -1. That was just closer to the majority case where the action MUST work, or nothing can continue. However there's a small slice of cases where failure means something positive, and for these cases, such calls return -1 on failure. 99% of calling code simply asserts the return value is not -1.
-
-There are a few cases where the return value is overloaded to return -1, 0, or other values. These are somewhat confusing special cases and we aim to eliminate them over time.
-
-The overall goal with this strategy is robustness, and absolute minimal and predictable expression in the code. You can see that it works: the CZMQ code is generally very simple and clear, with a few exceptions of places where people have used their old C style (we fix these over time).
-
-## CZMQ Actors
-
-The v2 API had a zthread class that let you create "attached threads" connected to their parent by an inproc:// PIPE socket. In v3 this has been simplified and better wrapped as the zactor class. CZMQ actors are in effect threads with a socket interface. A zactor_t instance works like a socket, and the CZMQ classes that deal with sockets (like zmsg and zpoller) all accept zactor_t references as well as zsock_t and libzmq void * socket handles.
-
-To write an actor, use this template. Note that your actor is a single function "void myname (zsock_t *pipe, void *args)" function:
-
-    /*  =========================================================================
-        someclass - some description
-
-        Copyright (c) the Contributors as noted in the AUTHORS file.
-        This file is part of CZMQ, the high-level C binding for 0MQ:
-        http://czmq.zeromq.org.
-
-        This Source Code Form is subject to the terms of the Mozilla Public
-        License, v. 2.0. If a copy of the MPL was not distributed with this
-        file, You can obtain one at http://mozilla.org/MPL/2.0/.
-        =========================================================================
-    */
-
-    /*
-    @header
-        Please take e.g. include/zmonitor.h as basis for your public API.
-        And delete this text, and write your own, when you create an actor :-)
-    @discuss
-
-    @end
-    */
-
-    #include "../include/czmq.h"
-
-    //  --------------------------------------------------------------------------
-    //  The self_t structure holds the state for one actor instance
-
-    typedef struct {
-        zsock_t *pipe;              //  Actor command pipe
-        zpoller_t *poller;          //  Socket poller
-        //  ... you'll be adding other stuff here
-        bool terminated;            //  Did caller ask us to quit?
-        bool verbose;               //  Verbose logging enabled?
-    } self_t;
-
-    static self_t *
-    s_self_new (zsock_t *pipe)
-    {
-        self_t *self = (self_t *) zmalloc (sizeof (self_t));
-        self->pipe = pipe;
-        //  ... initialize your own state including any other
-        //  sockets, which you can add to the poller:
-        self->poller = zpoller_new (self->pipe, NULL);
-        return self;
-    }
-
-    static void
-    s_self_destroy (self_t **self_p)
-    {
-        assert (self_p);
-        if (*self_p) {
-            self_t *self = *self_p;
-            zpoller_destroy (&self->poller);
-            //  ... destroy your own state here
-            free (self);
-            *self_p = NULL;
-        }
-    }
-
-
-    //  --------------------------------------------------------------------------
-    //  Handle a command from calling application
-
-    static int
-    s_self_handle_pipe (self_t *self)
-    {
-        //  Get the whole message off the pipe in one go
-        zmsg_t *request = zmsg_recv (self->pipe);
-        if (!request)
-            return -1;                  //  Interrupted
-
-        char *command = zmsg_popstr (request);
-        if (self->verbose)
-            zsys_info ("zxxx: API command=%s", command);
-        if (streq (command, "VERBOSE"))
-            self->verbose = true;
-        else
-        //  An example of a command that the caller would wait for
-        //  via a signal, so that the two threads synchronize
-        if (streq (command, "WAIT"))
-            zsock_signal (self->pipe, 0);
-        else
-        if (streq (command, "$TERM"))
-            self->terminated = true;
-        else {
-            zsys_error ("zxxx: - invalid command: %s", command);
-            assert (false);
-        }
-        zstr_free (&command);
-        zmsg_destroy (&request);
-        return 0;
-    }
-
-
-    //  --------------------------------------------------------------------------
-    //  zxxx() implements the zxxx actor interface
-
-    void
-    zxxx (zsock_t *pipe, void *args)
-    {
-        self_t *self = s_self_new (pipe);
-        //  Signal successful initialization
-        zsock_signal (pipe, 0);
-
-        while (!self->terminated) {
-            zsock_t *which = zpoller_wait (self->poller, -1);
-            if (which == self->pipe)
-                s_self_handle_pipe (self);
-            else
-            if (zpoller_terminated (self->poller))
-                break;          //  Interrupted
-        }
-        s_self_destroy (&self);
-    }
-
-
-    //  --------------------------------------------------------------------------
-    //  Selftest
-
-    void
-    zxxx_test (bool verbose)
-    {
-        printf (" * zxxx: ");
-        if (verbose)
-            printf ("\n");
-
-        //  @selftest
-        zactor_t *xxx = zactor_new (zxxx, NULL);
-        assert (xxx);
-        if (verbose)
-            zstr_sendx (xxx, "VERBOSE", NULL);
-
-        zactor_destroy (&xxx);
-        //  @end
-        printf ("OK\n");
-    }
-
-The selftest code shows how to create, talk to, and destroy an actor.
-
-## Under the Hood
-
-### Adding a New Class
-
-If you define a new CZMQ class `myclass` you need to:
-
-* Write the `zmyclass.c` and `zmyclass.h` source files, in `src` and `include` respectively.
-* Add`#include <zmyclass.h>` to `include/czmq.h`.
-* Add the myclass header and test call to `src/czmq_selftest.c`.
-* Add a reference documentation to 'doc/zmyclass.txt'.
-* Add myclass to 'model/projects.xml` and read model/README.txt.
-* Add a section to README.txt.
-
-### Documentation
-
-Man pages are generated from the class header and source files via the doc/mkman tool, and similar functionality in the gitdown tool (http://github.com/imatix/gitdown). The header file for a class must wrap its interface as follows (example is from include/zclock.h):
-
-    //  @interface
-    //  Sleep for a number of milliseconds
-    void
-        zclock_sleep (int msecs);
-
-    //  Return current system clock as milliseconds
-    int64_t
-        zclock_time (void);
-
-    //  Self test of this class
-    int
-        zclock_test (Bool verbose);
-    //  @end
-
-The source file for a class must provide documentation as follows:
-
-    /*
-    @header
-    ...short explanation of class...
-    @discuss
-    ...longer discussion of how it works...
-    @end
-    */
-
-The source file for a class then provides the self test example as follows:
-
-    //  @selftest
-    int64_t start = zclock_time ();
-    zclock_sleep (10);
-    assert ((zclock_time () - start) >= 10);
-    //  @end
-
-The template for man pages is in doc/mkman.
-
-### Development
-
-CZMQ is developed through a test-driven process that guarantees no memory violations or leaks in the code:
-
-* Modify a class or method.
-* Update the test method for that class.
-* Run the 'selftest' script, which uses the Valgrind memcheck tool.
-* Repeat until perfect.
-
-### Porting CZMQ
-
-When you try CZMQ on an OS that it's not been used on (ever, or for a while), you will hit code that does not compile. In some cases the patches are trivial, in other cases (usually when porting to Windows), the work needed to build equivalent functionality may be non-trivial. In any case, the benefit is that once ported, the functionality is available to all applications.
-
-Before attempting to patch code for portability, please read the `czmq_prelude.h` header file. There are several typical types of changes you may need to make to get functionality working on a specific operating system:
-
-* Defining typedefs which are missing on that specific compiler: do this in czmq_prelude.h.
-* Defining macros that rename exotic library functions to more conventional names: do this in czmq_prelude.h.
-* Reimplementing specific methods to use a non-standard API: this is typically needed on Windows. Do this in the relevant class, using #ifdefs to properly differentiate code for different platforms.
-
-### Hints to Contributors
-
-CZMQ is a nice, neat library, and you may not immediately appreciate why. Read the CLASS style guide please, and write your code to make it indistinguishable from the rest of the code in the library. That is the only real criteria for good style: it's invisible.
-
-Don't include system headers in source files. The right place for these is czmq_prelude.h. If you need to check against configured libraries and/or headers, include platform.h in the source before including czmq.h.
-
-Do read your code after you write it and ask, "Can I make this simpler?" We do use a nice minimalist and yet readable style. Learn it, adopt it, use it.
-
-Before opening a pull request read our [contribution guidelines](https://github.com/zeromq/czmq/blob/master/CONTRIBUTING.md). Thanks!
-
-### Code Generation
-
-We generate the zsockopt class using [GSL](https://github.com/imatix/gsl), using a code generator script in scripts/sockopts.gsl. We also generate the project files.
-
-### This Document
+    git clone git://github.com/leptaspace/zs.git
+    cd zs
+    ./autogen.sh
+    ./configure && make -j 4 check
+    sudo make install
+    sudo ldconfig
+    cd ..
+
+You will need the pkg-config, libtool, and autoreconf packages.
+
+## This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).

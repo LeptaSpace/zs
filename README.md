@@ -1,4 +1,36 @@
-# ZeroScript
+
+<A name="toc1-2" title="This an Experiment... ZeroScript" />
+# This an Experiment... ZeroScript
+
+[![Build Status](https://travis-ci.org/zeromq/czmq.png?branch=master)](https://travis-ci.org/zeromq/czmq)
+
+<A name="toc2-7" title="Contents" />
+## Contents
+
+
+**<a href="#toc2-18">This an Experiment</a>**
+
+**<a href="#toc2-51">Inspirations</a>**
+
+**<a href="#toc2-86">Irritations</a>**
+
+**<a href="#toc2-129">First Steps</a>**
+
+**<a href="#toc2-156">The Virtual Machine</a>**
+
+**<a href="#toc2-171">Extensibility</a>**
+
+**<a href="#toc2-204">Arguments and Flamewars</a>**
+
+**<a href="#toc2-213">Other Goals</a>**
+
+**<a href="#toc2-228">Bibliography</a>**
+
+**<a href="#toc2-233">Ownership and License</a>**
+
+**<a href="#toc2-244">Building and Installing</a>**
+
+**<a href="#toc2-275">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -6,7 +38,7 @@ Some very interesting thoughts ... esp. for #IoT applications -- Till Hänisch �
 
 Is this a joke or are you serious? -- flyingfisch (entirely out of context)
 
-
+<A name="toc2-18" title="This an Experiment" />
 ## This an Experiment
 
 I want a language that makes it trivially easy to write very large scale distributed apps. So easy that I can teach this to my kids and watch them program a thousand devices. My son is four. He uses a computer every day, and plays with his sister's discarded smartphone. Every 18 months, he'll be playing with twice as many devices. By eighteen he'll have a thousand on his desk. He's my target.
@@ -39,6 +71,7 @@ It must be "concurrent" by default. Obviously things happen all over the place, 
 
 Lastly, it should be fun to make stuff, share stuff. I want the process of using the language to flow through a learn-play-work-teach cycle. Again, it must happen from first contact. Here's how you make a brick. Here's what the brick can do. Try it! It's safe! Now you can use the brick.
 
+<A name="toc2-51" title="Inspirations" />
 ## Inspirations
 
 I remember the moment that computers turned fun, and I turned from being a failing CompSci student to top of the class. My mother bought me a VIC 20 and I started programming it. Then Commodore gave me a C-64 to play with, just because. I wrote games and sold them on cassette, paying my way through studies and beer. But BASIC ran too slowly, and assembler was too much work (and ran too fast, seriously). So for my thesis I wrote a language for making games.
@@ -73,6 +106,7 @@ So in my language, the default flow is output-to-input, pipes carrying messages 
 
 Other inspirations are obvious: Erlang, Go, Rust (aka "Rushed"), and Clojure. I've noticed from several ZeroMQ workshops that people using Clojure always seem to get their examples done fastest. I suspect it's the REPL again. Whatever, when someone can write ZeroMQ code faster than me, it's time for me to shift to newer tools. And that means moving away from C, at least for the 90% of cases that don't need a systems language.
 
+<A name="toc2-86" title="Irritations" />
 ## Irritations
 
 Now to stuff I hate. It's a long list so I'll try to keep it relevant.
@@ -115,6 +149,7 @@ No, real code never gives errors. It either works or it dies grimly and with min
 
 I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
 
+<A name="toc2-129" title="First Steps" />
 ## First Steps
 
 So far what do I have?
@@ -141,6 +176,7 @@ The language looks like this (taken from the VM self test):
 * Strings are enclosed in < and > rather than the stupidly ambiguous " and ".
 * The rest should be obvious at first reading, that is the point.
 
+<A name="toc2-156" title="The Virtual Machine" />
 ## The Virtual Machine
 
 I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
@@ -155,6 +191,7 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which I'll now explain.
 
+<A name="toc2-171" title="Extensibility" />
 ## Extensibility
 
 Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
@@ -187,6 +224,7 @@ And here's the code for that function:
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
+<A name="toc2-204" title="Arguments and Flamewars" />
 ## Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -195,6 +233,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
+<A name="toc2-213" title="Other Goals" />
 ## Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -209,6 +248,54 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
+<A name="toc2-228" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
+
+<A name="toc2-233" title="Ownership and License" />
+## Ownership and License
+
+The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
+
+ZeroScript uses the [C4.1 (Collective Code Construction Contract)](http://rfc.zeromq.org/spec:22) process for contributions.
+
+ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.org/spec:21) guide for code style.
+
+To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
+
+<A name="toc2-244" title="Building and Installing" />
+## Building and Installing
+
+Here's how to build ZeroScript from GitHub:
+
+    git clone git://github.com/zeromq/libzmq.git
+    cd libzmq
+    ./autogen.sh
+    ./configure && make -j 4 check
+    sudo make install
+    sudo ldconfig
+    cd ..
+
+    git clone git://github.com/zeromq/czmq.git
+    cd czmq
+    ./autogen.sh
+    ./configure && make -j 4 check
+    sudo make install
+    sudo ldconfig
+    cd ..
+
+    git clone git://github.com/leptaspace/zs.git
+    cd zs
+    ./autogen.sh
+    ./configure && make -j 4 check
+    sudo make install
+    sudo ldconfig
+    cd ..
+
+You will need the pkg-config, libtool, and autoreconf packages.
+
+<A name="toc2-275" title="This Document" />
+## This Document
+
+This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).
