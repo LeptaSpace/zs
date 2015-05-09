@@ -187,7 +187,7 @@ And here's the code for that function:
             zs_pipe_test (verbose);
             zs_vm_test (verbose);
             zs_repl_test (verbose);
-            zs_pipe_put_string (zs_vm_output (self), "Checks passed successfully");
+            zs_pipe_queue_string (zs_vm_output (self), "Checks passed successfully");
         }
         return 0;
     }

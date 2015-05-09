@@ -25,7 +25,7 @@ s_sum (zs_vm_t *self)
         int64_t sum = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
             sum += zs_pipe_get_number (zs_vm_input (self));
-        zs_pipe_put_number (zs_vm_output (self), sum);
+        zs_pipe_queue_number (zs_vm_output (self), sum);
     }
     return 0;
 }
@@ -39,7 +39,7 @@ s_prod (zs_vm_t *self)
         int64_t prod = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
             prod *= zs_pipe_get_number (zs_vm_input (self));
-        zs_pipe_put_number (zs_vm_output (self), prod);
+        zs_pipe_queue_number (zs_vm_output (self), prod);
     }
     return 0;
 }
@@ -50,7 +50,7 @@ s_count (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "count", "Count how many values there are");
     else
-        zs_pipe_put_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
+        zs_pipe_queue_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
     return 0;
 }
 
@@ -98,7 +98,7 @@ s_check (zs_vm_t *self)
         zs_pipe_test (verbose);
         zs_vm_test (verbose);
         zs_repl_test (verbose);
-        zs_pipe_put_string (zs_vm_output (self), "Checks passed successfully");
+        zs_pipe_queue_string (zs_vm_output (self), "Checks passed successfully");
     }
     return 0;
 }

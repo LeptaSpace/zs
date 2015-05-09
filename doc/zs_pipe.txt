@@ -19,11 +19,11 @@ void
 
 //  Add numeric value to pipe
 void
-    zs_pipe_put_number (zs_pipe_t *self, int64_t number);
+    zs_pipe_queue_number (zs_pipe_t *self, int64_t number);
 
 //  Add string value to pipe
 void
-    zs_pipe_put_string (zs_pipe_t *self, const char *value);
+    zs_pipe_queue_string (zs_pipe_t *self, const char *value);
 
 //  Return number of values in pipe
 size_t
@@ -74,9 +74,9 @@ EXAMPLE
 ----
 zs_pipe_t *pipe = zs_pipe_new ();
 
-zs_pipe_put_number (pipe, 12345);
+zs_pipe_queue_number (pipe, 12345);
 assert (zs_pipe_isnumber (pipe));
-zs_pipe_put_string (pipe, "Hello World");
+zs_pipe_queue_string (pipe, "Hello World");
 assert (zs_pipe_size (pipe) == 2);
 
 assert (zs_pipe_get_number (pipe) == 12345);
@@ -87,9 +87,9 @@ assert (zs_pipe_size (pipe) == 0);
 char *results = zs_pipe_contents (pipe);
 assert (streq (results, ""));
 
-zs_pipe_put_number (pipe, 12345);
-zs_pipe_put_number (pipe, 12345);
-zs_pipe_put_number (pipe, 12345);
+zs_pipe_queue_number (pipe, 12345);
+zs_pipe_queue_number (pipe, 12345);
+zs_pipe_queue_number (pipe, 12345);
 assert (zs_pipe_size (pipe) == 3);
 zs_pipe_purge (pipe);
 assert (zs_pipe_size (pipe) == 0);

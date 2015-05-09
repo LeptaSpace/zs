@@ -97,20 +97,42 @@ zs_pipe_destroy (zs_pipe_t **self_p)
 
 
 //  ---------------------------------------------------------------------------
-//  Add numeric value to pipe
+//  Add numeric value to end of pipe, after any existing values
 
 void
-zs_pipe_put_number (zs_pipe_t *self, int64_t number)
+zs_pipe_queue_number (zs_pipe_t *self, int64_t number)
 {
     zlistx_add_end (self->values, s_value_new (NULL, number));
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Add string value to pipe
+//  Add numeric value to start of pipe, before any existing values. Use this
+//  if you want to modify and push back a numeric value.
 
 void
-zs_pipe_put_string (zs_pipe_t *self, const char *string)
+zs_pipe_push_number (zs_pipe_t *self, int64_t number)
+{
+    zlistx_add_end (self->values, s_value_new (NULL, number));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Add string value to end of pipe, after any existing values
+
+void
+zs_pipe_queue_string (zs_pipe_t *self, const char *string)
+{
+    zlistx_add_end (self->values, s_value_new (string, 0));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Add string value to start of pipe, before any existing values. Use this
+//  if you want to modify and push back a numeric value.
+
+void
+zs_pipe_push_string (zs_pipe_t *self, const char *string)
 {
     zlistx_add_end (self->values, s_value_new (string, 0));
 }
@@ -258,9 +280,9 @@ zs_pipe_test (bool verbose)
     //  @selftest
     zs_pipe_t *pipe = zs_pipe_new ();
 
-    zs_pipe_put_number (pipe, 12345);
+    zs_pipe_queue_number (pipe, 12345);
     assert (zs_pipe_isnumber (pipe));
-    zs_pipe_put_string (pipe, "Hello World");
+    zs_pipe_queue_string (pipe, "Hello World");
     assert (zs_pipe_size (pipe) == 2);
 
     assert (zs_pipe_get_number (pipe) == 12345);
@@ -271,10 +293,13 @@ zs_pipe_test (bool verbose)
     char *results = zs_pipe_contents (pipe);
     assert (streq (results, ""));
 
-    zs_pipe_put_number (pipe, 12345);
-    zs_pipe_put_number (pipe, 12345);
-    zs_pipe_put_number (pipe, 12345);
-    assert (zs_pipe_size (pipe) == 3);
+    zs_pipe_queue_number (pipe, 12345);
+    zs_pipe_queue_number (pipe, 12345);
+    zs_pipe_queue_number (pipe, 12345);
+    zs_pipe_push_number (pipe, 12345);
+    zs_pipe_push_number (pipe, 12345);
+    zs_pipe_push_number (pipe, 12345);
+    assert (zs_pipe_size (pipe) == 6);
     zs_pipe_purge (pipe);
     assert (zs_pipe_size (pipe) == 0);
 

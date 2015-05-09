@@ -11,19 +11,34 @@ loops/conditionals
     above (30 C) { cooling (on) }
     below (15 C) { heating (on) }
 
+Comments
+
+    #   starts a comment until the end of the line
+        no multiline comments
+
 Numbers and units
 
     digits suffix
+    suffix is an atomic that changes the last value
 
-    123 K 1 K sum
+    Ki Mi Gi Ti Pi Ei
+
+    http://en.wikipedia.org/wiki/Metric_prefix
+
+    h k M G T P E Z Y
+    d c m u n p f a z y
+
+    123 k 1 k sum
 
     should give
     123000 1000 sum
 
-    suffix is an atomic that changes the last value
 
-    ++ 100 200 300 K
+
+
+    ++ 100 200 300 K <- operates only on last
     ++ functions operate on entire pipe by default?
+        -
 
 
     however...

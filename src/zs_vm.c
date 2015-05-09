@@ -534,7 +534,7 @@ zs_vm_run (zs_vm_t *self)
         if (opcode == VM_NUMBER) {
             int64_t number;
             memcpy (&number, self->code + needle, 8);
-            zs_pipe_put_number (self->output, number);
+            zs_pipe_queue_number (self->output, number);
             if (self->verbose)
                 printf ("D [%04zd]: number value=%" PRId64 "\n", needle, number);
             needle += 8;
@@ -542,7 +542,7 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_STRING) {
             char *string = (char *) self->code + needle;
-            zs_pipe_put_string (self->output, string);
+            zs_pipe_queue_string (self->output, string);
             if (self->verbose)
                 printf ("D [%04zd]: string value=%s\n", needle, string);
             needle += strlen (string) + 1;
@@ -605,7 +605,7 @@ s_sum (zs_vm_t *self)
         int64_t sum = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
             sum += zs_pipe_get_number (zs_vm_input (self));
-        zs_pipe_put_number (zs_vm_output (self), sum);
+        zs_pipe_queue_number (zs_vm_output (self), sum);
     }
     return 0;
 }
@@ -616,7 +616,7 @@ s_count (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "count", "Count how many values there are");
     else
-        zs_pipe_put_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
+        zs_pipe_queue_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
     return 0;
 }
 
