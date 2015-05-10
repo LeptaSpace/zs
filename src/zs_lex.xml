@@ -1,4 +1,8 @@
-<class name = "zs_lex" script = "fsm_c">
+<class
+    name = "zs_lex"
+    script = "fsm_c"
+    package_dir = "."
+    >
 
 <state name = "expecting token" inherit = "defaults">
     <event name = "letter" next = "reading function">
@@ -16,11 +20,6 @@
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
-    <event name = "period" next = "reading number">
-        <action name = "start new token" />
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
     <event name = "digit" next = "reading number">
         <action name = "start new token" />
         <action name = "store the character" />
@@ -30,8 +29,14 @@
         <action name = "start new token" />
         <action name = "parse next character" />
     </event>
-    <event name = "close list" next = "expecting token">
+    <event name = "close list">
         <action name = "have close list token" />
+    </event>
+    <event name = "comma">
+        <action name = "have phrase token" />
+    </event>
+    <event name = "period">
+        <action name = "have sentence token" />
     </event>
     <event name = "finished">
         <action name = "have null token" />
@@ -48,10 +53,6 @@
         <action name = "parse next character" />
     </event>
     <event name = "hyphen">
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
-    <event name = "period">
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
@@ -76,6 +77,14 @@
         <action name = "have complex fn token" />
     </event>
     <event name = "close list" next = "expecting token">
+        <action name = "have simple fn token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "comma" next = "expecting token">
+        <action name = "have simple fn token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "period" next = "expecting token">
         <action name = "have simple fn token" />
         <action name = "push back to previous" />
     </event>
@@ -127,14 +136,6 @@
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
-    <event name = "period">
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
-    <event name = "comma">
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
     <event name = "colon">
         <action name = "store the character" />
         <action name = "parse next character" />
@@ -155,6 +156,12 @@
         <action name = "have number token" />
         <action name = "push back to previous" />
     </event>
+    <event name = "comma" next = "after number comma">
+        <action name = "parse next character" />
+    </event>
+    <event name = "period" next = "after number period">
+        <action name = "parse next character" />
+    </event>
     <event name = "whitespace" next = "expecting token">
         <action name = "have number token" />
     </event>
@@ -166,17 +173,38 @@
     </event>
 </state>
 
+<state name = "after number comma">
+    <event name = "digit" next = "reading number">
+        <action name = "store comma character" />
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "*" next = "expecting token">
+        <action name = "have number token" />
+        <action name = "push back to previous" />
+        <action name = "push back to previous" />
+    </event>
+</state>
+
+<state name = "after number period">
+    <event name = "digit" next = "reading number">
+        <action name = "store period character" />
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "*" next = "expecting token">
+        <action name = "have number token" />
+        <action name = "push back to previous" />
+        <action name = "push back to previous" />
+    </event>
+</state>
+
 <state name = "reading string">
     <event name = "close quote" next = "expecting token">
         <action name = "have string token" />
     </event>
     <event name = "finished">
         <action name = "store newline character" />
-    </event>
-    <event name = "newline">
-        <!-- todo is this event needed? -->
-        <action name = "store newline character" />
-        <action name = "parse next character" />
     </event>
     <event name = "*">
         <action name = "store the character" />

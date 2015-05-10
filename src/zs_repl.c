@@ -61,6 +61,8 @@ zs_repl_new (void)
         self->events [zs_lex_define_fn] = define_fn_event;
         self->events [zs_lex_string] = string_event;
         self->events [zs_lex_number] = number_event;
+        self->events [zs_lex_phrase] = phrase_event;
+        self->events [zs_lex_sentence] = sentence_event;
         self->events [zs_lex_close_list] = close_list_event;
         self->events [zs_lex_invalid] = invalid_event;
         self->events [zs_lex_null] = finished_event;
@@ -168,26 +170,49 @@ compile_string (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  compile_chain
+//  compile_inline
 //
 
 static void
-compile_chain (zs_repl_t *self)
+compile_inline (zs_repl_t *self)
 {
-    if (zs_vm_compile_chain (self->vm, zs_lex_token (self->lex)))
+    if (zs_vm_compile_inline (self->vm, zs_lex_token (self->lex)))
         fsm_set_exception (self->fsm, invalid_event);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  compile_open
+//  compile_phrase
 //
 
 static void
-compile_open (zs_repl_t *self)
+compile_phrase (zs_repl_t *self)
+{
+    if (zs_vm_compile_phrase (self->vm))
+        fsm_set_exception (self->fsm, invalid_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_period
+//
+
+static void
+compile_period (zs_repl_t *self)
+{
+    zs_vm_compile_period (self->vm);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_nest
+//
+
+static void
+compile_nest (zs_repl_t *self)
 {
     self->scope++;
-    if (zs_vm_compile_open (self->vm, zs_lex_token (self->lex)))
+    if (zs_vm_compile_nest (self->vm, zs_lex_token (self->lex)))
         fsm_set_exception (self->fsm, invalid_event);
 }
 
@@ -205,15 +230,15 @@ compile_define (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  compile_close
+//  compile_unnest
 //
 
 static void
-compile_close (zs_repl_t *self)
+compile_unnest (zs_repl_t *self)
 {
     if (self->scope) {
         self->scope--;
-        zs_vm_compile_close (self->vm);
+        zs_vm_compile_unnest (self->vm);
     }
     else
         fsm_set_exception (self->fsm, invalid_event);
@@ -221,15 +246,15 @@ compile_close (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  compile_close_or_commit
+//  compile_unnest_or_commit
 //
 
 static void
-compile_close_or_commit (zs_repl_t *self)
+compile_unnest_or_commit (zs_repl_t *self)
 {
     assert (self->scope);
     if (--self->scope)
-        zs_vm_compile_close (self->vm);
+        zs_vm_compile_unnest (self->vm);
     else {
         zs_vm_compile_commit (self->vm);
         fsm_set_exception (self->fsm, completed_event);
@@ -365,7 +390,7 @@ zs_repl_test (bool verbose)
     //  @selftest
     zs_repl_t *repl = zs_repl_new ();
     zs_repl_verbose (repl, verbose);
-    s_repl_assert (repl, "1 2 3 sum", "6");
+    s_repl_assert (repl, "1 2 3, sum", "6");
     s_repl_assert (repl, "sum (1 2 3)", "6");
     s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
     s_repl_assert (repl, "clr", "");

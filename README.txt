@@ -136,16 +136,18 @@ The fsm_c.gsl script builds the state machines, which are XML models (don't laug
 
 The language looks like this (taken from the VM self test):
 
-    sub: (<OK> <Guys> count 2 assert)
+    sub: (<OK> <Guys>, count 2, assert)
     main: (
-        123 1000000000 sum 1000000123 assert
-        <Hello,> <World> count 2 assert
-        sum (123 456) 579 assert
-        sum (123 count (1 2 3)) 126 assert
+        123 1000000000, sum 1000000123, assert.
+        <Hello,> <World>, count 2, assert.
+        sum (123 456) 579, assert.
+        sum (123 count (1 2 3)) 126, assert.
     )
     sub sub main
 
-* Strings are enclosed in < and > rather than the stupidly ambiguous " and ".
+* Strings are enclosed in < and > rather than " and " which are unpleasant to parse properly.
+* Phrases are connected by commas or put in parentheses; the output of each phrase is piped into the next.
+* Phrases are grouped into sentences, separated by periods. The period after the last phrase is cosmetic.
 * The rest should be obvious at first reading, that is the point.
 
 ### The Virtual Machine

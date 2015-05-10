@@ -8,18 +8,43 @@ loops/conditionals
     forever { sleep (1) temperature }
     until (12 PM) { sleep (1) temperature }
 
-    above (30 C) { cooling (on) }
-    below (15 C) { heating (on) }
+    Event driven:
+        above (30 C) { cooling (on) }
+        below (15 C) { heating (on) }
+
 
 Comments
 
     #   starts a comment until the end of the line
         no multiline comments
 
+We need an explicit character to control pipes:
+
+    f1 f2
+        f2 gets same input as f1
+        outputs to same output
+
+    f1, f2
+        f2 gets input from f1
+        i.e. uses its pipe
+
+    f1, f2. f3, f4.
+        f1 and f3 start new sentences and get fresh pipes
+
+    1 2 3 temperature, echo
+    echo (1 2 3 temperature)
+
+    123,233 is a number IFF the commas are in the right place
+    123, 343 is two tokens and is illegal (343 isn't a function)
+    123,echo is legal
+
+
 Numbers and units
 
-    digits suffix
-    suffix is an atomic that changes the last value
+    expressive number support
+
+Exponentiation functions
+    Atomics that changes the pipe head
 
     Ki Mi Gi Ti Pi Ei
 
@@ -33,12 +58,11 @@ Numbers and units
     should give
     123000 1000 sum
 
-
-
-
-    ++ 100 200 300 K <- operates only on last
-    ++ functions operate on entire pipe by default?
-        -
+    Various forms
+    k (100 200 300)
+    100 200 300, k
+    100 200 300 k
+        -> how can 'k' tell the difference?
 
 
     however...
@@ -46,22 +70,18 @@ Numbers and units
     1 M 2 K sum should give 1002000
 
 
-pushing pipes
-    - when executing function, don't destroy existing input
-    - push it and then pop it again
-    - our structure is a stack of pipes
-    - one thread always writes to one place
+Multiline strings
+    <
+    some value
+    >
 
+    <
+some value
+>
 
-
-
-
-
-    { again }
-    pulse ( something )
-        - take number off pipe
-        - repeat ... times
-
-    [ maybe ]
-    then ( something )
+    <
+    some value
+    and another value
+    and then more
+    >
 
