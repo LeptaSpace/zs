@@ -98,7 +98,7 @@ set (zs_headers
     include/zs.h
     include/zs_pipe.h
     src/zs_lex.h
-    include/zs_vm.h
+    src/zs_vm.h
     include/zs_repl.h
     src/zs_lex_fsm.h
     src/zs_repl_fsm.h

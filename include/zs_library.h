@@ -49,15 +49,12 @@
 //  Opaque class structures to allow forward references
 typedef struct _zs_pipe_t zs_pipe_t;
 #define ZS_PIPE_T_DEFINED
-typedef struct _zs_vm_t zs_vm_t;
-#define ZS_VM_T_DEFINED
 typedef struct _zs_repl_t zs_repl_t;
 #define ZS_REPL_T_DEFINED
 
 
 //  Public API classes
 #include "zs_pipe.h"
-#include "zs_vm.h"
 #include "zs_repl.h"
 
 #endif

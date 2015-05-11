@@ -22,5 +22,6 @@
 
 //  Internal API
 #include "zs_lex.h"
+#include "zs_vm.h"
 
 #endif

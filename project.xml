@@ -9,22 +9,19 @@
 
     <use project = "czmq" />
 
+    <main name = "zs" />
     <class name = "zs_pipe" />
-
     <class name = "zs_lex" private = "1" />
-    <model name = "zs_lex" />
-    <extra name = "zs_lex_fsm.h" />
-
-    <class name = "zs_vm" />
-
+    <class name = "zs_vm" private = "1" />
     <class name = "zs_repl" />
+
+    <model name = "zs_lex" />
     <model name = "zs_repl" />
+    <model name = "zs_suffices" />
+
+    <extra name = "zs_lex_fsm.h" />
     <extra name = "zs_repl_fsm.h" />
     <extra name = "zs_repl_lib.h" />
-
-    <model name = "zs_suffices" />
     <extra name = "zs_suffices.h" />
-
-    <main name = "zs" />
 </project>
 
