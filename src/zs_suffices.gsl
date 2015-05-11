@@ -30,14 +30,16 @@ s_$(name:) (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * $(value);
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * $(value));
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * $(value);
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * $(value));
         }
     }
     return 0;

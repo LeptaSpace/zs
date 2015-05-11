@@ -25,14 +25,16 @@ s_Ki (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1024;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1024);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1024;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1024);
         }
     }
     return 0;
@@ -47,14 +49,16 @@ s_Mi (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1024 * 1024;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1024 * 1024;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024);
         }
     }
     return 0;
@@ -69,14 +73,16 @@ s_Gi (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1024 * 1024 * 1024;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1024 * 1024 * 1024;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024);
         }
     }
     return 0;
@@ -91,14 +97,16 @@ s_Ti (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1024 * 1024 * 1024 * 1024;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024 * 1024);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1024 * 1024 * 1024 * 1024;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024 * 1024);
         }
     }
     return 0;
@@ -113,14 +121,16 @@ s_Pi (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1024 * 1024 * 1024 * 1024 * 1024;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024 * 1024 * 1024);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1024 * 1024 * 1024 * 1024 * 1024;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024 * 1024 * 1024);
         }
     }
     return 0;
@@ -135,14 +145,16 @@ s_Ei (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1024 * 1024 * 1024 * 1024 * 1024 * 1024;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024 * 1024 * 1024 * 1024);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1024 * 1024 * 1024 * 1024 * 1024 * 1024;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1024 * 1024 * 1024 * 1024 * 1024 * 1024);
         }
     }
     return 0;
@@ -157,14 +169,16 @@ s_da (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 10;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 10);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 10;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 10);
         }
     }
     return 0;
@@ -179,14 +193,16 @@ s_h (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 100;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 100);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 100;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 100);
         }
     }
     return 0;
@@ -201,14 +217,16 @@ s_k (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1000;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1000);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1000;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1000);
         }
     }
     return 0;
@@ -223,14 +241,16 @@ s_M (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1000000;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1000000);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1000000;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1000000);
         }
     }
     return 0;
@@ -245,14 +265,16 @@ s_G (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1e9;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1e9);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1e9;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1e9);
         }
     }
     return 0;
@@ -267,14 +289,16 @@ s_T (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1e12;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1e12);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1e12;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1e12);
         }
     }
     return 0;
@@ -289,14 +313,16 @@ s_P (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1e15;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1e15);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1e15;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1e15);
         }
     }
     return 0;
@@ -311,14 +337,16 @@ s_E (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1e18;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1e18);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1e18;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1e18);
         }
     }
     return 0;
@@ -333,14 +361,16 @@ s_Z (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1e21;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1e21);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1e21;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1e21);
         }
     }
     return 0;
@@ -355,14 +385,16 @@ s_Y (zs_vm_t *self)
     else
     if (zs_pipe_size (zs_vm_output (self))) {
         //  Unary function
-        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * 1e24;
-        zs_pipe_push_number (zs_vm_output (self), number);
+        int64_t whole = zs_pipe_whole_pull (zs_vm_output (self));
+        if (whole != ZS_NULL_WHOLE)
+            zs_pipe_whole_send (zs_vm_output (self), whole * 1e24);
     }
     else {
         //  List function
         while (zs_pipe_size (zs_vm_input (self))) {
-            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * 1e24;
-            zs_pipe_push_number (zs_vm_output (self), number);
+            int64_t whole = zs_pipe_whole_recv (zs_vm_input (self));
+            if (whole != ZS_NULL_WHOLE)
+                zs_pipe_whole_send (zs_vm_output (self), whole * 1e24);
         }
     }
     return 0;

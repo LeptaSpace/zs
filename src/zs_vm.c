@@ -52,12 +52,13 @@
 //  Lol. \o/  Put these in order of frequency.
 #define VM_CALL         254     //  Call a user function
 #define VM_RETURN       253     //  Return to previous needle
-#define VM_NUMBER       252     //  Issue a number constant
-#define VM_STRING       251     //  Issue a string constant
-#define VM_PHRASE       250     //  Chain to next function
-#define VM_PERIOD       249     //  End sentence, clear pipes
-#define VM_NEST         248     //  Open new pipe scope
-#define VM_UNNEST       247     //  End pipe scope, pop pipes
+#define VM_WHOLE        252     //  Issue a whole number constant
+#define VM_REAL         251     //  Issue a real number constant
+#define VM_STRING       250     //  Issue a string constant
+#define VM_PHRASE       249     //  Chain to next function
+#define VM_PERIOD       248     //  End sentence, clear pipes
+#define VM_NEST         247     //  Open new pipe scope
+#define VM_UNNEST       246     //  End pipe scope, pop pipes
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
 
@@ -291,16 +292,30 @@ zs_vm_register (zs_vm_t *self, const char *name, const char *hint)
 
 
 //  ---------------------------------------------------------------------------
-//  Compile a number constant into the virtual machine.
-//  Numbers are stored thus:
-//      [VM_NUMBER][8 bytes in host format]
+//  Compile a whole number constant into the virtual machine.
+//  Whole numbers are stored thus:
+//      [VM_WHOLE][8 bytes in host format]
 
 void
-zs_vm_compile_number (zs_vm_t *self, int64_t number)
+zs_vm_compile_whole (zs_vm_t *self, int64_t whole)
 {
-    self->code [self->code_size++] = VM_NUMBER;
-    memcpy (self->code + self->code_size, &number, 8);
-    self->code_size += 8;
+    self->code [self->code_size++] = VM_WHOLE;
+    memcpy (self->code + self->code_size, &whole, sizeof (whole));
+    self->code_size += sizeof (whole);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Compile a real number constant into the virtual machine.
+//  Whole numbers are stored thus:
+//      [VM_REAL][8 bytes in host format]
+
+void
+zs_vm_compile_real (zs_vm_t *self, double real)
+{
+    self->code [self->code_size++] = VM_REAL;
+    memcpy (self->code + self->code_size, &real, sizeof (real));
+    self->code_size += sizeof (real);
 }
 
 
@@ -557,18 +572,27 @@ zs_vm_run (zs_vm_t *self)
             needle = self->call_stack [--self->call_stack_ptr];
         }
         else
-        if (opcode == VM_NUMBER) {
-            int64_t number;
-            memcpy (&number, self->code + needle, 8);
-            zs_pipe_queue_number (self->output, number);
+        if (opcode == VM_WHOLE) {
+            int64_t whole;
+            memcpy (&whole, self->code + needle, sizeof (whole));
+            zs_pipe_whole_send (self->output, whole);
             if (self->verbose)
-                printf ("D [%04zd]: number value=%" PRId64 "\n", needle, number);
-            needle += 8;
+                printf ("D [%04zd]: whole value=%" PRId64 "\n", needle, whole);
+            needle += sizeof (whole);
+        }
+        else
+        if (opcode == VM_REAL) {
+            double real;
+            memcpy (&real, self->code + needle, sizeof (real));
+            zs_pipe_real_send (self->output, real);
+            if (self->verbose)
+                printf ("D [%04zd]: real value=%g\n", needle, real);
+            needle += sizeof (real);
         }
         else
         if (opcode == VM_STRING) {
             char *string = (char *) self->code + needle;
-            zs_pipe_queue_string (self->output, string);
+            zs_pipe_string_send (self->output, string);
             if (self->verbose)
                 printf ("D [%04zd]: string value=%s\n", needle, string);
             needle += strlen (string) + 1;
@@ -637,8 +661,8 @@ s_sum (zs_vm_t *self)
     else {
         int64_t sum = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
-            sum += zs_pipe_dequeue_number (zs_vm_input (self));
-        zs_pipe_queue_number (zs_vm_output (self), sum);
+            sum += zs_pipe_whole_recv (zs_vm_input (self));
+        zs_pipe_whole_send (zs_vm_output (self), sum);
     }
     return 0;
 }
@@ -649,7 +673,7 @@ s_count (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "count", "Eat and count all the values");
     else {
-        zs_pipe_queue_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
+        zs_pipe_whole_send (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
         zs_pipe_purge (zs_vm_input (self));
     }
     return 0;
@@ -661,8 +685,8 @@ s_assert (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "assert", "Assert first two values are the same");
     else {
-        int64_t first = zs_pipe_dequeue_number (zs_vm_input (self));
-        int64_t second = zs_pipe_dequeue_number (zs_vm_input (self));
+        int64_t first = zs_pipe_whole_recv (zs_vm_input (self));
+        int64_t second = zs_pipe_whole_recv (zs_vm_input (self));
         if (first != second) {
             printf ("E: assertion failed, %" PRId64 " != %" PRId64 "\n", first, second);
             return -1;          //  Destroy the thread
@@ -677,7 +701,7 @@ s_year (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "year", "Tell us what year it is");
     else
-        zs_pipe_queue_number (zs_vm_output (self), 2015);
+        zs_pipe_whole_send (zs_vm_output (self), 2015);
     return 0;
 }
 
@@ -707,7 +731,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_string (vm, "Guys");
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "count");
-    zs_vm_compile_number (vm, 2);
+    zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_commit (vm);
@@ -722,11 +746,11 @@ zs_vm_test (bool verbose)
     //  )
     zs_vm_compile_define (vm, "main");
 
-    zs_vm_compile_number (vm, 123);
-    zs_vm_compile_number (vm, 1000000000);
+    zs_vm_compile_whole  (vm, 123);
+    zs_vm_compile_whole  (vm, 1000000000);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "sum");
-    zs_vm_compile_number (vm, 1000000123);
+    zs_vm_compile_whole  (vm, 1000000123);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_period (vm);
@@ -735,32 +759,32 @@ zs_vm_test (bool verbose)
     zs_vm_compile_string (vm, "World");
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "count");
-    zs_vm_compile_number (vm, 2);
+    zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_period (vm);
 
     rc = zs_vm_compile_nest (vm, "sum");
     assert (rc == 0);
-    zs_vm_compile_number (vm, 123);
-    zs_vm_compile_number (vm, 456);
+    zs_vm_compile_whole  (vm, 123);
+    zs_vm_compile_whole  (vm, 456);
     zs_vm_compile_unnest (vm);
-    zs_vm_compile_number (vm, 579);
+    zs_vm_compile_whole  (vm, 579);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_period (vm);
 
     rc = zs_vm_compile_nest (vm, "sum");
     assert (rc == 0);
-    zs_vm_compile_number (vm, 123);
+    zs_vm_compile_whole  (vm, 123);
     rc = zs_vm_compile_nest (vm, "count");
     assert (rc == 0);
-    zs_vm_compile_number (vm, 1);
-    zs_vm_compile_number (vm, 2);
-    zs_vm_compile_number (vm, 3);
+    zs_vm_compile_whole  (vm, 1);
+    zs_vm_compile_whole  (vm, 2);
+    zs_vm_compile_whole  (vm, 3);
     zs_vm_compile_unnest (vm);
     zs_vm_compile_unnest (vm);
-    zs_vm_compile_number (vm, 126);
+    zs_vm_compile_whole  (vm, 126);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_period (vm);
@@ -769,7 +793,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_inline (vm, "year");
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "count");
-    zs_vm_compile_number (vm, 2);
+    zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_period (vm);

@@ -155,8 +155,7 @@ compile_define_shell (zs_repl_t *self)
 static void
 compile_number (zs_repl_t *self)
 {
-    //  TODO: full number parsing; whole & real
-    zs_vm_compile_number (self->vm, atoll (zs_lex_token (self->lex)));
+    zs_vm_compile_whole (self->vm, atoll (zs_lex_token (self->lex)));
 }
 
 
@@ -350,7 +349,7 @@ zs_repl_completed (zs_repl_t *self)
 char *
 zs_repl_results (zs_repl_t *self)
 {
-    return zs_pipe_contents (zs_vm_output (self->vm));
+    return zs_pipe_paste (zs_vm_output (self->vm));
 }
 
 

@@ -55,10 +55,17 @@ bool
 int
     zs_vm_register (zs_vm_t *self, const char *name, const char *hint);
 
-//  Compile a number constant into the virtual machine.
-//  Numbers are stored thus:
+//  Compile a whole number constant into the virtual machine.
+//  Whole numbers are stored thus:
+//      [VM_WHOLE][8 bytes in host format]
 void
-    zs_vm_compile_number (zs_vm_t *self, int64_t number);
+    zs_vm_compile_whole (zs_vm_t *self, int64_t whole);
+
+//  Compile a real number constant into the virtual machine.
+//  Whole numbers are stored thus:
+//      [VM_REAL][8 bytes in host format]
+void
+    zs_vm_compile_real (zs_vm_t *self, double real);
 
 //  Compile a string constant into the virtual machine.
 void

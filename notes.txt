@@ -1,10 +1,11 @@
-
-
-
-loops/conditionals
-
 pipe data types
     whole vs. real numbers
+
+
+TODO
+    atomic to convert string to double or whole
+        using our extended numeric notations
+
 
 
 0, 1 many - conditionals and loops are the same; we repeat a function N times
@@ -46,6 +47,28 @@ Multi-line indented strings
     and then more
     >
 
+string atomics
+    1, many
+        upper
+        lower
+        camel
+        title
+        slug
+        size
+
+    many
+        paste
+        sort
+        first
+        last
+
+    2
+        find        (find string in another)
+        split       (split string into tokens)
+        count       (count string in another)
+        repeat      (repeat string N times)
+        match       (string vs. pattern or pattern vs. string)
+        replace     (string mashing,...)
 
 
 ******** DONE
