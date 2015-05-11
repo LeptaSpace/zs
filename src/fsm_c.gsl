@@ -16,6 +16,7 @@
 #   versions of this document, generate a new globally unique ID.
 
 class.title ?= "No title"
+class.package_dir ?= "../include"
 
 #   Resolve includes
 
@@ -57,6 +58,9 @@ for class.state
         #   Copy event to class if not yet defined there
         if count (class.event, name = -1.name) = 0
             copy event to class
+        endif
+        if count (state.event, name = -1.name) > 1
+            abort "Event $(name) defined more than once in $(state.name)"
         endif
     endfor
     for event
@@ -317,7 +321,7 @@ fsm_execute (fsm_t *self)
 }
 .#
 .#  Generate source file first time only
-.source_file = "$(class.name).h"
+.source_file = "$(class.package_dir)/$(class.name).h"
 .if !file.exists (source_file)
 .   output source_file
 /*  =========================================================================
@@ -387,8 +391,8 @@ void
 @end
 */
 
-//  Include the generated state machine engine
-#include "$(class.name)_fsm.h"
+#include "$(class.package_dir)/$(class.name).h"
+#include "$(class.name)_fsm.h"      //  Generated state machine engine
 
 //  Structure of our class
 

@@ -97,20 +97,42 @@ zs_pipe_destroy (zs_pipe_t **self_p)
 
 
 //  ---------------------------------------------------------------------------
-//  Add numeric value to pipe
+//  Add numeric value to end of pipe, after any existing values
 
 void
-zs_pipe_put_number (zs_pipe_t *self, int64_t number)
+zs_pipe_queue_number (zs_pipe_t *self, int64_t number)
 {
     zlistx_add_end (self->values, s_value_new (NULL, number));
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Add string value to pipe
+//  Add numeric value to start of pipe, before any existing values. Use this
+//  if you want to modify and push back a numeric value.
 
 void
-zs_pipe_put_string (zs_pipe_t *self, const char *string)
+zs_pipe_push_number (zs_pipe_t *self, int64_t number)
+{
+    zlistx_add_end (self->values, s_value_new (NULL, number));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Add string value to end of pipe, after any existing values
+
+void
+zs_pipe_queue_string (zs_pipe_t *self, const char *string)
+{
+    zlistx_add_end (self->values, s_value_new (string, 0));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Add string value to start of pipe, before any existing values. Use this
+//  if you want to modify and push back a numeric value.
+
+void
+zs_pipe_push_string (zs_pipe_t *self, const char *string)
 {
     zlistx_add_end (self->values, s_value_new (string, 0));
 }
@@ -159,7 +181,7 @@ zs_pipe_isstring (zs_pipe_t *self)
 //  converted to a number, quite brutally.
 
 int64_t
-zs_pipe_get_number (zs_pipe_t *self)
+zs_pipe_dequeue_number (zs_pipe_t *self)
 {
     s_value_destroy (&self->current);
     self->current = (value_t *) zlistx_detach (self->values, NULL);
@@ -179,10 +201,58 @@ zs_pipe_get_number (zs_pipe_t *self)
 //  should not modify value; this is managed by pipe class.
 
 const char *
-zs_pipe_get_string (zs_pipe_t *self)
+zs_pipe_dequeue_string (zs_pipe_t *self)
 {
     s_value_destroy (&self->current);
     self->current = (value_t *) zlistx_detach (self->values, NULL);
+    if (self->current) {
+        if (self->current->type == 's')
+            return self->current->string;
+        else {
+            snprintf (self->number, 20, "%" PRId64, self->current->number);
+            return self->number;
+        }
+    }
+    else
+        return NULL;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return last value off pipe as number; if the value is a string it's
+//  converted to a number, quite brutally.
+
+int64_t
+zs_pipe_pop_number (zs_pipe_t *self)
+{
+    s_value_destroy (&self->current);
+    self->current = (value_t *) zlistx_last (self->values);
+    if (self->current)
+        self->current = (value_t *) zlistx_detach (self->values, zlistx_cursor (self->values));
+
+    if (self->current) {
+        if (self->current->type == 'n')
+            return self->current->number;
+        else
+            return atol (self->current->string);
+    }
+    else
+        return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return next value off pipe as string (converting if needed). Caller
+//  should not modify value; this is managed by pipe class.
+
+const char *
+zs_pipe_pop_string (zs_pipe_t *self)
+{
+    s_value_destroy (&self->current);
+    self->current = (value_t *) zlistx_last (self->values);
+    if (self->current)
+        self->current = (value_t *) zlistx_detach (self->values, zlistx_cursor (self->values));
+
     if (self->current) {
         if (self->current->type == 's')
             return self->current->string;
@@ -258,23 +328,26 @@ zs_pipe_test (bool verbose)
     //  @selftest
     zs_pipe_t *pipe = zs_pipe_new ();
 
-    zs_pipe_put_number (pipe, 12345);
+    zs_pipe_queue_number (pipe, 12345);
     assert (zs_pipe_isnumber (pipe));
-    zs_pipe_put_string (pipe, "Hello World");
+    zs_pipe_queue_string (pipe, "Hello World");
     assert (zs_pipe_size (pipe) == 2);
 
-    assert (zs_pipe_get_number (pipe) == 12345);
-    const char *string = zs_pipe_get_string (pipe);
+    assert (zs_pipe_dequeue_number (pipe) == 12345);
+    const char *string = zs_pipe_dequeue_string (pipe);
     assert (streq (string, "Hello World"));
     assert (zs_pipe_size (pipe) == 0);
 
     char *results = zs_pipe_contents (pipe);
     assert (streq (results, ""));
 
-    zs_pipe_put_number (pipe, 12345);
-    zs_pipe_put_number (pipe, 12345);
-    zs_pipe_put_number (pipe, 12345);
-    assert (zs_pipe_size (pipe) == 3);
+    zs_pipe_queue_number (pipe, 4);
+    zs_pipe_queue_number (pipe, 5);
+    zs_pipe_queue_number (pipe, 6);
+    zs_pipe_push_number (pipe, 3);
+    zs_pipe_push_number (pipe, 2);
+    zs_pipe_push_number (pipe, 1);
+    assert (zs_pipe_size (pipe) == 6);
     zs_pipe_purge (pipe);
     assert (zs_pipe_size (pipe) == 0);
 

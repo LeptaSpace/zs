@@ -16,24 +16,24 @@
     compositions and invocations, strings, numbers, and open or close
     lists. It does not validate any semantics.
 @discuss
-    Functions start with a letter. A simple function is a name. A complex
-    function is a name followed by a list. A definition is a function followed
-    by ':' and a list.
+    Functions start with a letter and contain letters, digits, hyphens,
+    slashes, and underscores.
+
+    A simple function is a name. A complex function is a name followed
+    by a list. A definition is a function followed by ':' and a list.
 
     Lists start with ( and end with ).
 
     Strings are quoted by < and >.
 
-    Accepts a wide range of numeric expressions:
+    Accepts a range of numeric expressions:
         All digits
-        A single period at start, or embedded in number
-        Commas, used for thousand seperators, in the right place
+        Periods or commas embedded in number
         +- as unary sign operators
         +-/:*x^v binary operators, evaluated ^v then *x/: then +-
         [0-9]+[eE][+-]?[0-9]+ used once as exponent
-        Ki Mi Gi Ti Pi Ei used as suffix
-        h k M G T P E Z Y used as suffix
-        d c m u n p f a z y used as suffix
+
+    , and . are used as punctuation.
 @end
 */
 
@@ -229,6 +229,30 @@ push_back_to_previous (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  store_comma_character
+//
+
+static void
+store_comma_character (zs_lex_t *self)
+{
+    self->current = ',';
+    store_the_character (self);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  store_period_character
+//
+
+static void
+store_period_character (zs_lex_t *self)
+{
+    self->current = '.';
+    store_the_character (self);
+}
+
+
+//  ---------------------------------------------------------------------------
 //  store_newline_character
 //
 
@@ -303,6 +327,28 @@ static void
 have_close_list_token (zs_lex_t *self)
 {
     self->type = zs_lex_close_list;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_phrase_token
+//
+
+static void
+have_phrase_token (zs_lex_t *self)
+{
+    self->type = zs_lex_phrase;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_sentence_token
+//
+
+static void
+have_sentence_token (zs_lex_t *self)
+{
+    self->type = zs_lex_sentence;
 }
 
 
@@ -392,8 +438,7 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "1 +1 -1 .1 0.1") == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
+    assert (zs_lex_first (lex, "1 +1 -1 0.1") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
@@ -402,7 +447,8 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, "3.141592653589793238462643383279502884197169") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "1/2 1:2 1024*1024 10^10 1v2 99:70") == zs_lex_number);
+    assert (zs_lex_first (lex, "1/2 1:2 1024*1024 10^10 1v2 99:70 66%") == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
@@ -415,37 +461,19 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "2k 2M 2G 2T 2P 2E 2Z 2Y") == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_null);
-
-    assert (zs_lex_first (lex, "2Ki 2Mi 2Gi 2Ti 2Pi 2Ei") == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_null);
-
-    assert (zs_lex_first (lex, "2d 2c 2m 2u 2n 2p 2f 2a 2z 2y") == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_null);
-
     assert (zs_lex_first (lex, "2*3 2^64-1") == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_null);
+
+    assert (zs_lex_first (lex, "2,3 2, 3") == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_phrase);
+    assert (zs_lex_next (lex) == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_null);
+
+    assert (zs_lex_first (lex, "2.3 2. 3") == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_sentence);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
 
@@ -461,7 +489,6 @@ zs_lex_test (bool verbose)
     assert (streq (zs_lex_token (lex), "text"));
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_next (lex) == zs_lex_null);
-    assert (zs_lex_first (lex, ",1") == zs_lex_invalid);
     assert (zs_lex_first (lex, "1?2") == zs_lex_invalid);
 
     if (verbose)

@@ -24,8 +24,8 @@ s_sum (zs_vm_t *self)
     else {
         int64_t sum = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
-            sum += zs_pipe_get_number (zs_vm_input (self));
-        zs_pipe_put_number (zs_vm_output (self), sum);
+            sum += zs_pipe_dequeue_number (zs_vm_input (self));
+        zs_pipe_queue_number (zs_vm_output (self), sum);
     }
     return 0;
 }
@@ -38,8 +38,8 @@ s_prod (zs_vm_t *self)
     else {
         int64_t prod = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
-            prod *= zs_pipe_get_number (zs_vm_input (self));
-        zs_pipe_put_number (zs_vm_output (self), prod);
+            prod *= zs_pipe_dequeue_number (zs_vm_input (self));
+        zs_pipe_queue_number (zs_vm_output (self), prod);
     }
     return 0;
 }
@@ -50,7 +50,7 @@ s_count (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "count", "Count how many values there are");
     else
-        zs_pipe_put_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
+        zs_pipe_queue_number (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
     return 0;
 }
 
@@ -93,12 +93,12 @@ s_check (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "check", "Run internal checks");
     else {
-        int verbose = (zs_pipe_get_number (zs_vm_input (self)) != 0);
+        int verbose = (zs_pipe_dequeue_number (zs_vm_input (self)) != 0);
         zs_lex_test (verbose);
         zs_pipe_test (verbose);
         zs_vm_test (verbose);
         zs_repl_test (verbose);
-        zs_pipe_put_string (zs_vm_output (self), "Checks passed successfully");
+        zs_pipe_queue_string (zs_vm_output (self), "Checks passed successfully");
     }
     return 0;
 }
@@ -109,8 +109,8 @@ s_assert (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "assert", "Assert first two values are the same");
     else {
-        int64_t first = zs_pipe_get_number (zs_vm_input (self));
-        int64_t second = zs_pipe_get_number (zs_vm_input (self));
+        int64_t first = zs_pipe_dequeue_number (zs_vm_input (self));
+        int64_t second = zs_pipe_dequeue_number (zs_vm_input (self));
         if (first != second) {
             printf ("E: assertion failed, %" PRId64 " != %" PRId64 "\n", first, second);
             return -1;          //  Destroy the thread

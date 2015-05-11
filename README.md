@@ -14,25 +14,29 @@
 
 **<a href="#toc3-86">Irritations</a>**
 
-**<a href="#toc3-129">First Steps</a>**
+**<a href="#toc3-137">First Steps</a>**
 
-**<a href="#toc3-156">The Virtual Machine</a>**
+**<a href="#toc3-150">Experimental Notes</a>**
 
-**<a href="#toc3-171">Extensibility</a>**
+**<a href="#toc3-226">The Virtual Machine</a>**
 
-**<a href="#toc3-204">Arguments and Flamewars</a>**
+**<a href="#toc3-241">Extensibility</a>**
 
-**<a href="#toc3-213">Other Goals</a>**
+**<a href="#toc3-274">Arguments and Flamewars</a>**
 
-**<a href="#toc2-228">Bibliography</a>**
+**<a href="#toc3-283">Other Goals</a>**
 
-**<a href="#toc2-233">Technicalities</a>**
+**<a href="#toc2-298">Design Notes</a>**
 
-**<a href="#toc3-236">Ownership and License</a>**
+**<a href="#toc2-306">Bibliography</a>**
 
-**<a href="#toc3-247">Building and Installing</a>**
+**<a href="#toc2-312">Technicalities</a>**
 
-**<a href="#toc3-278">This Document</a>**
+**<a href="#toc3-315">Ownership and License</a>**
+
+**<a href="#toc3-326">Building and Installing</a>**
+
+**<a href="#toc3-357">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -102,16 +106,16 @@ The Libero-style state machine is a high level event-driven control language. It
 
 I like events and especially, queues of events, which are pipes carrying messages and commands. We explored this in CZMQ 3.0, with actors. These turn out to work incredibly well in C, a language that has no native support for concurrency. We learned how to build very solid message-based APIs, between pieces in the same program.
 
-I'll explore actors in more detail later. For now, let me pin "pipes" on the wall, and remind you of the widely known and under-appreciated concurrent REPL environment called the Unix shell. When you connect commands with pipes, these run concurrently, the output from one becoming the input to the next. It is a simple and obvious model, and fits many of our criteria for distributed code. State sits in the messages, not the code. Each piece can run asynchronously.
+I'll explore actors in more detail much later. For now, let me pin "pipes" on the wall, and remind you of the widely known and under-appreciated concurrent REPL environment called the Unix shell. When you connect commands with pipes, these run concurrently, the output from one becoming the input to the next. It is a simple and obvious model, and fits many of our criteria for distributed code. State sits in the messages, not the code. Each piece can run asynchronously.
 
 So in my language, the default flow is output-to-input, pipes carrying messages and commands from one piece to the next. It's a starting point: I'm sure we'll need more sophsticated queues later.
 
-Other inspirations are obvious: Erlang, Go, Rust (aka "Rushed"), and Clojure. I've noticed from several ZeroMQ workshops that people using Clojure always seem to get their examples done fastest. I suspect it's the REPL again. Whatever, when someone can write ZeroMQ code faster than me, it's time for me to shift to newer tools. And that means moving away from C, at least for the 90% of cases that don't need a systems language.
+Other inspirations are obvious: Erlang, Go, Rust, and Clojure. I've noticed from several ZeroMQ workshops that people using Clojure always seem to get their examples done fastest. I suspect it's the REPL again. Whatever, when someone can write ZeroMQ code faster than me, it's time for me to shift to newer tools. And that means moving away from C, at least for the 90% of cases that don't need a systems language.
 
 <A name="toc3-86" title="Irritations" />
 ### Irritations
 
-Now to stuff I hate. It's a long list so I'll try to keep it relevant.
+Now to stuff I dislike and want to avoid.
 
 Both Forth and Lisp offer you their salaciously unfiltered virtual machines, and yet both could be simpler. I do not like reverse Polish notation. Stacks are fine data structures, yet they are not intuitive for humans. This hurts my brain, and I don't want to have to try to explain it to anyone:
 
@@ -149,9 +153,17 @@ I dislike error handling. Partly it's from laziness. More though, it's from expe
 
 No, real code never gives errors. It either works or it dies grimly and with minimal noise. The tolerance of ambiguity causes the very worst crashes. So I want the Erlang approach, where code goes off and tries stuff, and either succeeds or kills itself.
 
+Let me talk about bits and bytes. I love the C language but sweet lord I hate being confronted by computer word sizes and all precision-related junk. It an inevitable and yet always sad moment when I have to introduce precisions into domain-specific languages. Computer, it's a *number*, isn't that good enough for you? Apparently, not.
+
+Tied to precision is the shoddy way we ask people to write numbers. We are in Era of Large Numbers yet we have to count digits like a Fortran programmer counting Hollerith strings. How do you write 10 trillion in your language of choice? Or 99%? Or 2^16-1? I'd like all these to be obvious and simple, to reduce errors and make life easier.
+
+And then conditionals and iterations. Oh so your compiler can do Boolean logic? Wow, have a cookie. Now tell me why you've made "1" a special case? Using "if" statements in any depth is an anti-pattern, and using loops of any complexity is also an anti-pattern. As for choosing between a series of "if" statements, or a single "switch" statement, just to try to second-guess the compiler... this is close to insanity.
+
+So control flow should stem from the natural models we use, not the capacity of our compilers and CPUs. This means, event-driven action ("when", not "if") and lazy infinite looping (do stuff never, once (more), or forever until). Perhaps a little state machining, below the water.
+
 I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
 
-<A name="toc3-129" title="First Steps" />
+<A name="toc3-137" title="First Steps" />
 ### First Steps
 
 So far what do I have?
@@ -164,21 +176,83 @@ So far what do I have?
 
 The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
 
+<A name="toc3-150" title="Experimental Notes" />
+### Experimental Notes
+
+Most language designers use grammar like early web designers used fonts. The more the merrier, surely! After all, why did God give us such a rich toolkit for building languages, if we were not meant to use it?
+
+Just as every new font creates a reason for the reader to stop reading. every new syntactic element is a reason to not use a given language. Less is more, and more is less.
+
+The basic grammar of ZeroScript is therefore just a series of numbers, strings, and commands, in a structure that seems to make sense. I'm not convinced this design will work at all, it just feels nice for now.
+
 The language looks like this (taken from the VM self test):
 
-    sub: (<OK> <Guys> count 2 assert)
+    sub: (<OK> <Guys>, count 2, assert)
     main: (
-        123 1000000000 sum 1000000123 assert
-        <Hello,> <World> count 2 assert
-        sum (123 456) 579 assert
-        sum (123 count (1 2 3)) 126 assert
+        123 1000000000, sum 1000000123, assert.
+        <Hello,> <World>, count 2, assert.
+        sum (123 456) 579, assert.
+        sum (123 count (1 2 3)) 126, assert.
     )
     sub sub main
 
-* Strings are enclosed in < and > rather than the stupidly ambiguous " and ".
+* Strings are enclosed in < and > rather than " and " which are unpleasant to parse properly.
+* Phrases are connected by commas or put in parentheses; the output of each phrase is piped into the next.
+* Phrases are grouped into sentences, separated by periods. The period after the last phrase is cosmetic.
 * The rest should be obvious at first reading, that is the point.
 
-<A name="toc3-156" title="The Virtual Machine" />
+It's a softly functional language. Functions have no state, and there are no variables or assignments. A function can produce a constant value:
+
+    greeting: (<Hello, fellow humans!>)
+
+I'm assuming the real world magically produces interesting values like "temperature" and "CPU load %" and "disk space free" and "amount left in wallet". And most often, or always, these are read-only values. One does not modify the current temperature. Side-effects seems honest, e.g. switching on the heating or cooling should eventually change the temperature.
+
+So each function takes some input and produces some output. Nature does not use stacks, however it does often form orderly queues. It seems fair that the outputs of multiple functions get queued up. So functions write to an "output pipe".
+
+There seem to be two kinds of input to a function. One, the last single item produced by the previous function. Two, all the items produced by the previous functions. I call this the "zero, one, many" rule.
+
+Here's how we can write long numbers:
+
+    64 Gi
+    2 Pi
+    32 Ki
+
+Where these functions operate on the most recent value. For now this means they treat the output pipe like a stack. It's not beautiful, so I'm looking for better abstractions.
+
+However these is also possible (the two forms do the same):
+
+    16 32 64, Gi
+    Gi (16 32 64)
+
+Here the Gi function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
+
+I implemented a bunch of these SI suffix functions, using GSL code generation to reduce the work. See zs_suffices.gsl and zs_suffices.xml. It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+
+*TODO: I need to add support for real numbers, to finish this piece of work (fractional SI suffices).*
+
+Our grammar thus has just a few elements:
+
+    function: ( something )
+    function ( something )
+    something, function
+
+And because using a comma to separate phrases was fun, I added a period to end a sentence:
+
+    something, function.
+
+What that does is empty all pipes so the next function starts with a clean slate. I've no idea if this makes sense in real programs, though it does help in writing test cases.
+
+The zs_lex state machine deals with parsing these different cases:
+
+    123,456 123.456             #   Two numbers
+    123, 456 123. 456           #   Four numbers, two sentences, three phrases
+    123,echo                    #   Prints "123"
+
+*TODO: write an FSM-based analyzer for numbers that handles the various forms we aim to support.*
+
+*TODO: allow comments starting with '#', to end of line*
+
+<A name="toc3-226" title="The Virtual Machine" />
 ### The Virtual Machine
 
 I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
@@ -193,7 +267,7 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which I'll now explain.
 
-<A name="toc3-171" title="Extensibility" />
+<A name="toc3-241" title="Extensibility" />
 ### Extensibility
 
 Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
@@ -214,19 +288,19 @@ And here's the code for that function:
         if (zs_vm_probing (self))
             zs_vm_register (self, "check", "Run internal checks");
         else {
-            int verbose = (zs_pipe_get_number (zs_vm_input (self)) != 0);
+            int verbose = (zs_pipe_dequeue_number (zs_vm_input (self)) != 0);
             zs_lex_test (verbose);
             zs_pipe_test (verbose);
             zs_vm_test (verbose);
             zs_repl_test (verbose);
-            zs_pipe_put_string (zs_vm_output (self), "Checks passed successfully");
+            zs_pipe_queue_string (zs_vm_output (self), "Checks passed successfully");
         }
         return 0;
     }
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
-<A name="toc3-204" title="Arguments and Flamewars" />
+<A name="toc3-274" title="Arguments and Flamewars" />
 ### Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -235,7 +309,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
-<A name="toc3-213" title="Other Goals" />
+<A name="toc3-283" title="Other Goals" />
 ### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -250,15 +324,24 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-228" title="Bibliography" />
+<A name="toc2-298" title="Design Notes" />
+## Design Notes
+
+* Any language aspect that takes more than 10 minutes to understand is too complex.
+* Function names are case-sensitive because the real world is case sensitive (1 M vs. 1 m).
+* Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
+* Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
+
+<A name="toc2-306" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
+* http://en.wikipedia.org/wiki/Metric_prefix
 
-<A name="toc2-233" title="Technicalities" />
+<A name="toc2-312" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-236" title="Ownership and License" />
+<A name="toc3-315" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -269,7 +352,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-247" title="Building and Installing" />
+<A name="toc3-326" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -300,7 +383,7 @@ Here's how to build ZeroScript from GitHub:
 
 You will need the pkg-config, libtool, and autoreconf packages.
 
-<A name="toc3-278" title="This Document" />
+<A name="toc3-357" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).

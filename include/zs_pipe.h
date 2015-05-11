@@ -34,13 +34,23 @@ zs_pipe_t *
 void
     zs_pipe_destroy (zs_pipe_t **self_p);
 
-//  Add numeric value to pipe
+//  Add numeric value to end of pipe, after any existing values
 void
-    zs_pipe_put_number (zs_pipe_t *self, int64_t number);
+    zs_pipe_queue_number (zs_pipe_t *self, int64_t number);
 
-//  Add string value to pipe
+//  Add numeric value to start of pipe, before any existing values. Use this
+//  if you want to modify and push back a numeric value.
 void
-    zs_pipe_put_string (zs_pipe_t *self, const char *value);
+    zs_pipe_push_number (zs_pipe_t *self, int64_t number);
+
+//  Add string value to end of pipe, after any existing values
+void
+    zs_pipe_queue_string (zs_pipe_t *self, const char *string);
+
+//  Add string value to start of pipe, before any existing values. Use this
+//  if you want to modify and push back a numeric value.
+void
+    zs_pipe_push_string (zs_pipe_t *self, const char *string);
 
 //  Return number of values in pipe
 size_t
@@ -57,12 +67,22 @@ bool
 //  Return next value off pipe as number; if the value is a string it's
 //  converted to a number, quite brutally.
 int64_t
-    zs_pipe_get_number (zs_pipe_t *self);
+    zs_pipe_dequeue_number (zs_pipe_t *self);
 
 //  Return next value off pipe as string (converting if needed)
 //  Caller should not modify value; this is managed by pipe class.
 const char *
-    zs_pipe_get_string (zs_pipe_t *self);
+    zs_pipe_dequeue_string (zs_pipe_t *self);
+
+//  Return last value off pipe as number; if the value is a string it's
+//  converted to a number, quite brutally.
+int64_t
+    zs_pipe_pop_number (zs_pipe_t *self);
+
+//  Return next value off pipe as string (converting if needed). Caller
+//  should not modify value; this is managed by pipe class.
+const char *
+    zs_pipe_pop_string (zs_pipe_t *self);
 
 //  Return pipe contents, as string. Caller must free it when done. Values are
 //  separated by spaces.

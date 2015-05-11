@@ -22,6 +22,9 @@
     <extra name = "zs_repl_fsm.h" />
     <extra name = "zs_repl_lib.h" />
 
+    <model name = "zs_suffices" />
+    <extra name = "zs_suffices.h" />
+
     <main name = "zs" />
 </project>
 

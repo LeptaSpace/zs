@@ -103,6 +103,7 @@ set (zs_headers
     src/zs_lex_fsm.h
     src/zs_repl_fsm.h
     src/zs_repl_lib.h
+    src/zs_suffices.h
 )
 source_group ("Header Files" FILES ${zs_headers})
 install(FILES ${zs_headers} DESTINATION include)

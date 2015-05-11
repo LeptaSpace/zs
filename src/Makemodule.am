@@ -30,6 +30,7 @@ src_libzs_la_SOURCES = \
     src/zs_lex_fsm.h \
     src/zs_repl_fsm.h \
     src/zs_repl_lib.h \
+    src/zs_suffices.h \
     src/platform.h
 
 src_libzs_la_CPPFLAGS = ${AM_CPPFLAGS}
@@ -71,6 +72,7 @@ src: src/libzs.la src/zs_selftest
 code:
 	cd $(srcdir)/src; gsl -q zs_lex.xml
 	cd $(srcdir)/src; gsl -q zs_repl.xml
+	cd $(srcdir)/src; gsl -q zs_suffices.xml
 
 check-local: src/zs_selftest
 	$(LIBTOOL) --mode=execute $(srcdir)/src/zs_selftest

@@ -1,141 +1,64 @@
 
-Things to do
-    profile FSMs to see execution counts
-    profile vm to see execution counts
-    compress FSM to tables, perhaps
-    decompile VM
-
-ZeroScript code is always remixable
-If you can run it, you can improve it
-    Secrecy is Theft
-
-ZeroScript.org
-
-phrase:
-
-    ( function [ '(' phrase ')' ] | number | string ) ...
-
-compose:
-
-    function: ( phrase )
-
-virtual machine:
-
-    code
-        zs_call_t *code []
-    data
-        byte *data []
-
-    resize during compilation, if needed
-
-    pipe primitives
-        pipe_shift      drop input, move output to input, new output
-        pipe_push       push output, new pipe pair
-        pipe_pop        drop input, move output to input, pop output
-        pipe_purge      purge input and output
 
 
-    token      ---> code        data
-    123             number_8    123
-    123456780       number_64   1234567890
-    sum             pipe_link
-                    sum
+loops/conditionals
 
-    sum (           pipe_push
-        123         number_8    123
-        456         number_8    456
-    )               pipe_pop
-                    sum
-
-    sum (           pipe_push
-        123         number_8    123
-        count       pipe_link
-                    count
-    )               pipe_pop
-                    sum
-
-composition:
-
-    How do we execute a composed function?
-
-    some: (
-        123         number_8    123
-    )               return
-    some            call        some
-
-//  register class
-//  register method
-
-loops
-conditionals
-matching
-real numbers vs. whole numbers
-no overloading
-    different functions for 1.2+1.2 and 2+2
-
-NO RECURSION
-    devil's spawn!!
-
-- no language feature should take more than a few lines to explain
+pipe data types
+    whole vs. real numbers
 
 
-    -- can we redefine a function?
-        - yes, useful
-        - requires linked list dictionary
-        - compilation speed no problem
+0, 1 many - conditionals and loops are the same; we repeat a function N times
 
->>** allow # comments in lines, outside strings obviously
+    compute { execute }
+    sum { echo <*> }
 
-    native data types
-        integers
-        strings
-        zmsg
-        zchunk
+    forever { sleep (1) temperature }
+    until (12 PM) { sleep (1) temperature }
 
-    chunks (useful on pipes)
-
-    //  Compile long string constant
-    //  [len32][string][0]
-    string = "Hello, World (long version)";
-    length = strlen (string) + 1;
-    code [code_size++] = s_string_32;
-    memcpy (data + data_size, &length, 4);
-    data_size += 4;
-    memcpy (data + data_size, (byte *) string, length);
-    data_size += length;
+    Event driven:
+        above (30 C) { cooling (on) }
+        below (15 C) { heating (on) }
 
 
-invoke:
+Comments
 
-    values function
-    function ( values )
-    ( values function )
+    #   starts a comment until the end of the line
+        no multiline comments
+
+Numbers and units
+
+    expressive number support
 
 
-    1 2 3 sum
-        number 1 -> push to output pipe
-        number 2 -> push to output pipe
-        number 3 -> push to output pipe
-        sum ->
-            lookup
-            switch output pipe to input pipe
-            start new output pipe
-            execute 'sum'
-    print output pipe
+Multiline strings
+    <
+    some value
+    >
 
-    sum (1 2 3)
-        function ( -> one token
+    <
+some value
+>
 
-        function ( function ( function ( function () ) ) )
+Multi-line indented strings
+    <
+    some value
+    and another value
+    and then more
+    >
 
-        -> stack functions
-        ( means open stack
-        ) means pop & execute stack
-        -> anything else
-            pop & execute function stack
 
-    sum (sum (1 2 3) count (4 5 6))
 
-    myfunction (args)
-    conditional on match args -> matching
-    or pass args to something else -> just invoke it
+******** DONE
+
+Exponentiation functions
+    Atomics that operate on last value in output
+
+    Ki Mi Gi Ti Pi Ei
+    h k M G T P E Z Y
+    d c m u n p f a z y
+
+    http://en.wikipedia.org/wiki/Metric_prefix
+
+    > 123 k 1 k, sum
+    124000
+

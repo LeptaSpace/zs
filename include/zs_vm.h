@@ -80,21 +80,32 @@ void
 int
     zs_vm_compile_rollback (zs_vm_t *self);
 
-//  Compile an open scope operation; you must match this with a close.
-//  Returns 0 if OK or -1 if the function was not defined.
+//  Compile inline function call. The function gets the current input and
+//  output pipes. Returns 0 if OK or -1 if the function was not defined.
 int
-    zs_vm_compile_open (zs_vm_t *self, const char *name);
+    zs_vm_compile_inline (zs_vm_t *self, const char *name);
 
-//  Compile a close scope + execute function. The function gets the current
-//  output pipe as input, and sends output to the parent output pipe.
+//  Compile end of phrase. The next function gets the previous output pipe
+//  as its new input pipe.
+int
+    zs_vm_compile_phrase (zs_vm_t *self);
+
+//  Compile end of sentence. This separates sentences so the next sentence
+//  gets clean pipes. Next function gets empty input and output pipes.
+int
+    zs_vm_compile_period (zs_vm_t *self);
+
+//  Compile an nest operation, saves the current output pipe and creates a
+//  new input pipe. Saves the function, which is exectuted by the matching
+//  unnest operation. Returns 0 if OK or -1 if the function was not defined.
+int
+    zs_vm_compile_nest (zs_vm_t *self, const char *name);
+
+//  Compile an unnest operation. Uses the current output pipe as input, and
+//  popes the previously saved output pipe, then calls the function specified
+//  in the original nest call.
 void
-    zs_vm_compile_close (zs_vm_t *self);
-
-//  Compile a chain scope + execute function. The function gets the current
-//  output pipe as input, and sends its output to a new pipe. Returns 0 if OK
-//  or -1 if the function was not defined.
-int
-    zs_vm_compile_chain (zs_vm_t *self, const char *name);
+    zs_vm_compile_unnest (zs_vm_t *self);
 
 //  Return input pipe for the execution context
 zs_pipe_t *
