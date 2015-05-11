@@ -29,6 +29,7 @@ EXTRA_DIST = \
     zs_lex_fsm.h \
     zs_repl_fsm.h \
     zs_repl_lib.h \
+    zs_suffices.h \
     version.sh
 
 include $(srcdir)/src/Makemodule.am

@@ -67,12 +67,22 @@ bool
 //  Return next value off pipe as number; if the value is a string it's
 //  converted to a number, quite brutally.
 int64_t
-    zs_pipe_get_number (zs_pipe_t *self);
+    zs_pipe_dequeue_number (zs_pipe_t *self);
 
 //  Return next value off pipe as string (converting if needed)
 //  Caller should not modify value; this is managed by pipe class.
 const char *
-    zs_pipe_get_string (zs_pipe_t *self);
+    zs_pipe_dequeue_string (zs_pipe_t *self);
+
+//  Return last value off pipe as number; if the value is a string it's
+//  converted to a number, quite brutally.
+int64_t
+    zs_pipe_pop_number (zs_pipe_t *self);
+
+//  Return next value off pipe as string (converting if needed). Caller
+//  should not modify value; this is managed by pipe class.
+const char *
+    zs_pipe_pop_string (zs_pipe_t *self);
 
 //  Return pipe contents, as string. Caller must free it when done. Values are
 //  separated by spaces.

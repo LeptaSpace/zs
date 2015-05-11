@@ -1,0 +1,56 @@
+.output "$(class.name).h"
+/*  =========================================================================
+    $(class.name) - atomics
+
+    ** WARNING *************************************************************
+    THIS SOURCE FILE IS 100% GENERATED. If you edit this file, you will lose
+    your changes at the next build cycle. This is great for temporary printf
+    statements. DO NOT MAKE ANY CHANGES YOU WISH TO KEEP. The correct places
+    for commits are:
+
+     * The XML model used for this code generation: $(filename), or
+     * The code generation script that built this file: $(script)
+    ************************************************************************
+.   for class.license
+    $(string.trim (license.):block                                         )
+.   endfor
+    =========================================================================
+*/
+
+#ifndef $(CLASS.NAME)_H_INCLUDED
+#define $(CLASS.NAME)_H_INCLUDED
+
+.for class.atomic
+static int
+s_$(name:) (zs_vm_t *self)
+{
+    $(string.trim (field.)?'':left)
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "$(name:)", "$(string.trim (.?''):left)");
+    else
+    if (zs_pipe_size (zs_vm_output (self))) {
+        //  Unary function
+        int64_t number = zs_pipe_pop_number (zs_vm_output (self)) * $(value);
+        zs_pipe_push_number (zs_vm_output (self), number);
+    }
+    else {
+        //  List function
+        while (zs_pipe_size (zs_vm_input (self))) {
+            int64_t number = zs_pipe_pop_number (zs_vm_input (self)) * $(value);
+            zs_pipe_push_number (zs_vm_output (self), number);
+        }
+    }
+    return 0;
+}
+
+.endfor
+
+
+static void
+s_register_$(class.name) (zs_vm_t *self)
+{
+.for class.atomic
+    zs_vm_probe (self, s_$(name:));
+.endfor
+}
+#endif

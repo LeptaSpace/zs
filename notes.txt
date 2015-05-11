@@ -1,4 +1,11 @@
+
+
+
 loops/conditionals
+
+pipe data types
+    whole vs. real numbers
+
 
 0, 1 many - conditionals and loops are the same; we repeat a function N times
 
@@ -18,56 +25,9 @@ Comments
     #   starts a comment until the end of the line
         no multiline comments
 
-We need an explicit character to control pipes:
-
-    f1 f2
-        f2 gets same input as f1
-        outputs to same output
-
-    f1, f2
-        f2 gets input from f1
-        i.e. uses its pipe
-
-    f1, f2. f3, f4.
-        f1 and f3 start new sentences and get fresh pipes
-
-    1 2 3 temperature, echo
-    echo (1 2 3 temperature)
-
-    123,233 is a number IFF the commas are in the right place
-    123, 343 is two tokens and is illegal (343 isn't a function)
-    123,echo is legal
-
-
 Numbers and units
 
     expressive number support
-
-Exponentiation functions
-    Atomics that changes the pipe head
-
-    Ki Mi Gi Ti Pi Ei
-
-    http://en.wikipedia.org/wiki/Metric_prefix
-
-    h k M G T P E Z Y
-    d c m u n p f a z y
-
-    123 k 1 k sum
-
-    should give
-    123000 1000 sum
-
-    Various forms
-    k (100 200 300)
-    100 200 300, k
-    100 200 300 k
-        -> how can 'k' tell the difference?
-
-
-    however...
-
-    1 M 2 K sum should give 1002000
 
 
 Multiline strings
@@ -79,9 +39,26 @@ Multiline strings
 some value
 >
 
+Multi-line indented strings
     <
     some value
     and another value
     and then more
     >
+
+
+
+******** DONE
+
+Exponentiation functions
+    Atomics that operate on last value in output
+
+    Ki Mi Gi Ti Pi Ei
+    h k M G T P E Z Y
+    d c m u n p f a z y
+
+    http://en.wikipedia.org/wiki/Metric_prefix
+
+    > 123 k 1 k, sum
+    124000
 

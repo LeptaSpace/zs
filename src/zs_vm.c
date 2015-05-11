@@ -637,7 +637,7 @@ s_sum (zs_vm_t *self)
     else {
         int64_t sum = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
-            sum += zs_pipe_get_number (zs_vm_input (self));
+            sum += zs_pipe_dequeue_number (zs_vm_input (self));
         zs_pipe_queue_number (zs_vm_output (self), sum);
     }
     return 0;
@@ -661,8 +661,8 @@ s_assert (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "assert", "Assert first two values are the same");
     else {
-        int64_t first = zs_pipe_get_number (zs_vm_input (self));
-        int64_t second = zs_pipe_get_number (zs_vm_input (self));
+        int64_t first = zs_pipe_dequeue_number (zs_vm_input (self));
+        int64_t second = zs_pipe_dequeue_number (zs_vm_input (self));
         if (first != second) {
             printf ("E: assertion failed, %" PRId64 " != %" PRId64 "\n", first, second);
             return -1;          //  Destroy the thread
