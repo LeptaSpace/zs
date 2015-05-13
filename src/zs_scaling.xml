@@ -1,4 +1,4 @@
-<class name = "zs_suffices"  script = "zs_suffices">
+<class name = "zs_scaling"  script = "zs_scaling">
     SI scaling functions, see http://en.wikipedia.org/wiki/Metric_prefix
     <atomic name = "Ki" value = "1024LL">
         Multiply by 2^10

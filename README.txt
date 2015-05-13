@@ -184,24 +184,41 @@ There seem to be two kinds of input to a function. One, the last single item pro
 
 Here's how we can write long numbers:
 
-    64 Gi
-    2 Pi
-    32 Ki
+    > 64 Gi
+    68719476736
+    > 2 Pi
+    2251799813685248
+    > 32 Ki
+    32768
 
 Where these functions operate on the most recent value. For now this means they treat the output pipe like a stack. It's not beautiful, so I'm looking for better abstractions.
 
 However these is also possible (the two forms do the same):
 
-    16 32 64, Gi
-    Gi (16 32 64)
+    > 16 32 64, Gi
+    17179869184 34359738368 68719476736
+    > Gi (16 32 64)
+    17179869184 34359738368 68719476736
 
-Here the Gi function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
+Here the scaling function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
 
-I implemented a bunch of these SI suffix functions, using GSL code generation to reduce the work. See [zs_suffices.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_suffices.gsl) and [zs_suffices.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_suffices.xml), which produce the source code in [zs_suffices.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_suffices.h). It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+The scaling functions work as constants, if they're used alone:
+
+    > Gi
+    1073741824
+
+There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z and y):
+
+    > 15 u
+    1.5e-05
+    > 1 m
+    0.001
+    > 1 a
+    1e-18
+
+I implemented these SI scaling functions using GSL code generation to reduce the work. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_scaling.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.xml), which produce the source code in [zs_scaling.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.h). It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
 
 I'm going to be using GSL and code generation aggressively in the tooling for this project. Expect a lot of state machines at the heart of more complex classes.
-
-*TODO: I need to add support for real numbers, to finish this piece of work (fractional SI suffices).*
 
 Our grammar thus has just a few elements:
 
@@ -220,6 +237,8 @@ The zs_lex state machine deals with parsing these different cases:
     123,456 123.456             #   Two numbers
     123, 456 123. 456           #   Four numbers, two sentences, three phrases
     123,echo                    #   Prints "123"
+
+Numbers are either whole numbers or real numbers. Wholes get coerced into real automatically as needed. To get the closest whole for a given real, use the 'whole' function.
 
 *TODO: write an FSM-based analyzer for numbers that handles the various forms we aim to support.*
 

@@ -17,11 +17,11 @@
 
     <model name = "zs_lex" />
     <model name = "zs_repl" />
-    <model name = "zs_suffices" />
+    <model name = "zs_scaling" />
 
     <extra name = "zs_lex_fsm.h" />
     <extra name = "zs_repl_fsm.h" />
     <extra name = "zs_repl_lib.h" />
-    <extra name = "zs_suffices.h" />
+    <extra name = "zs_scaling.h" />
 </project>
 
