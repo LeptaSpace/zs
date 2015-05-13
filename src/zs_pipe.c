@@ -19,42 +19,6 @@
 
 #include "zs_classes.h"
 
-//  These could be defined as quarks
-
-static double
-s_string_to_real (char *string)
-{
-    char *end = string;
-    double real = strtod (string, &end);
-    return end > string? real: ZS_NULL_REAL;
-}
-
-static int64_t
-s_string_to_whole (char *string)
-{
-    errno = 0;
-    int64_t whole = (int64_t) strtoll (string, NULL, 10);
-    return errno == 0? whole: ZS_NULL_WHOLE;
-}
-
-//  Longest int64_t value has 20 digits
-//  http://en.wikipedia.org/wiki/IEEE_754-1985 says max 24 chars
-#define NSTR_MAX    25          //  Plus one for null char
-
-static void
-s_whole_to_string (int64_t whole, char *result)
-{
-    int size = snprintf (result, NSTR_MAX, "%" PRId64, whole);
-    assert (size < NSTR_MAX);
-}
-
-static void
-s_real_to_string (double real, char *result)
-{
-    int size = snprintf (result, NSTR_MAX, "%g", real);
-    assert (size < NSTR_MAX);
-}
-
 
 //  This holds an item in our value queue
 typedef struct {
@@ -67,33 +31,14 @@ typedef struct {
 //  Structure of our class
 struct _zs_pipe_t {
     zlistx_t *values;           //  Simple stupid implementation
-    value_t *current;           //  Last held value
-    char number [NSTR_MAX];     //  Current numeric value as string
+    value_t *value;             //  Register value, if any
+    char string_value [30];     //  Register value as string
 };
 
 static value_t *
-s_value_new (int64_t whole, double real, const char *string)
+s_value_new (const char *string)
 {
     value_t *self = (value_t *) zmalloc (sizeof (value_t) + (string? strlen (string) + 1: 0));
-    if (self) {
-        if (whole != ZS_NULL_WHOLE) {
-            self->type = 'w';
-            self->whole = whole;
-        }
-        else
-        if (real != ZS_NULL_REAL) {
-            self->type = 'r';
-            self->real = real;
-        }
-        else
-        if (string) {
-            self->type = 's';
-            self->string = &self->type + 1;
-            strcpy (self->string, string);
-        }
-        else
-            assert (false);
-    }
     return self;
 }
 
@@ -106,44 +51,6 @@ s_value_destroy (value_t **self_p)
         free (self);
         *self_p = NULL;
     }
-}
-
-//  Convert value_t object to whole
-static int64_t
-s_value_whole (value_t *self)
-{
-    if (self) {
-        if (self->type == 'w')
-            return self->whole;
-        else
-        if (self->type == 'r')
-            return self->real > 0? (int64_t) (self->real + 0.5): (int64_t) (self->real - 0.5);
-        else
-        if (self->type == 's')
-            return s_string_to_whole (self->string);
-        else
-            assert (false);
-    }
-    return ZS_NULL_WHOLE;
-}
-
-//  Convert value_t object to real
-static double
-s_value_real (value_t *self)
-{
-    if (self) {
-        if (self->type == 'w')
-            return (double) self->whole;
-        else
-        if (self->type == 'r')
-            return self->real;
-        else
-        if (self->type == 's')
-            return s_string_to_real (self->string);
-        else
-            assert (false);
-    }
-    return ZS_NULL_WHOLE;
 }
 
 
@@ -173,7 +80,7 @@ zs_pipe_destroy (zs_pipe_t **self_p)
     if (*self_p) {
         zs_pipe_t *self = *self_p;
         zlistx_destroy (&self->values);
-        s_value_destroy (&self->current);
+        s_value_destroy (&self->value);
         free (self);
         *self_p = NULL;
     }
@@ -181,165 +88,262 @@ zs_pipe_destroy (zs_pipe_t **self_p)
 
 
 //  ---------------------------------------------------------------------------
-//  Send a whole whole to the pipe; values are sent and received in
-//  FIFO order, except for the "pull" method (see below), which pulls
-//  back the last sent value.
+//  Sets pipe register to contain a specified whole number; any previous
+//  value in the register is lost.
 
 void
-zs_pipe_whole_send (zs_pipe_t *self, int64_t whole)
+zs_pipe_set_whole (zs_pipe_t *self, int64_t whole)
 {
-    zlistx_add_end (self->values, s_value_new (whole, ZS_NULL_REAL, NULL));
+    if (!self->value)
+        self->value = s_value_new (NULL);
+    self->value->type = 'w';
+    self->value->whole = whole;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Receive the next whole whole from the pipe. If the pipe is empty or
-//  next value cannot be treated as a whole whole, returns ZS_NULL_WHOLE.
-//  This call never blocks.
-
-int64_t
-zs_pipe_whole_recv (zs_pipe_t *self)
-{
-    s_value_destroy (&self->current);
-    self->current = (value_t *) zlistx_detach (self->values, NULL);
-
-    return self->current? s_value_whole (self->current): ZS_NULL_WHOLE;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Pull the last sent whole whole from the pipe. Returns the value of the
-//  whole whole or ZS_NULL_WHOLE if the last value could not be converted,
-//  or the pipe was empty.
-
-int64_t
-zs_pipe_whole_pull (zs_pipe_t *self)
-{
-    s_value_destroy (&self->current);
-    if (zlistx_last (self->values))
-        self->current = (value_t *) zlistx_detach (self->values, zlistx_cursor (self->values));
-
-    return self->current? s_value_whole (self->current): ZS_NULL_WHOLE;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Send a real whole to the pipe; values are sent and received in
-//  FIFO order, except for the "pull" method (see below), which pulls
-//  back the last sent value.
+//  Sets pipe register to contain a specified real number; any previous
+//  value in the register is lost.
 
 void
-zs_pipe_real_send (zs_pipe_t *self, double real)
+zs_pipe_set_real (zs_pipe_t *self, double real)
 {
-    zlistx_add_end (self->values, s_value_new (ZS_NULL_WHOLE, real, NULL));
+    if (!self->value)
+        self->value = s_value_new (NULL);
+
+    self->value->type = 'r';
+    self->value->real = real;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Receive the next real whole from the pipe. If the pipe is empty or
-//  next value cannot be treated as a real whole, returns ZS_NULL_REAL.
-//  This call never blocks.
-
-double
-zs_pipe_real_recv (zs_pipe_t *self)
-{
-    s_value_destroy (&self->current);
-    self->current = (value_t *) zlistx_detach (self->values, NULL);
-
-    return self->current? s_value_real (self->current): ZS_NULL_REAL;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Pull the last sent real whole from the pipe. Returns the value of the
-//  real whole or ZS_NULL_REAL if the last value could not be converted,
-//  or the pipe was empty.
-
-double
-zs_pipe_real_pull (zs_pipe_t *self)
-{
-    s_value_destroy (&self->current);
-    if (zlistx_last (self->values))
-        self->current = (value_t *) zlistx_detach (self->values, zlistx_cursor (self->values));
-
-    return self->current? s_value_real (self->current): ZS_NULL_REAL;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Send a string to the pipe; values are sent and received in FIFO order,
-//  except for the "pull" method (see below), which pulls back the last sent
-//  value.
+//  Sets pipe register to contain a specified string; any previous value
+//  in the register is lost.
 
 void
-zs_pipe_string_send (zs_pipe_t *self, const char *string)
+zs_pipe_set_string (zs_pipe_t *self, const char *string)
 {
-    zlistx_add_end (self->values, s_value_new (ZS_NULL_WHOLE, ZS_NULL_REAL, string));
+    if (!self->value
+    ||  self->value->type != 's'
+    ||  strlen (self->value->string) < strlen (string)) {
+        s_value_destroy (&self->value);
+        self->value = s_value_new (string);
+        self->value->type = 's';
+        self->value->string = &self->value->type + 1;
+    }
+    strcpy (self->value->string, string);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Receive the next string from the pipe. If the pipe is empty, returns NULL.
-//  This call never blocks. Caller should not modify value; this is managed by
-//  the pipe class.
+//  Sends current pipe register to the pipe; returns 0 if successful, or
+//  -1 if the pipe register was empty. Clears the register.
 
-char *
-zs_pipe_string_recv (zs_pipe_t *self)
+int
+zs_pipe_send (zs_pipe_t *self)
 {
-    s_value_destroy (&self->current);
-    self->current = (value_t *) zlistx_detach (self->values, NULL);
-
-    if (self->current) {
-        if (self->current->type == 'w') {
-            s_whole_to_string (self->current->whole, self->number);
-            return self->number;
-        }
-        else
-        if (self->current->type == 'r') {
-            s_real_to_string (self->current->real, self->number);
-            return self->number;
-        }
-        else
-        if (self->current->type == 's')
-            return self->current->string;
-        else
-            assert (false);
+    if (self->value) {
+        zlistx_add_end (self->values, self->value);
+        self->value = NULL;
+        return 0;
     }
     else
-        return NULL;
+        return -1;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Pull the last sent string from the pipe. Returns the value of the string
-//  or NULL if the pipe was empty. Caller should not modify value; this is
-//  managed by the pipe class.
+//  Send whole number to pipe; this wipes the current pipe register.
+
+void
+zs_pipe_send_whole (zs_pipe_t *self, int64_t whole)
+{
+    zs_pipe_set_whole (self, whole);
+    zs_pipe_send (self);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Send real number to pipe; this wipes the current pipe register.
+
+void
+zs_pipe_send_real (zs_pipe_t *self, double real)
+{
+    zs_pipe_set_real (self, real);
+    zs_pipe_send (self);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Send string to pipe; this wipes the current pipe register.
+
+void
+zs_pipe_send_string (zs_pipe_t *self, const char *string)
+{
+    zs_pipe_set_string (self, string);
+    zs_pipe_send (self);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Receives the next value off the pipe, into the register. Any previous
+//  value in the register is lost. Returns 0 if a value was successfully
+//  received. If the pipe was empty, returns -1. This method does not block.
+
+int
+zs_pipe_recv (zs_pipe_t *self)
+{
+    s_value_destroy (&self->value);
+    self->value = (value_t *) zlistx_detach (self->values, NULL);
+    return self->value? 0: -1;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Pulls the last-sent value off the pipe, into the register. Any previous
+//  value in the register is lost. Returns 0 if a value was successfully
+//  received. If the pipe was empty, returns -1. This method does not block.
+
+int
+zs_pipe_pull (zs_pipe_t *self)
+{
+    s_value_destroy (&self->value);
+    if (zlistx_last (self->values))
+        self->value = (value_t *) zlistx_detach (self->values,
+                                                 zlistx_cursor (self->values));
+    return self->value? 0: -1;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Returns the type of the register, 'w' for whole, 'r' for real, or 's' for
+//  string. Returns -1 if the register is empty.
+
+char
+zs_pipe_type (zs_pipe_t *self)
+{
+    return self->value? self->value->type: -1;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Returns the value of the register, coerced to a whole number. This can
+//  cause loss of precision. If no conversion was possible, or the register
+//  is empty, returns zero.
+
+int64_t
+zs_pipe_whole (zs_pipe_t *self)
+{
+    if (self->value) {
+        if (self->value->type == 'w')
+            return self->value->whole;
+        else
+        if (self->value->type == 'r')
+            return self->value->real > 0? (int64_t) (self->value->real + 0.5): (int64_t) (self->value->real - 0.5);
+        else
+        if (self->value->type == 's') {
+            errno = 0;
+            int64_t whole = (int64_t) strtoll (self->value->string, NULL, 10);
+            return errno == 0? whole: 0;
+        }
+    }
+    return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Returns the value of the register, coerced to a real number. This can
+//  cause loss of precision. If no conversion was possible, or the register
+//  is empty, returns zero.
+
+double
+zs_pipe_real (zs_pipe_t *self)
+{
+    if (self->value) {
+        if (self->value->type == 'w')
+            return (double) self->value->whole;
+        else
+        if (self->value->type == 'r')
+            return self->value->real;
+        else
+        if (self->value->type == 's') {
+            char *end = self->value->string;
+            double real = strtod (self->value->string, &end);
+            return end > self->value->string? real: 0;
+        }
+    }
+    return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Returns the value of the register, coerced to a string if needed. If the
+//  register is empty, returns an empty string "". The caller must not modify
+//  or free the string.
 
 char *
-zs_pipe_string_pull (zs_pipe_t *self)
+zs_pipe_string (zs_pipe_t *self)
 {
-    s_value_destroy (&self->current);
-    if (zlistx_last (self->values))
-        self->current = (value_t *) zlistx_detach (self->values, zlistx_cursor (self->values));
-
-    if (self->current) {
-        if (self->current->type == 'w') {
-            s_whole_to_string (self->current->whole, self->number);
-            return self->number;
+    if (self->value) {
+        if (self->value->type == 'w') {
+            snprintf (self->string_value, sizeof (self->string_value),
+                      "%" PRId64, self->value->whole);
+            return self->string_value;
         }
         else
-        if (self->current->type == 'r') {
-            s_real_to_string (self->current->real, self->number);
-            return self->number;
+        if (self->value->type == 'r') {
+            snprintf (self->string_value, sizeof (self->string_value),
+                      "%g", self->value->real);
+            return self->string_value;
         }
         else
-        if (self->current->type == 's')
-            return self->current->string;
-        else
-            assert (false);
+        if (self->value->type == 's')
+            return self->value->string;
     }
+    return "";
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a whole if needed. If there is no value to receive, returns 0.
+
+int64_t
+zs_pipe_recv_whole (zs_pipe_t *self)
+{
+    if (zs_pipe_recv (self) == 0)
+        return zs_pipe_whole (self);
     else
-        return NULL;
+        return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a real if needed. If there is no value to receive, returns 0.
+
+double
+zs_pipe_recv_real (zs_pipe_t *self)
+{
+    if (zs_pipe_recv (self) == 0)
+        return zs_pipe_real (self);
+    else
+        return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a string if needed. If there is no value to receive, returns "". The
+//  The caller must not modify or free the string.
+
+char *
+zs_pipe_recv_string (zs_pipe_t *self)
+{
+    if (zs_pipe_recv (self) == 0)
+        return zs_pipe_string (self);
+    else
+        return 0;
 }
 
 
@@ -361,47 +365,19 @@ zs_pipe_size (zs_pipe_t *self)
 char *
 zs_pipe_paste (zs_pipe_t *self)
 {
-    //  Calculate length of resulting string
-    size_t result_size = 1;         //  For final NULL
-    value_t *value = (value_t *) zlistx_first (self->values);
-    char number [NSTR_MAX];         //  Current numeric value as string
-    while (value) {
-        if (value->type == 'w') {
-            s_whole_to_string (value->whole, number);
-            result_size += strlen (number) + 1;
-        }
-        else
-        if (value->type == 'r') {
-            s_real_to_string (value->real, number);
-            result_size += strlen (number) + 1;
-        }
-        else
-        if (value->type == 's')
-            result_size += strlen (value->string) + 1;
-
-        value = (value_t *) zlistx_next (self->values);
+    //  We use an extensible CZMQ chunk
+    zchunk_t *chunk = zchunk_new (NULL, 256);
+    while (zs_pipe_recv (self) == 0) {
+        char *string = zs_pipe_string (self);
+        if (zchunk_size (chunk))
+            zchunk_extend (chunk, " ", 1);
+        zchunk_extend (chunk, string, strlen (string));
     }
-    //  Now format the result
-    char *result = (char *) zmalloc (result_size);
-    value = (value_t *) zlistx_first (self->values);
-    while (value) {
-        if (*result)
-            strcat (result, " ");
-        if (value->type == 'w') {
-            s_whole_to_string (value->whole, number);
-            strcat (result, number);
-        }
-        else
-        if (value->type == 'r') {
-            s_real_to_string (value->real, number);
-            strcat (result, number);
-        }
-        else
-        if (value->type == 's')
-            strcat (result, value->string);
-
-        value = (value_t *) zlistx_next (self->values);
-    }
+    size_t result_size = zchunk_size (chunk);
+    char *result = (char *) malloc (result_size + 1);
+    memcpy (result, (char *) zchunk_data (chunk), result_size);
+    result [result_size] = 0;
+    zchunk_destroy (&chunk);
     return result;
 }
 
@@ -429,23 +405,29 @@ zs_pipe_test (bool verbose)
     //  @selftest
     zs_pipe_t *pipe = zs_pipe_new ();
 
-    zs_pipe_whole_send (pipe, 12345);
-    zs_pipe_string_send (pipe, "Hello World");
+    zs_pipe_send_whole (pipe, 12345);
+    zs_pipe_send_string (pipe, "Hello World");
     assert (zs_pipe_size (pipe) == 2);
 
-    assert (zs_pipe_whole_recv (pipe) == 12345);
-    const char *string = zs_pipe_string_recv (pipe);
-    puts (string);
+    int rc = zs_pipe_recv (pipe);
+    assert (rc == 0);
+    int64_t whole = zs_pipe_whole (pipe);
+    assert (whole == 12345);
+    rc = zs_pipe_recv (pipe);
+    assert (rc == 0);
+    const char *string = zs_pipe_string (pipe);
     assert (streq (string, "Hello World"));
     assert (zs_pipe_size (pipe) == 0);
 
     char *results = zs_pipe_paste (pipe);
     assert (streq (results, ""));
 
-    zs_pipe_whole_send (pipe, 4);
-    zs_pipe_whole_send (pipe, 5);
-    zs_pipe_whole_send (pipe, 6);
+    zs_pipe_send_whole (pipe, 4);
+    zs_pipe_send_whole (pipe, 5);
+    zs_pipe_send_whole (pipe, 6);
     assert (zs_pipe_size (pipe) == 3);
+    whole = zs_pipe_recv_whole (pipe);
+    assert (whole == 4);
     zs_pipe_purge (pipe);
     assert (zs_pipe_size (pipe) == 0);
 

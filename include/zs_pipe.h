@@ -23,8 +23,6 @@ extern "C" {
 #ifndef ZS_PIPE_T_DEFINED
 typedef struct _zs_pipe_t zs_pipe_t;
 #endif
-#define ZS_NULL_WHOLE   INT64_MIN
-#define ZS_NULL_REAL    DBL_MIN
 
 //  @interface
 //  Create a new zs_pipe, return the reference if successful, or NULL
@@ -36,59 +34,100 @@ zs_pipe_t *
 void
     zs_pipe_destroy (zs_pipe_t **self_p);
 
-//  Send a whole number to the pipe; values are sent and received in
-//  FIFO order, except for the "pull" method (see below), which pulls
-//  back the last sent value.
+//  Sets pipe register to contain a specified whole number; any previous
+//  value in the register is lost.
 void
-    zs_pipe_whole_send (zs_pipe_t *self, int64_t whole);
+    zs_pipe_set_whole (zs_pipe_t *self, int64_t whole);
 
-//  Receive the next whole number from the pipe. If the pipe is empty or
-//  next value cannot be treated as a whole number, returns ZS_NULL_WHOLE.
-//  This call never blocks.
+//  Sets pipe register to contain a specified real number; any previous
+//  value in the register is lost.
+void
+    zs_pipe_set_real (zs_pipe_t *self, double real);
+
+//  Sets pipe register to contain a specified string; any previous value
+//  in the register is lost.
+void
+    zs_pipe_set_string (zs_pipe_t *self, const char *string);
+
+//  Sends current pipe register to the pipe; returns 0 if successful, or
+//  -1 if the pipe register was empty. Clears the register.
+int
+    zs_pipe_send (zs_pipe_t *self);
+
+//  Send whole number to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_whole (zs_pipe_t *self, int64_t whole);
+
+//  Send real number to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_real (zs_pipe_t *self, double real);
+
+//  Send string to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_string (zs_pipe_t *self, const char *string);
+
+//  Send whole number to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_whole (zs_pipe_t *self, int64_t whole);
+
+//  Send real number to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_real (zs_pipe_t *self, double real);
+
+//  Send string to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_string (zs_pipe_t *self, const char *string);
+
+//  Receives the next value off the pipe, into the register. Any previous
+//  value in the register is lost. Returns 0 if a value was successfully
+//  received. If the pipe was empty, returns -1. This method does not block.
+int
+    zs_pipe_recv (zs_pipe_t *self);
+
+//  Pulls the last-sent value off the pipe, into the register. Any previous
+//  value in the register is lost. Returns 0 if a value was successfully
+//  received. If the pipe was empty, returns -1. This method does not block.
+int
+    zs_pipe_pull (zs_pipe_t *self);
+
+//  Returns the type of the register, 'w' for whole, 'r' for real, or 's' for
+//  string. Returns -1 if the register is empty.
+char
+    zs_pipe_type (zs_pipe_t *self);
+
+//  Returns the value of the register, coerced to a whole number. This can
+//  cause loss of precision. If no conversion was possible, or the register
+//  is empty, returns zero.
 int64_t
-    zs_pipe_whole_recv (zs_pipe_t *self);
+    zs_pipe_whole (zs_pipe_t *self);
 
-//  Pull the last sent whole number from the pipe. Returns the value of the
-//  whole number or ZS_NULL_WHOLE if the last value could not be converted,
-//  or the pipe was empty.
+//  Returns the value of the register, coerced to a real number. This can
+//  cause loss of precision. If no conversion was possible, or the register
+//  is empty, returns zero.
+double
+    zs_pipe_real (zs_pipe_t *self);
+
+//  Returns the value of the register, coerced to a string if needed. If the
+//  register is empty, returns an empty string "". The caller must not modify
+//  or free the string.
+char *
+    zs_pipe_string (zs_pipe_t *self);
+
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a whole if needed. If there is no value to receive, returns 0.
 int64_t
-    zs_pipe_whole_pull (zs_pipe_t *self);
+    zs_pipe_recv_whole (zs_pipe_t *self);
 
-//  Send a real number to the pipe; values are sent and received in
-//  FIFO order, except for the "pull" method (see below), which pulls
-//  back the last sent value.
-void
-    zs_pipe_real_send (zs_pipe_t *self, double real);
-
-//  Receive the next real number from the pipe. If the pipe is empty or
-//  next value cannot be treated as a real number, returns ZS_NULL_REAL.
-//  This call never blocks.
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a real if needed. If there is no value to receive, returns 0.
 double
-    zs_pipe_real_recv (zs_pipe_t *self);
+    zs_pipe_recv_real (zs_pipe_t *self);
 
-//  Pull the last sent real number from the pipe. Returns the value of the
-//  real number or ZS_NULL_REAL if the last value could not be converted,
-//  or the pipe was empty.
-double
-    zs_pipe_real_pull (zs_pipe_t *self);
-
-//  Send a string to the pipe; values are sent and received in FIFO order,
-//  except for the "pull" method (see below), which pulls back the last sent
-//  value.
-void
-    zs_pipe_string_send (zs_pipe_t *self, const char *string);
-
-//  Receive the next string from the pipe. If the pipe is empty, returns NULL.
-//  This call never blocks. Caller should not modify value; this is managed by
-//  the pipe class.
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a string if needed. If there is no value to receive, returns "". The
+//  The caller must not modify or free the string.
 char *
-    zs_pipe_string_recv (zs_pipe_t *self);
-
-//  Pull the last sent string from the pipe. Returns the value of the string
-//  or NULL if the pipe was empty. Caller should not modify value; this is
-//  managed by the pipe class.
-char *
-    zs_pipe_string_pull (zs_pipe_t *self);
+    zs_pipe_recv_string (zs_pipe_t *self);
 
 //  Return number of values in pipe (0 or more)
 size_t

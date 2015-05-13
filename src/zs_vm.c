@@ -575,7 +575,7 @@ zs_vm_run (zs_vm_t *self)
         if (opcode == VM_WHOLE) {
             int64_t whole;
             memcpy (&whole, self->code + needle, sizeof (whole));
-            zs_pipe_whole_send (self->output, whole);
+            zs_pipe_send_whole (self->output, whole);
             if (self->verbose)
                 printf ("D [%04zd]: whole value=%" PRId64 "\n", needle, whole);
             needle += sizeof (whole);
@@ -584,7 +584,7 @@ zs_vm_run (zs_vm_t *self)
         if (opcode == VM_REAL) {
             double real;
             memcpy (&real, self->code + needle, sizeof (real));
-            zs_pipe_real_send (self->output, real);
+            zs_pipe_send_real (self->output, real);
             if (self->verbose)
                 printf ("D [%04zd]: real value=%g\n", needle, real);
             needle += sizeof (real);
@@ -592,7 +592,7 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_STRING) {
             char *string = (char *) self->code + needle;
-            zs_pipe_string_send (self->output, string);
+            zs_pipe_send_string (self->output, string);
             if (self->verbose)
                 printf ("D [%04zd]: string value=%s\n", needle, string);
             needle += strlen (string) + 1;
@@ -661,8 +661,8 @@ s_sum (zs_vm_t *self)
     else {
         int64_t sum = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
-            sum += zs_pipe_whole_recv (zs_vm_input (self));
-        zs_pipe_whole_send (zs_vm_output (self), sum);
+            sum += zs_pipe_recv_whole (zs_vm_input (self));
+        zs_pipe_send_whole (zs_vm_output (self), sum);
     }
     return 0;
 }
@@ -673,7 +673,7 @@ s_count (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "count", "Eat and count all the values");
     else {
-        zs_pipe_whole_send (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
+        zs_pipe_send_whole (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
         zs_pipe_purge (zs_vm_input (self));
     }
     return 0;
@@ -685,8 +685,8 @@ s_assert (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "assert", "Assert first two values are the same");
     else {
-        int64_t first = zs_pipe_whole_recv (zs_vm_input (self));
-        int64_t second = zs_pipe_whole_recv (zs_vm_input (self));
+        int64_t first = zs_pipe_recv_whole (zs_vm_input (self));
+        int64_t second = zs_pipe_recv_whole (zs_vm_input (self));
         if (first != second) {
             printf ("E: assertion failed, %" PRId64 " != %" PRId64 "\n", first, second);
             return -1;          //  Destroy the thread
@@ -701,7 +701,7 @@ s_year (zs_vm_t *self)
     if (zs_vm_probing (self))
         zs_vm_register (self, "year", "Tell us what year it is");
     else
-        zs_pipe_whole_send (zs_vm_output (self), 2015);
+        zs_pipe_send_whole (zs_vm_output (self), 2015);
     return 0;
 }
 
