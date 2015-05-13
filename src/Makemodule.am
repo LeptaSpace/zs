@@ -18,7 +18,6 @@ pkgconfig_DATA = src/libzs.pc
 include_HEADERS = \
     include/zs.h \
     include/zs_pipe.h \
-    include/zs_vm.h \
     include/zs_repl.h \
     include/zs_library.h
 

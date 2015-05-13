@@ -34,6 +34,9 @@
         <action name = "compile define" />
         <action name = "get next token" />
     </event>
+    <event name = "completed">
+        <action name = "signal completed" />
+    </event>
 </state>
 
 <state name = "building shell" inherit = "building function">

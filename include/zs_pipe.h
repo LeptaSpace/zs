@@ -34,60 +34,109 @@ zs_pipe_t *
 void
     zs_pipe_destroy (zs_pipe_t **self_p);
 
-//  Add numeric value to end of pipe, after any existing values
+//  Sets pipe register to contain a specified whole number; any previous
+//  value in the register is lost.
 void
-    zs_pipe_queue_number (zs_pipe_t *self, int64_t number);
+    zs_pipe_set_whole (zs_pipe_t *self, int64_t whole);
 
-//  Add numeric value to start of pipe, before any existing values. Use this
-//  if you want to modify and push back a numeric value.
+//  Sets pipe register to contain a specified real number; any previous
+//  value in the register is lost.
 void
-    zs_pipe_push_number (zs_pipe_t *self, int64_t number);
+    zs_pipe_set_real (zs_pipe_t *self, double real);
 
-//  Add string value to end of pipe, after any existing values
+//  Sets pipe register to contain a specified string; any previous value
+//  in the register is lost.
 void
-    zs_pipe_queue_string (zs_pipe_t *self, const char *string);
+    zs_pipe_set_string (zs_pipe_t *self, const char *string);
 
-//  Add string value to start of pipe, before any existing values. Use this
-//  if you want to modify and push back a numeric value.
+//  Sends current pipe register to the pipe; returns 0 if successful, or
+//  -1 if the pipe register was empty. Clears the register.
+int
+    zs_pipe_send (zs_pipe_t *self);
+
+//  Send whole number to pipe; this wipes the current pipe register.
 void
-    zs_pipe_push_string (zs_pipe_t *self, const char *string);
+    zs_pipe_send_whole (zs_pipe_t *self, int64_t whole);
 
-//  Return number of values in pipe
+//  Send real number to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_real (zs_pipe_t *self, double real);
+
+//  Send string to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_string (zs_pipe_t *self, const char *string);
+
+//  Send whole number to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_whole (zs_pipe_t *self, int64_t whole);
+
+//  Send real number to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_real (zs_pipe_t *self, double real);
+
+//  Send string to pipe; this wipes the current pipe register.
+void
+    zs_pipe_send_string (zs_pipe_t *self, const char *string);
+
+//  Receives the next value off the pipe, into the register. Any previous
+//  value in the register is lost. Returns 0 if a value was successfully
+//  received. If the pipe was empty, returns -1. This method does not block.
+int
+    zs_pipe_recv (zs_pipe_t *self);
+
+//  Pulls the last-sent value off the pipe, into the register. Any previous
+//  value in the register is lost. Returns 0 if a value was successfully
+//  received. If the pipe was empty, returns -1. This method does not block.
+int
+    zs_pipe_pull (zs_pipe_t *self);
+
+//  Returns the type of the register, 'w' for whole, 'r' for real, or 's' for
+//  string. Returns -1 if the register is empty.
+char
+    zs_pipe_type (zs_pipe_t *self);
+
+//  Returns the value of the register, coerced to a whole number. This can
+//  cause loss of precision. If no conversion was possible, or the register
+//  is empty, returns zero.
+int64_t
+    zs_pipe_whole (zs_pipe_t *self);
+
+//  Returns the value of the register, coerced to a real number. This can
+//  cause loss of precision. If no conversion was possible, or the register
+//  is empty, returns zero.
+double
+    zs_pipe_real (zs_pipe_t *self);
+
+//  Returns the value of the register, coerced to a string if needed. If the
+//  register is empty, returns an empty string "". The caller must not modify
+//  or free the string.
+char *
+    zs_pipe_string (zs_pipe_t *self);
+
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a whole if needed. If there is no value to receive, returns 0.
+int64_t
+    zs_pipe_recv_whole (zs_pipe_t *self);
+
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a real if needed. If there is no value to receive, returns 0.
+double
+    zs_pipe_recv_real (zs_pipe_t *self);
+
+//  Receives the next value off the pipe, into the register, and coerces it
+//  to a string if needed. If there is no value to receive, returns "". The
+//  The caller must not modify or free the string.
+char *
+    zs_pipe_recv_string (zs_pipe_t *self);
+
+//  Return number of values in pipe (0 or more)
 size_t
     zs_pipe_size (zs_pipe_t *self);
 
-//  Return true if next value off pipe is numeric
-bool
-    zs_pipe_isnumber (zs_pipe_t *self);
-
-//  Return true if next value off pipe is numeric
-bool
-    zs_pipe_isstring (zs_pipe_t *self);
-
-//  Return next value off pipe as number; if the value is a string it's
-//  converted to a number, quite brutally.
-int64_t
-    zs_pipe_dequeue_number (zs_pipe_t *self);
-
-//  Return next value off pipe as string (converting if needed)
-//  Caller should not modify value; this is managed by pipe class.
-const char *
-    zs_pipe_dequeue_string (zs_pipe_t *self);
-
-//  Return last value off pipe as number; if the value is a string it's
-//  converted to a number, quite brutally.
-int64_t
-    zs_pipe_pop_number (zs_pipe_t *self);
-
-//  Return next value off pipe as string (converting if needed). Caller
-//  should not modify value; this is managed by pipe class.
-const char *
-    zs_pipe_pop_string (zs_pipe_t *self);
-
 //  Return pipe contents, as string. Caller must free it when done. Values are
-//  separated by spaces.
+//  separated by spaces. This empties the pipe.
 char *
-    zs_pipe_contents (zs_pipe_t *self);
+    zs_pipe_paste (zs_pipe_t *self);
 
 //  Empty the pipe of any values it might contain.
 void

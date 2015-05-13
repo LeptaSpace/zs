@@ -1,21 +1,21 @@
 <class name = "zs_suffices"  script = "zs_suffices">
     SI scaling functions, see http://en.wikipedia.org/wiki/Metric_prefix
-    <atomic name = "Ki" value = "1024">
+    <atomic name = "Ki" value = "1024LL">
         Multiply by 2^10
     </atomic>
-    <atomic name = "Mi" value = "1024 * 1024">
+    <atomic name = "Mi" value = "1024LL * 1024LL">
         Multiply by 2^20
     </atomic>
-    <atomic name = "Gi" value = "1024 * 1024 * 1024">
+    <atomic name = "Gi" value = "1024LL * 1024LL * 1024LL">
         Multiply by 2^30
     </atomic>
-    <atomic name = "Ti" value = "1024 * 1024 * 1024 * 1024">
+    <atomic name = "Ti" value = "1024LL * 1024LL * 1024LL * 1024LL">
         Multiply by 2^40
     </atomic>
-    <atomic name = "Pi" value = "1024 * 1024 * 1024 * 1024 * 1024">
+    <atomic name = "Pi" value = "1024LL * 1024LL * 1024LL * 1024LL * 1024LL">
         Multiply by 2^50
     </atomic>
-    <atomic name = "Ei" value = "1024 * 1024 * 1024 * 1024 * 1024 * 1024">
+    <atomic name = "Ei" value = "1024LL * 1024LL * 1024LL * 1024LL * 1024LL * 1024LL">
         Multiply by 2^60
     </atomic>
     <atomic name = "da" value = "10">
@@ -28,46 +28,55 @@
         Multiply by 1000
     </atomic>
     <atomic name = "M" value = "1000000">
-        Multiply by 1E6
+        Multiply by 10^6
     </atomic>
     <atomic name = "G" value = "1E9">
-        Multiply by 1E9
+        Multiply by 10^9
     </atomic>
     <atomic name = "T" value = "1E12">
-        Multiply by 1E12
+        Multiply by 10^12
     </atomic>
     <atomic name = "P" value = "1E15">
-        Multiply by 1E15
+        Multiply by 10^15
     </atomic>
     <atomic name = "E" value = "1E18">
-        Multiply by 1E18
+        Multiply by 10^18
     </atomic>
     <atomic name = "Z" value = "1E21">
-        Multiply by 1E21
+        Multiply by 10^21
     </atomic>
     <atomic name = "Y" value = "1E24">
-        Multiply by 1E24
+        Multiply by 10^24
     </atomic>
-    <!--
-    <atomic name = "d" value = "0.1">
+
+    <atomic name = "d" value = "0.1" type = "real">
+        Divide by 10 (real)
     </atomic>
-    <atomic name = "c" value = "0.01">
+    <atomic name = "c" value = "0.01" type = "real">
+        Divide by 100 (real)
     </atomic>
-    <atomic name = "m" value = "1E-3">
+    <atomic name = "m" value = "1E-3" type = "real">
+        Divide by 1000 (real)
     </atomic>
-    <atomic name = "u" value = "1E-6">
+    <atomic name = "u" value = "1E-6" type = "real">
+        Divide by 10^6 (real)
     </atomic>
-    <atomic name = "n" value = "1E-9">
+    <atomic name = "n" value = "1E-9" type = "real">
+        Divide by 10^9 (real)
     </atomic>
-    <atomic name = "p" value = "1E-12">
+    <atomic name = "p" value = "1E-12" type = "real">
+        Divide by 10^12 (real)
     </atomic>
-    <atomic name = "f" value = "1E-15">
+    <atomic name = "f" value = "1E-15" type = "real">
+        Divide by 10^15 (real)
     </atomic>
-    <atomic name = "a" value = "1E-18">
+    <atomic name = "a" value = "1E-18" type = "real">
+        Divide by 10^18 (real)
     </atomic>
-    <atomic name = "z" value = "1E-21">
+    <atomic name = "z" value = "1E-21" type = "real">
+        Divide by 10^21 (real)
     </atomic>
-    <atomic name = "y" value = "1E-24">
+    <atomic name = "y" value = "1E-24" type = "real">
+        Divide by 10^24 (real)
     </atomic>
-    -->
 </class>

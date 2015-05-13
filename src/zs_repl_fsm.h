@@ -31,8 +31,8 @@ typedef enum {
     simple_fn_event = 3,
     complex_fn_event = 4,
     define_fn_event = 5,
-    close_list_event = 6,
-    completed_event = 7,
+    completed_event = 6,
+    close_list_event = 7,
     phrase_event = 8,
     sentence_event = 9,
     finished_event = 10,
@@ -57,8 +57,8 @@ s_event_name [] = {
     "simple_fn",
     "complex_fn",
     "define_fn",
-    "close_list",
     "completed",
+    "close_list",
     "phrase",
     "sentence",
     "finished",
@@ -73,11 +73,11 @@ static void compile_string (zs_repl_t *self);
 static void compile_inline (zs_repl_t *self);
 static void compile_nest (zs_repl_t *self);
 static void compile_define (zs_repl_t *self);
+static void signal_completed (zs_repl_t *self);
 static void compile_unnest (zs_repl_t *self);
 static void compile_commit_shell (zs_repl_t *self);
 static void run_virtual_machine (zs_repl_t *self);
 static void rollback_the_function (zs_repl_t *self);
-static void signal_completed (zs_repl_t *self);
 static void compile_unnest_or_commit (zs_repl_t *self);
 static void compile_phrase (zs_repl_t *self);
 static void compile_period (zs_repl_t *self);
@@ -285,6 +285,15 @@ fsm_execute (fsm_t *self)
                 }
                 if (!self->exception)
                     self->state = building_function_state;
+            }
+            else
+            if (self->event == completed_event) {
+                if (!self->exception) {
+                    //  signal_completed
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ signal_completed");
+                    signal_completed (self->parent);
+                }
             }
             else
             if (self->event == finished_event) {

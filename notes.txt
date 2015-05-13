@@ -1,10 +1,30 @@
+1 m (2)
+    does not run m as nested function
 
-
-
-loops/conditionals
 
 pipe data types
     whole vs. real numbers
+
+    pipe_send (pipe, type, data...
+    int rc = pipe_recv (pipe, types)
+    int rc = pipe_pull (pipe, types)
+    pipe_real
+    pipe_whole
+    pipe_string
+
+
+TODO
+    atomic to convert string to double or whole
+        using our extended numeric notations
+
+    automatic coercion to real
+    manual coercion back to whole (whole)
+
+
+pipe as stack
+    1 2 3, k 2, m
+    sum (k (1 2 3) m (2))
+
 
 
 0, 1 many - conditionals and loops are the same; we repeat a function N times
@@ -46,6 +66,28 @@ Multi-line indented strings
     and then more
     >
 
+string atomics
+    1, many
+        upper
+        lower
+        camel
+        title
+        slug
+        size
+
+    many
+        paste
+        sort
+        first
+        last
+
+    2
+        find        (find string in another)
+        split       (split string into tokens)
+        count       (count string in another)
+        repeat      (repeat string N times)
+        match       (string vs. pattern or pattern vs. string)
+        replace     (string mashing,...)
 
 
 ******** DONE

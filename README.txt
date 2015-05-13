@@ -128,6 +128,12 @@ And then conditionals and iterations. Oh so your compiler can do Boolean logic? 
 
 So control flow should stem from the natural models we use, not the capacity of our compilers and CPUs. This means, event-driven action ("when", not "if") and lazy infinite looping (do stuff never, once (more), or forever until). Perhaps a little state machining, below the water.
 
+Do I have to say I hate shared state and am glad for the chance to start afresh without it? Objects do work, as a model for packaging functionality and data structure. I'm glad we got such structure into our C code, in the form of CLASS. That is wonderfully tidy and safe. However it's still clumsy, clumsy, clumsy. Any real application spends most of its time sending objects from one place to another.
+
+Structure is fine. However I want to send data around the application, and never hold it anywhere. Messages = data, period. This gives us interesting queuing and scalability. If my sqrt function is too slow, I can start a dozen of them. A function looks the same whether it's a call/return in the same thread, a thread in the same process, a process on the same box, or another box in the same cloud. ZeroMQ taught us the value of such symmetry.
+
+And when data is message, we can handle bad data simply by discarding it. Functions without state should never crash. Is this a late conversion to functional programming? Could be.
+
 I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
 
 ### First Steps
@@ -191,7 +197,9 @@ However these is also possible (the two forms do the same):
 
 Here the Gi function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
 
-I implemented a bunch of these SI suffix functions, using GSL code generation to reduce the work. See zs_suffices.gsl and zs_suffices.xml. It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+I implemented a bunch of these SI suffix functions, using GSL code generation to reduce the work. See [zs_suffices.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_suffices.gsl) and [zs_suffices.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_suffices.xml), which produce the source code in [zs_suffices.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_suffices.h). It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+
+I'm going to be using GSL and code generation aggressively in the tooling for this project. Expect a lot of state machines at the heart of more complex classes.
 
 *TODO: I need to add support for real numbers, to finish this piece of work (fractional SI suffices).*
 
