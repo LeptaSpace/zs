@@ -20,7 +20,7 @@
 #include "zs_classes.h"
 #include "zs_repl_fsm.h"        //  Finite state machine engine
 #include "zs_repl_lib.h"        //  Core library atomics
-#include "zs_suffices.h"        //  SI scaling functions
+#include "zs_scaling.h"         //  SI scaling functions
 
 //  This holds an entry in the dictionary
 typedef struct {
@@ -55,7 +55,7 @@ zs_repl_new (void)
         self->lex = zs_lex_new ();
         self->vm = zs_vm_new ();
         s_register_atomics (self->vm);
-        s_register_zs_suffices (self->vm);
+        s_register_zs_scaling (self->vm);
 
         //  Set token type to event map
         self->events [zs_lex_simple_fn] = simple_fn_event;
@@ -400,6 +400,7 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "clr", "");
     s_repl_assert (repl, "sub: (<hello>)", "");
     s_repl_assert (repl, "sub", "hello");
+    s_repl_assert (repl, "sum (k (1 2 3) M (2))", "2006000");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

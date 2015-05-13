@@ -78,16 +78,6 @@ s_clr (zs_vm_t *self)
 }
 
 static int
-s_python (zs_vm_t *self)
-{
-    if (zs_vm_probing (self))
-        zs_vm_register (self, "python", "Why not just use Python?");
-    else
-        return -1;
-    return 0;
-}
-
-static int
 s_check (zs_vm_t *self)
 {
     if (zs_vm_probing (self))
@@ -119,6 +109,32 @@ s_assert (zs_vm_t *self)
     return 0;
 }
 
+static int
+s_whole (zs_vm_t *self)
+{
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "whole", "Coerce value to whole number");
+    else {
+        zs_pipe_t *output = zs_vm_output (self);
+        if (zs_pipe_size (output)) {
+            //  Unary function; pull last value off pipe
+            zs_pipe_pull (output);
+            zs_pipe_set_whole (output, zs_pipe_whole (output));
+            zs_pipe_send (output);
+        }
+        else
+        if (zs_pipe_size (zs_vm_input (self))) {
+            zs_pipe_t *input = zs_vm_input (self);
+            //  List function; recv and process all values
+            while (zs_pipe_recv (input) == 0) {
+                zs_pipe_set_whole (output, zs_pipe_whole (input));
+                zs_pipe_send (output);
+            }
+        }
+    }
+    return 0;
+}
+
 static void
 s_register_atomics (zs_vm_t *self)
 {
@@ -127,8 +143,8 @@ s_register_atomics (zs_vm_t *self)
     zs_vm_probe (self, s_count);
     zs_vm_probe (self, s_echo);
     zs_vm_probe (self, s_clr);
-    zs_vm_probe (self, s_python);
     zs_vm_probe (self, s_check);
     zs_vm_probe (self, s_assert);
+    zs_vm_probe (self, s_whole);
 }
 #endif
