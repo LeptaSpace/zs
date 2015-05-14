@@ -19,8 +19,9 @@
 
 #include "zs_classes.h"
 #include "zs_repl_fsm.h"        //  Finite state machine engine
-#include "zs_repl_lib.h"        //  Core library atomics
-#include "zs_scaling.h"         //  SI scaling functions
+#include "zs_atomics.h"         //  Core atomics
+#include "zs_units_si.h"        //  SI scaling functions
+#include "zs_units_misc.h"      //  Miscellaneous scaling functions
 
 //  This holds an entry in the dictionary
 typedef struct {
@@ -55,7 +56,8 @@ zs_repl_new (void)
         self->lex = zs_lex_new ();
         self->vm = zs_vm_new ();
         s_register_atomics (self->vm);
-        s_register_zs_scaling (self->vm);
+        s_register_zs_units_si (self->vm);
+        s_register_zs_units_misc (self->vm);
 
         //  Set token type to event map
         self->events [zs_lex_simple_fn] = simple_fn_event;

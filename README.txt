@@ -216,7 +216,7 @@ There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z an
     > 1 a
     1e-18
 
-I implemented these SI scaling functions using GSL code generation to reduce the work. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_scaling.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.xml), which produce the source code in [zs_scaling.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.h). It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+I implemented these SI scaling functions using GSL code generation to reduce the work. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_si_units.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_si_units.xml), which produce the source code in [zs_si_units.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_si_units.h). It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
 
 I'm going to be using GSL and code generation aggressively in the tooling for this project. Expect a lot of state machines at the heart of more complex classes.
 

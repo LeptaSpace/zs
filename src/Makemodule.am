@@ -23,13 +23,14 @@ include_HEADERS = \
 
 src_libzs_la_SOURCES = \
     src/zs_pipe.c \
-    src/zs_lex.c \
     src/zs_vm.c \
+    src/zs_lex.c \
     src/zs_repl.c \
     src/zs_lex_fsm.h \
     src/zs_repl_fsm.h \
-    src/zs_repl_lib.h \
-    src/zs_scaling.h \
+    src/zs_atomics.h \
+    src/zs_units_si.h \
+    src/zs_units_misc.h \
     src/platform.h
 
 src_libzs_la_CPPFLAGS = ${AM_CPPFLAGS}
@@ -71,7 +72,8 @@ src: src/libzs.la src/zs_selftest
 code:
 	cd $(srcdir)/src; gsl -q zs_lex.xml
 	cd $(srcdir)/src; gsl -q zs_repl.xml
-	cd $(srcdir)/src; gsl -q zs_scaling.xml
+	cd $(srcdir)/src; gsl -q zs_units_si.xml
+	cd $(srcdir)/src; gsl -q zs_units_misc.xml
 
 check-local: src/zs_selftest
 	$(LIBTOOL) --mode=execute $(srcdir)/src/zs_selftest

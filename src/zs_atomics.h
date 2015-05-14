@@ -1,5 +1,5 @@
 /*  =========================================================================
-    zs_repl_lib - ZeroScript atomics
+    zs_atomics - ZeroScript atomics
 
     Copyright (c) the Contributors as noted in the AUTHORS file.
     This file is part of the ZeroScript language, http://zeroscript.org.
@@ -10,8 +10,8 @@
     =========================================================================
 */
 
-#ifndef ZS_REPL_LIB_H_INCLUDED
-#define ZS_REPL_LIB_H_INCLUDED
+#ifndef ZS_ATOMICS_H_INCLUDED
+#define ZS_ATOMICS_H_INCLUDED
 
 //  ---------------------------------------------------------------------------
 //  Some repl atomics

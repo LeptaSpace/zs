@@ -20,7 +20,7 @@ include $(PREBUILT_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := zs
 LOCAL_C_INCLUDES := ../../include $(LIBZMQ)/include
-LOCAL_SRC_FILES := zs_pipe.c zs_lex.c zs_vm.c zs_repl.c
+LOCAL_SRC_FILES := zs_pipe.c zs_vm.c zs_lex.c zs_repl.c
 LOCAL_SHARED_LIBRARIES := zmq
 include $(BUILD_SHARED_LIBRARY)
 
