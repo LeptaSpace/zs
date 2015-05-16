@@ -1,9 +1,91 @@
-1 m (2)
-    does not run m as nested function
-
-
-
 TODO
+
+pass input, output pipes to atomics
+
+help on function
+    how to put function onto pipe
+    ? xyz
+
+help (xyz)
+    get hint on xyz if it's an atomic
+    else show code for xyz if it's a function
+
+
+problem with () notation is you have to think in advance
+
+    add (max (1 2 3) min (4 5 6))
+        - unlimited levels of nesting
+    or
+    1 2 3, max. 4 5 6, min. add.
+        - two levels of nesting only
+
+    nest
+    1 2 3, max      take set of 1 2 3 and apply max
+    .               send result up and clear
+    4 5 6, min      take set of 4 5 6 and apply min
+    .               send result up and clear
+    add             since there's nothing here, look up
+                    take set of 3, 4 and apply add
+
+    period operator takes current outputs and sends to parent output
+        - what is parent output?
+
+    atomic function
+        - if input set is empty and parent is not empty
+        - unnest and execute function on parent
+
+
+    nest: push output, new output, new input
+    unnest: input <= output
+
+        else
+        if (opcode == VM_UNNEST) {
+            if (self->verbose)
+                printf ("D [%04zd]: unnest stack=%zd\n", needle, self->pipe_stack_ptr);
+            assert (self->pipe_stack_ptr > 0);
+            self->pipe_stack_ptr--;
+            zs_pipe_destroy (&self->input);
+            self->input = self->output;
+            self->output = self->pipe_stack [self->pipe_stack_ptr];
+        }
+
+
+
+computations
+
+    choices                                             parsing     surprise    set
+        infix notation      a - b + c                     *          *****       *
+            with parens     a - (b + c)                   *          ****        *
+            or without      automatic priority
+        postfix notation    a b - c +                     **          **         *
+            order?          a - b or b - a?
+        function notation   + (- (a b) c)                 ****         *       *****
+        comma notation      a b, - c, +                   ****         *       *****
+
+    answer: make operators as functions/atomics
+        + * / - % ^
+
+    answer: allow a b, - c, +
+
+if atomic is called on line by itself
+    then show hint
+        perhaps registration tweak to allow function to run on empty data
+if atomic is called with empty list
+    then run atomic?
+
+provide atomics with input & output pipe automatically:
+    zs_pipe_t *input, zs_pipe_t *output
+
+    if called inline
+        input is null
+        if output has values
+            can behave as unary function
+            pull & send last value
+        if output is empty
+            then do what?
+
+    if called on list
+        input provides list
 
 
 pipe as stack?

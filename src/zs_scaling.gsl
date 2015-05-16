@@ -50,7 +50,7 @@ s_$(name:) (zs_vm_t *self)
     if (zs_vm_probing (self)) {
         zs_vm_register (self, "$(atomic.name:)", "$(string.trim (atomic.?''):left)");
 .   for alias
-        zs_vm_register (self, "$(alias.name:)", "$(string.trim (atomic.?''):left)");
+        zs_vm_register (self, "$(alias.name:)", NULL);
 .   endfor
     }
     else

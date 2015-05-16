@@ -41,6 +41,7 @@ struct _zs_repl_t {
     zs_vm_t *vm;                //  Execution context
     bool completed;             //  Input formed a complete phrase
     uint scope;                 //  Nesting scope, 0..n
+    char *results;              //  Expression results, if any
 };
 
 //  ---------------------------------------------------------------------------
@@ -87,6 +88,7 @@ zs_repl_destroy (zs_repl_t **self_p)
         fsm_destroy (&self->fsm);
         zs_lex_destroy (&self->lex);
         zs_vm_destroy (&self->vm);
+        zstr_free (&self->results);
         free (self);
         *self_p = NULL;
     }
@@ -346,12 +348,14 @@ zs_repl_completed (zs_repl_t *self)
 
 //  ---------------------------------------------------------------------------
 //  Return pipe results as string, after successful execution. Caller must
-//  free results when finished.
+//  not modify returned value.
 
-char *
+const char *
 zs_repl_results (zs_repl_t *self)
 {
-    return zs_pipe_paste (zs_vm_output (self->vm));
+    zstr_free (&self->results);
+    self->results = zs_pipe_paste (zs_vm_output (self->vm));
+    return self->results;
 }
 
 
@@ -370,13 +374,11 @@ s_repl_assert (zs_repl_t *self, const char *input, const char *output)
 {
     int rc = zs_repl_execute (self, input);
     assert (rc == 0);
-    char *results = zs_repl_results (self);
-    if (strneq (results, output)) {
+    if (strneq (zs_repl_results (self), output)) {
         printf ("input='%s' results='%s' expected='%s'\n",
-                input, results, output);
+                input, zs_repl_results (self), output);
         exit (-1);
     }
-    zstr_free (&results);
 }
 
 
@@ -393,16 +395,16 @@ zs_repl_test (bool verbose)
     //  @selftest
     zs_repl_t *repl = zs_repl_new ();
     zs_repl_verbose (repl, verbose);
-    s_repl_assert (repl, "1 2 3, sum", "6");
-    s_repl_assert (repl, "sum (1 2 3)", "6");
-    s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
+    s_repl_assert (repl, "1 2 3, add", "6");
+    s_repl_assert (repl, "add (1 2 3)", "6");
+    s_repl_assert (repl, "add (add (1 2 3) count (4 5 6))", "9");
     s_repl_assert (repl, "clr", "");
-    s_repl_assert (repl, "sum (1 2 3", "");
+    s_repl_assert (repl, "add (1 2 3", "");
     s_repl_assert (repl, ")", "6");
     s_repl_assert (repl, "clr", "");
     s_repl_assert (repl, "sub: (<hello>)", "");
     s_repl_assert (repl, "sub", "hello");
-    s_repl_assert (repl, "sum (k (1 2 3) M (2))", "2006000");
+    s_repl_assert (repl, "add (k (1 2 3) M (2))", "2006000");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");
