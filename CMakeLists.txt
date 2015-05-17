@@ -97,13 +97,14 @@ set (zs_headers
     include/zs_library.h
     include/zs.h
     include/zs_pipe.h
-    src/zs_lex.h
     src/zs_vm.h
+    src/zs_lex.h
     include/zs_repl.h
     src/zs_lex_fsm.h
     src/zs_repl_fsm.h
-    src/zs_repl_lib.h
-    src/zs_scaling.h
+    src/zs_atomics.h
+    src/zs_units_si.h
+    src/zs_units_misc.h
 )
 source_group ("Header Files" FILES ${zs_headers})
 install(FILES ${zs_headers} DESTINATION include)
@@ -114,8 +115,8 @@ install(FILES ${zs_headers} DESTINATION include)
 include_directories("${BINARY_DIR}" "${SOURCE_DIR}/include")
 set (zs_sources
     src/zs_pipe.c
-    src/zs_lex.c
     src/zs_vm.c
+    src/zs_lex.c
     src/zs_repl.c
 )
 source_group ("Source Files" FILES ${zs_sources})

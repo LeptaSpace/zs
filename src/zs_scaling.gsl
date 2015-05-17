@@ -20,6 +20,8 @@
 #ifndef $(CLASS.NAME)_H_INCLUDED
 #define $(CLASS.NAME)_H_INCLUDED
 
+#ifndef S_APPLY_SCALE_DEFINED
+#define S_APPLY_SCALE_DEFINED
 //  Applies a whole scale to a pipe register
 static void
 s_apply_scale (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
@@ -37,7 +39,7 @@ s_apply_scale (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
             zs_pipe_set_real (output, zs_pipe_real (input) * scale);
     }
 }
-
+#endif
 
 .for class.atomic
 .   atomic.type ?= "whole"
@@ -45,8 +47,12 @@ static int
 s_$(name:) (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
-        zs_vm_register (self, "$(name:)", "$(string.trim (.?''):left)");
+    if (zs_vm_probing (self)) {
+        zs_vm_register (self, "$(atomic.name:)", "$(string.trim (atomic.?''):left)");
+.   for alias
+        zs_vm_register (self, "$(alias.name:)", NULL);
+.   endfor
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);

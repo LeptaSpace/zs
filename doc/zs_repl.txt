@@ -59,7 +59,7 @@ EXAMPLE
 ----
 zs_repl_t *repl = zs_repl_new ();
 zs_repl_verbose (repl, verbose);
-s_repl_assert (repl, "1 2 3 sum", "6");
+s_repl_assert (repl, "1 2 3, sum", "6");
 s_repl_assert (repl, "sum (1 2 3)", "6");
 s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
 s_repl_assert (repl, "clr", "");
@@ -68,5 +68,6 @@ s_repl_assert (repl, ")", "6");
 s_repl_assert (repl, "clr", "");
 s_repl_assert (repl, "sub: (<hello>)", "");
 s_repl_assert (repl, "sub", "hello");
+s_repl_assert (repl, "sum (k (1 2 3) M (2))", "2006000");
 zs_repl_destroy (&repl);
 ----

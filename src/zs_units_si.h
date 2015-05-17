@@ -1,5 +1,5 @@
 /*  =========================================================================
-    zs_scaling - scaling atomics
+    zs_units_si - scaling atomics
 
     ** WARNING *************************************************************
     THIS SOURCE FILE IS 100% GENERATED. If you edit this file, you will lose
@@ -7,15 +7,17 @@
     statements. DO NOT MAKE ANY CHANGES YOU WISH TO KEEP. The correct places
     for commits are:
 
-     * The XML model used for this code generation: zs_scaling.xml, or
+     * The XML model used for this code generation: zs_units_si.xml, or
      * The code generation script that built this file: zs_scaling
     ************************************************************************
     =========================================================================
 */
 
-#ifndef ZS_SCALING_H_INCLUDED
-#define ZS_SCALING_H_INCLUDED
+#ifndef ZS_UNITS_SI_H_INCLUDED
+#define ZS_UNITS_SI_H_INCLUDED
 
+#ifndef S_APPLY_SCALE_DEFINED
+#define S_APPLY_SCALE_DEFINED
 //  Applies a whole scale to a pipe register
 static void
 s_apply_scale (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
@@ -33,14 +35,15 @@ s_apply_scale (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
             zs_pipe_set_real (output, zs_pipe_real (input) * scale);
     }
 }
-
+#endif
 
 static int
 s_Ki (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Ki", "Multiply by 2^10");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -67,8 +70,9 @@ static int
 s_Mi (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Mi", "Multiply by 2^20");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -95,8 +99,9 @@ static int
 s_Gi (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Gi", "Multiply by 2^30");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -123,8 +128,9 @@ static int
 s_Ti (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Ti", "Multiply by 2^40");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -151,8 +157,9 @@ static int
 s_Pi (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Pi", "Multiply by 2^50");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -179,8 +186,9 @@ static int
 s_Ei (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Ei", "Multiply by 2^60");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -207,8 +215,9 @@ static int
 s_da (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "da", "Multiply by 10");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -235,8 +244,9 @@ static int
 s_h (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "h", "Multiply by 100");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -263,8 +273,9 @@ static int
 s_k (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "k", "Multiply by 1000");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -291,8 +302,9 @@ static int
 s_M (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "M", "Multiply by 10^6");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -319,8 +331,9 @@ static int
 s_G (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "G", "Multiply by 10^9");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -347,8 +360,9 @@ static int
 s_T (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "T", "Multiply by 10^12");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -375,8 +389,9 @@ static int
 s_P (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "P", "Multiply by 10^15");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -403,8 +418,9 @@ static int
 s_E (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "E", "Multiply by 10^18");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -431,8 +447,9 @@ static int
 s_Z (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Z", "Multiply by 10^21");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -459,8 +476,9 @@ static int
 s_Y (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "Y", "Multiply by 10^24");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -487,8 +505,9 @@ static int
 s_d (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "d", "Divide by 10 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -517,8 +536,9 @@ static int
 s_c (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "c", "Divide by 100 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -547,8 +567,9 @@ static int
 s_m (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "m", "Divide by 1000 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -577,8 +598,9 @@ static int
 s_u (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "u", "Divide by 10^6 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -607,8 +629,9 @@ static int
 s_n (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "n", "Divide by 10^9 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -637,8 +660,9 @@ static int
 s_p (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "p", "Divide by 10^12 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -667,8 +691,9 @@ static int
 s_f (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "f", "Divide by 10^15 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -697,8 +722,9 @@ static int
 s_a (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "a", "Divide by 10^18 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -727,8 +753,9 @@ static int
 s_z (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "z", "Divide by 10^21 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -757,8 +784,9 @@ static int
 s_y (zs_vm_t *self)
 {
     zs_pipe_t *output = zs_vm_output (self);
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "y", "Divide by 10^24 (real)");
+    }
     else
     if (zs_pipe_size (zs_vm_input (self))) {
         zs_pipe_t *input = zs_vm_input (self);
@@ -784,7 +812,7 @@ s_y (zs_vm_t *self)
 }
 
 static void
-s_register_zs_scaling (zs_vm_t *self)
+s_register_zs_units_si (zs_vm_t *self)
 {
     zs_vm_probe (self, s_Ki);
     zs_vm_probe (self, s_Mi);

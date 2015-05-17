@@ -10,7 +10,7 @@ INCDIR=-I$(PREFIX)/include -I.
 LIBDIR=-L$(PREFIX)/lib
 CFLAGS=-Wall -Os -g -DLIBZS_EXPORTS $(INCDIR)
 
-OBJS = zs_pipe.o zs_lex.o zs_vm.o zs_repl.o
+OBJS = zs_pipe.o zs_vm.o zs_lex.o zs_repl.o
 %.o: ../../src/%.c
 	$(CC) -c -o $@ $< $(CFLAGS)
 

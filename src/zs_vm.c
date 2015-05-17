@@ -98,7 +98,7 @@ s_atomic_destroy (s_atomic_t **self_p)
 
 struct _zs_vm_t {
     s_atomic_t *atomics [240];      //  Class 0 atomics
-    size_t atomics_size;            //  Nbr of atomics defined so far
+    size_t nbr_atomics;             //  Nbr of atomics defined so far
     zs_vm_fn_t *probing;            //  Primitive during registration
 
     byte *code;                     //  Compiled bytecode (zchunk?)
@@ -119,6 +119,7 @@ struct _zs_vm_t {
     size_t call_stack_ptr;          //  Size of pipe stack
 
     bool verbose;                   //  Trace execution progress
+    size_t iterator;                //  For listing function names
 };
 
 //  Map function guard to code body
@@ -158,7 +159,7 @@ static int
 s_try_atomic (zs_vm_t *self, const char *name)
 {
     size_t index;
-    for (index = 0; index < self->atomics_size; index++)
+    for (index = 0; index < self->nbr_atomics; index++)
         if (streq ((self->atomics [index])->name, name))
             return index;
     return -1;
@@ -241,8 +242,8 @@ zs_vm_destroy (zs_vm_t **self_p)
         zs_pipe_destroy (&self->input);
         zs_pipe_destroy (&self->output);
         //  Destroy all defined atomics
-        while (self->atomics_size)
-            s_atomic_destroy (&self->atomics [--self->atomics_size]);
+        while (self->nbr_atomics)
+            s_atomic_destroy (&self->atomics [--self->nbr_atomics]);
         //  Destroy VM code block
         free (self->code);
         free (self);
@@ -280,13 +281,17 @@ zs_vm_probing (zs_vm_t *self)
 //  ---------------------------------------------------------------------------
 //  Primitive registers itself with the execution context. This is only valid
 //  if zs_vm_probing () is true. Returns 0 if registration worked, -1 if it
-//  failed due to an internal error.
+//  failed due to an internal error. If hint is NULL, uses same hint as last
+//  registered method (this is for aliases).
 
 int
 zs_vm_register (zs_vm_t *self, const char *name, const char *hint)
 {
     assert (self->probing);
-    self->atomics [self->atomics_size++] = s_atomic_new (name, hint, self->probing);
+    assert (hint || self->nbr_atomics);
+    if (hint == NULL)
+        hint = self->atomics [self->nbr_atomics - 1]->hint;
+    self->atomics [self->nbr_atomics++] = s_atomic_new (name, hint, self->probing);
     return 0;
 }
 
@@ -504,11 +509,73 @@ zs_vm_output (zs_vm_t *self)
 void
 zs_vm_dump (zs_vm_t *self)
 {
-    printf ("Primitives: %zd\n", self->atomics_size);
+    printf ("Primitives: %zd\n", self->nbr_atomics);
     size_t index;
-    for (index = 0; index < self->atomics_size; index++)
+    for (index = 0; index < self->nbr_atomics; index++)
         printf (" - %s: %s\n", self->atomics [index]->name, self->atomics [index]->hint);
     printf ("Compiled size: %zd\n", self->code_size);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return latest function by name; use with _prev to iterate through
+//  functions. Returns function name or NULL if there are none defined.
+
+const char *
+zs_vm_function_first (zs_vm_t *self)
+{
+    self->iterator = self->code_head;
+    return zs_vm_function_next (self);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return previous function by name; use after a _last to iterate through
+//  functions. Returns function name or NULL if there are no more.
+
+const char *
+zs_vm_function_next (zs_vm_t *self)
+{
+    if (self->iterator) {
+        assert (self->code [self->iterator] == VM_GUARD);
+        const char *name = s_function_name (self, self->iterator);
+        size_t offset = (self->code [self->iterator + 1] << 8)
+                      +  self->code [self->iterator + 2];
+        assert (self->iterator >= offset);
+        self->iterator -= offset;
+        return name;
+    }
+    else
+        return NULL;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return first atomic by name; use with _next to iterate through atomics.
+//  Returns atomic name or NULL if there are none defined.
+
+const char *
+zs_vm_atomic_first (zs_vm_t *self)
+{
+    self->iterator = 0;
+    return zs_vm_atomic_next (self);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Return next atomic by name; use with _first to iterate through atomics.
+//  Returns atomic name or NULL if there are no more defined.
+
+const char *
+zs_vm_atomic_next (zs_vm_t *self)
+{
+    if (self->iterator < self->nbr_atomics) {
+        const char *name = self->atomics [self->iterator]->name;
+        self->iterator++;
+        return name;
+    }
+    else
+        return NULL;
 }
 
 
@@ -654,10 +721,10 @@ zs_vm_run (zs_vm_t *self)
 
 //  These are the atomics we use in the selftest application
 static int
-s_sum (zs_vm_t *self)
+s_add (zs_vm_t *self)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "sum", "Add all the values");
+        zs_vm_register (self, "add", "Add all the values");
     else {
         int64_t sum = 0;
         while (zs_pipe_size (zs_vm_input (self)) > 0)
@@ -718,7 +785,7 @@ zs_vm_test (bool verbose)
     zs_vm_t *vm = zs_vm_new ();
     zs_vm_set_verbose (vm, verbose);
 
-    zs_vm_probe (vm, s_sum);
+    zs_vm_probe (vm, s_add);
     zs_vm_probe (vm, s_count);
     zs_vm_probe (vm, s_assert);
     zs_vm_probe (vm, s_year);
@@ -749,7 +816,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_whole  (vm, 123);
     zs_vm_compile_whole  (vm, 1000000000);
     zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "sum");
+    zs_vm_compile_inline (vm, "add");
     zs_vm_compile_whole  (vm, 1000000123);
     zs_vm_compile_phrase (vm);
     zs_vm_compile_inline (vm, "assert");
@@ -764,7 +831,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_period (vm);
 
-    rc = zs_vm_compile_nest (vm, "sum");
+    rc = zs_vm_compile_nest (vm, "add");
     assert (rc == 0);
     zs_vm_compile_whole  (vm, 123);
     zs_vm_compile_whole  (vm, 456);
@@ -774,7 +841,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_period (vm);
 
-    rc = zs_vm_compile_nest (vm, "sum");
+    rc = zs_vm_compile_nest (vm, "add");
     assert (rc == 0);
     zs_vm_compile_whole  (vm, 123);
     rc = zs_vm_compile_nest (vm, "count");

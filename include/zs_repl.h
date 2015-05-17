@@ -50,8 +50,8 @@ bool
     zs_repl_completed (zs_repl_t *self);
 
 //  Return pipe results as string, after successful execution. Caller must
-//  free results when finished.
-char *
+//  not modify returned value.
+const char *
     zs_repl_results (zs_repl_t *self);
 
 //  After a syntax error, return position of syntax error in text.

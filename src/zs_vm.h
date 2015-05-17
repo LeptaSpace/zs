@@ -51,7 +51,8 @@ bool
 
 //  Primitive registers itself with the execution context. This is only valid
 //  if zs_vm_probing () is true. Returns 0 if registration worked, -1 if it
-//  failed due to an internal error.
+//  failed due to an internal error. If hint is NULL, uses same hint as last
+//  registered method (this is for aliases).
 int
     zs_vm_register (zs_vm_t *self, const char *name, const char *hint);
 
@@ -125,6 +126,26 @@ zs_pipe_t *
 //  Dump VM contents (state and code)
 void
     zs_vm_dump (zs_vm_t *self);
+
+//  Return latest function by name; use with _prev to iterate through
+//  functions. Returns function name or NULL if there are none defined.
+const char *
+    zs_vm_function_first (zs_vm_t *self);
+
+//  Return previous function by name; use after a _last to iterate through
+//  functions. Returns function name or NULL if there are no more.
+const char *
+    zs_vm_function_next (zs_vm_t *self);
+
+//  Return first atomic by name; use with _next to iterate through atomics.
+//  Returns atomic name or NULL if there are none defined.
+const char *
+    zs_vm_atomic_first (zs_vm_t *self);
+
+//  Return next atomic by name; use with _first to iterate through atomics.
+//  Returns atomic name or NULL if there are no more defined.
+const char *
+    zs_vm_atomic_next (zs_vm_t *self);
 
 //  Enable tracing of VM compilation and execution.
 void

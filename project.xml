@@ -11,17 +11,21 @@
 
     <main name = "zs" />
     <class name = "zs_pipe" />
-    <class name = "zs_lex" private = "1" />
     <class name = "zs_vm" private = "1" />
-    <class name = "zs_repl" />
 
     <model name = "zs_lex" />
-    <model name = "zs_repl" />
-    <model name = "zs_scaling" />
-
+    <class name = "zs_lex" private = "1" />
     <extra name = "zs_lex_fsm.h" />
+
+    <model name = "zs_repl" />
+    <class name = "zs_repl" />
     <extra name = "zs_repl_fsm.h" />
-    <extra name = "zs_repl_lib.h" />
-    <extra name = "zs_scaling.h" />
+    <extra name = "zs_atomics.h" />
+
+    <model name = "zs_units_si" />
+    <model name = "zs_units_misc" />
+
+    <extra name = "zs_units_si.h" />
+    <extra name = "zs_units_misc.h" />
 </project>
 
