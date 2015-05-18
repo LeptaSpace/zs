@@ -14,29 +14,29 @@
 
 **<a href="#toc3-86">Irritations</a>**
 
-**<a href="#toc3-137">First Steps</a>**
+**<a href="#toc3-143">First Steps</a>**
 
-**<a href="#toc3-150">Experimental Notes</a>**
+**<a href="#toc3-156">Experimental Notes</a>**
 
-**<a href="#toc3-226">The Virtual Machine</a>**
+**<a href="#toc3-253">The Virtual Machine</a>**
 
-**<a href="#toc3-241">Extensibility</a>**
+**<a href="#toc3-268">Extensibility</a>**
 
-**<a href="#toc3-274">Arguments and Flamewars</a>**
+**<a href="#toc3-301">Arguments and Flamewars</a>**
 
-**<a href="#toc3-283">Other Goals</a>**
+**<a href="#toc3-310">Other Goals</a>**
 
-**<a href="#toc2-298">Design Notes</a>**
+**<a href="#toc2-325">Design Notes</a>**
 
-**<a href="#toc2-306">Bibliography</a>**
+**<a href="#toc2-333">Bibliography</a>**
 
-**<a href="#toc2-312">Technicalities</a>**
+**<a href="#toc2-339">Technicalities</a>**
 
-**<a href="#toc3-315">Ownership and License</a>**
+**<a href="#toc3-342">Ownership and License</a>**
 
-**<a href="#toc3-326">Building and Installing</a>**
+**<a href="#toc3-353">Building and Installing</a>**
 
-**<a href="#toc3-357">This Document</a>**
+**<a href="#toc3-384">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -161,9 +161,15 @@ And then conditionals and iterations. Oh so your compiler can do Boolean logic? 
 
 So control flow should stem from the natural models we use, not the capacity of our compilers and CPUs. This means, event-driven action ("when", not "if") and lazy infinite looping (do stuff never, once (more), or forever until). Perhaps a little state machining, below the water.
 
+Do I have to say I hate shared state and am glad for the chance to start afresh without it? Objects do work, as a model for packaging functionality and data structure. I'm glad we got such structure into our C code, in the form of CLASS. That is wonderfully tidy and safe. However it's still clumsy, clumsy, clumsy. Any real application spends most of its time sending objects from one place to another.
+
+Structure is fine. However I want to send data around the application, and never hold it anywhere. Messages = data, period. This gives us interesting queuing and scalability. If my sqrt function is too slow, I can start a dozen of them. A function looks the same whether it's a call/return in the same thread, a thread in the same process, a process on the same box, or another box in the same cloud. ZeroMQ taught us the value of such symmetry.
+
+And when data is message, we can handle bad data simply by discarding it. Functions without state should never crash. Is this a late conversion to functional programming? Could be.
+
 I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
 
-<A name="toc3-137" title="First Steps" />
+<A name="toc3-143" title="First Steps" />
 ### First Steps
 
 So far what do I have?
@@ -176,7 +182,7 @@ So far what do I have?
 
 The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
 
-<A name="toc3-150" title="Experimental Notes" />
+<A name="toc3-156" title="Experimental Notes" />
 ### Experimental Notes
 
 Most language designers use grammar like early web designers used fonts. The more the merrier, surely! After all, why did God give us such a rich toolkit for building languages, if we were not meant to use it?
@@ -213,22 +219,41 @@ There seem to be two kinds of input to a function. One, the last single item pro
 
 Here's how we can write long numbers:
 
-    64 Gi
-    2 Pi
-    32 Ki
+    > 64 Gi
+    68719476736
+    > 2 Pi
+    2251799813685248
+    > 32 Ki
+    32768
 
 Where these functions operate on the most recent value. For now this means they treat the output pipe like a stack. It's not beautiful, so I'm looking for better abstractions.
 
 However these is also possible (the two forms do the same):
 
-    16 32 64, Gi
-    Gi (16 32 64)
+    > 16 32 64, Gi
+    17179869184 34359738368 68719476736
+    > Gi (16 32 64)
+    17179869184 34359738368 68719476736
 
-Here the Gi function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
+Here the scaling function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
 
-I implemented a bunch of these SI suffix functions, using GSL code generation to reduce the work. See zs_suffices.gsl and zs_suffices.xml. It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+The scaling functions work as constants, if they're used alone:
 
-*TODO: I need to add support for real numbers, to finish this piece of work (fractional SI suffices).*
+    > Gi
+    1073741824
+
+There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z and y):
+
+    > 15 u
+    1.5e-05
+    > 1 m
+    0.001
+    > 1 a
+    1e-18
+
+I implemented these SI scaling functions using GSL code generation to reduce the work. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_si_units.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_si_units.xml), which produce the source code in [zs_si_units.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_si_units.h). It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+
+I'm going to be using GSL and code generation aggressively in the tooling for this project. Expect a lot of state machines at the heart of more complex classes.
 
 Our grammar thus has just a few elements:
 
@@ -248,11 +273,13 @@ The zs_lex state machine deals with parsing these different cases:
     123, 456 123. 456           #   Four numbers, two sentences, three phrases
     123,echo                    #   Prints "123"
 
+Numbers are either whole numbers or real numbers. Wholes get coerced into real automatically as needed. To get the closest whole for a given real, use the 'whole' function.
+
 *TODO: write an FSM-based analyzer for numbers that handles the various forms we aim to support.*
 
 *TODO: allow comments starting with '#', to end of line*
 
-<A name="toc3-226" title="The Virtual Machine" />
+<A name="toc3-253" title="The Virtual Machine" />
 ### The Virtual Machine
 
 I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
@@ -267,7 +294,7 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which I'll now explain.
 
-<A name="toc3-241" title="Extensibility" />
+<A name="toc3-268" title="Extensibility" />
 ### Extensibility
 
 Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
@@ -300,7 +327,7 @@ And here's the code for that function:
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
-<A name="toc3-274" title="Arguments and Flamewars" />
+<A name="toc3-301" title="Arguments and Flamewars" />
 ### Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -309,7 +336,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
-<A name="toc3-283" title="Other Goals" />
+<A name="toc3-310" title="Other Goals" />
 ### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -324,7 +351,7 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-298" title="Design Notes" />
+<A name="toc2-325" title="Design Notes" />
 ## Design Notes
 
 * Any language aspect that takes more than 10 minutes to understand is too complex.
@@ -332,16 +359,16 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
 * Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
 
-<A name="toc2-306" title="Bibliography" />
+<A name="toc2-333" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
 * http://en.wikipedia.org/wiki/Metric_prefix
 
-<A name="toc2-312" title="Technicalities" />
+<A name="toc2-339" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-315" title="Ownership and License" />
+<A name="toc3-342" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -352,7 +379,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-326" title="Building and Installing" />
+<A name="toc3-353" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -383,7 +410,7 @@ Here's how to build ZeroScript from GitHub:
 
 You will need the pkg-config, libtool, and autoreconf packages.
 
-<A name="toc3-357" title="This Document" />
+<A name="toc3-384" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).
