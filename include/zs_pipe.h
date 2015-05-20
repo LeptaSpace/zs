@@ -66,29 +66,12 @@ void
 void
     zs_pipe_send_string (zs_pipe_t *self, const char *string);
 
-//  Send whole number to pipe; this wipes the current pipe register.
-void
-    zs_pipe_send_whole (zs_pipe_t *self, int64_t whole);
-
-//  Send real number to pipe; this wipes the current pipe register.
-void
-    zs_pipe_send_real (zs_pipe_t *self, double real);
-
-//  Send string to pipe; this wipes the current pipe register.
-void
-    zs_pipe_send_string (zs_pipe_t *self, const char *string);
-
 //  Receives the next value off the pipe, into the register. Any previous
 //  value in the register is lost. Returns 0 if a value was successfully
-//  received. If the pipe was empty, returns -1. This method does not block.
+//  received. If no values were received, returns -1. This method does not
+//  block.
 int
     zs_pipe_recv (zs_pipe_t *self);
-
-//  Pulls the last-sent value off the pipe, into the register. Any previous
-//  value in the register is lost. Returns 0 if a value was successfully
-//  received. If the pipe was empty, returns -1. This method does not block.
-int
-    zs_pipe_pull (zs_pipe_t *self);
 
 //  Returns the type of the register, 'w' for whole, 'r' for real, or 's' for
 //  string. Returns -1 if the register is empty.
@@ -129,9 +112,24 @@ double
 char *
     zs_pipe_recv_string (zs_pipe_t *self);
 
-//  Return number of values in pipe (0 or more)
-size_t
-    zs_pipe_size (zs_pipe_t *self);
+//  Marks an end of phrase in the pipe. This is used to delimit the pipe
+//  as input for later function calls. Marks are ignored when receiving
+//  values off a pipe.
+void
+    zs_pipe_mark (zs_pipe_t *self);
+
+//  Pulls a list of values from the source pipe into the pipe. The pull
+//  algorithm works depending on whether the pipe is at the end of a
+//  phrase or not, and whether the greedy argument is true or false:
+//
+//                  End of phrase:      In phrase:
+//  Greedy:         pull entire pipe    pull current phrase
+//  Not greedy:     pull last phrase    pull last single value
+//
+//  Any existing values in the pipe are first removed. This implements
+//  the necessary pipe mechanics for modest and greedy functions.
+void
+    zs_pipe_pull (zs_pipe_t *self, zs_pipe_t *source, bool greedy);
 
 //  Return pipe contents, as string. Caller must free it when done. Values are
 //  separated by spaces. This empties the pipe.

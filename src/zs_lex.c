@@ -19,7 +19,7 @@
     Functions start with a letter and contain letters, digits, hyphens,
     slashes, and underscores.
 
-    A simple function is a name. A complex function is a name followed
+    A inline function is a name. A nested function is a name followed
     by a list. A definition is a function followed by ':' and a list.
 
     Lists start with ( and end with ).
@@ -265,24 +265,24 @@ store_newline_character (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  have_simple_fn_token
+//  have_inline_fn_token
 //
 
 static void
-have_simple_fn_token (zs_lex_t *self)
+have_inline_fn_token (zs_lex_t *self)
 {
-    self->type = zs_lex_simple_fn;
+    self->type = zs_lex_inline_fn;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  have_complex_fn_token
+//  have_nested_fn_token
 //
 
 static void
-have_complex_fn_token (zs_lex_t *self)
+have_nested_fn_token (zs_lex_t *self)
 {
-    self->type = zs_lex_complex_fn;
+    self->type = zs_lex_nested_fn;
 }
 
 
@@ -424,15 +424,15 @@ zs_lex_test (bool verbose)
 
     assert (zs_lex_first (lex, "twopi:( pi 2 times)") == zs_lex_define_fn);
     assert (streq (zs_lex_token (lex), "twopi"));
-    assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
     assert (streq (zs_lex_token (lex), "pi"));
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
     assert (streq (zs_lex_token (lex), "times"));
     assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_complex_fn);
+    assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_nested_fn);
     assert (streq (zs_lex_token (lex), "something"));
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_close_list);
@@ -481,11 +481,11 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, "[Hello, World>") == zs_lex_invalid);
     assert (zs_lex_first (lex, "<Hello,>?<World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_invalid);
-    assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_complex_fn);
+    assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_nested_fn);
     assert (streq (zs_lex_token (lex), "echo"));
-    assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
     assert (streq (zs_lex_token (lex), "some"));
-    assert (zs_lex_next (lex) == zs_lex_simple_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
     assert (streq (zs_lex_token (lex), "text"));
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_next (lex) == zs_lex_null);

@@ -55,12 +55,19 @@
 #define VM_WHOLE        252     //  Issue a whole number constant
 #define VM_REAL         251     //  Issue a real number constant
 #define VM_STRING       250     //  Issue a string constant
-#define VM_PHRASE       249     //  Chain to next function
-#define VM_PERIOD       248     //  End sentence, clear pipes
-#define VM_NEST         247     //  Open new pipe scope
-#define VM_UNNEST       246     //  End pipe scope, pop pipes
+
+#define VM_STRICT       249     //  Prepare strict function call
+#define VM_MODEST       248     //  Prepare modest function call
+#define VM_GREEDY       247     //  Prepare greedy function call
+#define VM_NESTED       246     //  Open new pipe scope
+#define VM_UNNEST       245     //  End pipe scope, pop pipes
+#define VM_PHRASE       244     //  End phrase
+#define VM_SENTENCE     243     //  End sentence
+
+#define VM_UNUSED       242     //  Unused
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
+
 
 #include "zs_classes.h"
 
@@ -70,16 +77,18 @@ typedef struct {
     zs_vm_fn_t *function;           //  Native C function
     char *name;                     //  Primitive name
     char *hint;                     //  Hint to user
+    zs_type_t type;                 //  Function type
 } s_atomic_t;
 
 static s_atomic_t *
-s_atomic_new (const char *name, const char *hint, zs_vm_fn_t *function)
+s_atomic_new (zs_vm_fn_t *function, const char *name, zs_type_t type, const char *hint)
 {
     s_atomic_t *self = (s_atomic_t *) zmalloc (sizeof (s_atomic_t));
     assert (self);
+    self->function = function;
     self->name = strdup (name);
     self->hint = strdup (hint);
-    self->function = function;
+    self->type = type;
     return self;
 }
 
@@ -110,13 +119,14 @@ struct _zs_vm_t {
     char *scope_stack [256];        //  Scope stack, arbitrary size
     size_t scope_stack_ptr;         //  Size of scope stack
 
-    zs_pipe_t *pipe_stack [256];    //  Pipe stack, arbitrary size
-    size_t pipe_stack_ptr;          //  Size of pipe stack
-    zs_pipe_t *input;               //  Current input pipe
-    zs_pipe_t *output;              //  Current output pipe
+    zs_pipe_t *output_stack [256];  //  Output stack, arbitrary size
+    size_t output_stack_ptr;        //  Size of output stack
+    zs_pipe_t *input;               //  Input to next function
+    zs_pipe_t *output;              //  Current output sentence
+    char *results;                  //  Sentence results, if any
 
     size_t call_stack [256];        //  Function call stack
-    size_t call_stack_ptr;          //  Size of pipe stack
+    size_t call_stack_ptr;          //  Size of call stack
 
     bool verbose;                   //  Trace execution progress
     size_t iterator;                //  For listing function names
@@ -238,13 +248,11 @@ zs_vm_destroy (zs_vm_t **self_p)
     assert (self_p);
     if (*self_p) {
         zs_vm_t *self = *self_p;
-        //  Destroy current input/output pipes
+        zstr_free (&self->results);
         zs_pipe_destroy (&self->input);
         zs_pipe_destroy (&self->output);
-        //  Destroy all defined atomics
         while (self->nbr_atomics)
             s_atomic_destroy (&self->atomics [--self->nbr_atomics]);
-        //  Destroy VM code block
         free (self->code);
         free (self);
         *self_p = NULL;
@@ -262,7 +270,7 @@ void
 zs_vm_probe (zs_vm_t *self, zs_vm_fn_t *atomic)
 {
     self->probing = atomic;
-    (self->probing) (self);
+    (self->probing) (self, NULL, NULL);
     self->probing = NULL;
 }
 
@@ -285,14 +293,34 @@ zs_vm_probing (zs_vm_t *self)
 //  registered method (this is for aliases).
 
 int
-zs_vm_register (zs_vm_t *self, const char *name, const char *hint)
+zs_vm_register (zs_vm_t *self, const char *name, zs_type_t type, const char *hint)
 {
     assert (self->probing);
     assert (hint || self->nbr_atomics);
     if (hint == NULL)
         hint = self->atomics [self->nbr_atomics - 1]->hint;
-    self->atomics [self->nbr_atomics++] = s_atomic_new (name, hint, self->probing);
+    self->atomics [self->nbr_atomics++] = s_atomic_new (self->probing, name, type, hint);
     return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Resolve a function name, return type of function or zs_type_unknown if
+//  not defined. Resolves user-defined functions, then atomics, then builtins.
+
+zs_type_t
+zs_vm_function_type (zs_vm_t *self, const char *name)
+{
+    int found;
+    if (s_try_function (self, name) != -1)
+        return zs_type_greedy;      //  User functions are always greedy
+    else
+    if ((found = s_try_atomic (self, name)) != -1)
+        return self->atomics [found]->type;
+    else
+    if (s_try_builtin (self, name) != -1)
+        return zs_type_strict;      //  Builtins are always strict
+    return zs_type_unknown;
 }
 
 
@@ -412,54 +440,54 @@ zs_vm_compile_rollback (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Compile inline function call. The function gets the current input and
-//  output pipes. Returns 0 if OK or -1 if the function was not defined.
+//  Compile a strict function call; the function gets no input. Returns 0
+//  if OK or -1 if the function was not defined.
 
 int
-zs_vm_compile_inline (zs_vm_t *self, const char *name)
+zs_vm_compile_strict (zs_vm_t *self, const char *name)
 {
-    return s_compile_call (self, 0, name);
+    return s_compile_call (self, VM_STRICT, name);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Compile end of phrase. The next function gets the previous output pipe
-//  as its new input pipe.
+//  Compile a modest function call; the function gets a single input value
+//  which is the last value produced by the phrase. Returns 0 if OK or -1
+//  if the function was not defined.
 
 int
-zs_vm_compile_phrase (zs_vm_t *self)
+zs_vm_compile_modest (zs_vm_t *self, const char *name)
 {
-    self->code [self->code_size++] = VM_PHRASE;
-    return 0;
+    return s_compile_call (self, VM_MODEST, name);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Compile end of sentence. This separates sentences so the next sentence
-//  gets clean pipes. Next function gets empty input and output pipes.
+//  Compile a greedy function call. The function gets all output produced
+//  by the phrase. Returns 0 if OK, or -1 if the function was not defined.
 
 int
-zs_vm_compile_period (zs_vm_t *self)
+zs_vm_compile_greedy (zs_vm_t *self, const char *name)
 {
-    self->code [self->code_size++] = VM_PERIOD;
-    return 0;
+    return s_compile_call (self, VM_GREEDY, name);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Compile an nest operation, saves the current output pipe and creates a
-//  new input pipe. Saves the function, which is exectuted by the matching
-//  unnest operation. Returns 0 if OK or -1 if the function was not defined.
+//  Compile a nested function call. The current sentence is stacked and we
+//  start a new sentence. The actual function call is executed when we hit
+//  the matching unnest. Returns 0 if OK or -1 if the function was not
+//  defined.
 
 int
-zs_vm_compile_nest (zs_vm_t *self, const char *name)
+zs_vm_compile_nested (zs_vm_t *self, const char *name)
 {
     if (s_try_function (self, name) != -1
     ||  s_try_atomic (self, name) != -1
     ||  s_try_builtin (self, name) != -1) {
         //  We use a scope stack during compilation so it's less work for the
         //  caller, who has the function name now, rather than at closing time.
-        self->code [self->code_size++] = VM_NEST;
+        self->code [self->code_size++] = VM_NESTED;
         self->scope_stack [self->scope_stack_ptr++] = strdup (name);
         return 0;
     }
@@ -467,11 +495,9 @@ zs_vm_compile_nest (zs_vm_t *self, const char *name)
         return -1;              //  Not a defined function
 }
 
-
 //  ---------------------------------------------------------------------------
-//  Compile an unnest operation. Uses the current output pipe as input, and
-//  popes the previously saved output pipe, then calls the function specified
-//  in the original nest call.
+//  Compile an unnest operation; this executes the nested function on the
+//  current phrase or sentence.
 
 void
 zs_vm_compile_unnest (zs_vm_t *self)
@@ -484,22 +510,24 @@ zs_vm_compile_unnest (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Return input pipe for the execution context
+//  Compile end of phrase. This appends the phrase output to the current
+//  sentence output, and starts a new phrase.
 
-zs_pipe_t *
-zs_vm_input (zs_vm_t *self)
+void
+zs_vm_compile_phrase (zs_vm_t *self)
 {
-    return self->input;
+    self->code [self->code_size++] = VM_PHRASE;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Return output pipe for the execution context
+//  Compile end of sentence. This prints the sentence output and starts a
+//  new sentence.
 
-zs_pipe_t *
-zs_vm_output (zs_vm_t *self)
+void
+zs_vm_compile_sentence (zs_vm_t *self)
 {
-    return self->output;
+    self->code [self->code_size++] = VM_SENTENCE;
 }
 
 
@@ -619,7 +647,7 @@ zs_vm_run (zs_vm_t *self)
         if (opcode < 240) {
             if (self->verbose)
                 printf ("D [%04zd]: atomic=%s\n", needle, self->atomics [opcode]->name);
-            if ((self->atomics [opcode]->function) (self))
+            if ((self->atomics [opcode]->function) (self, self->input, self->output))
                 break;
         }
         else
@@ -665,38 +693,56 @@ zs_vm_run (zs_vm_t *self)
             needle += strlen (string) + 1;
         }
         else
-        if (opcode == VM_PHRASE) {
+        if (opcode == VM_STRICT) {
             if (self->verbose)
-                printf ("D [%04zd]: phrase\n", needle);
-            zs_pipe_destroy (&self->input);
-            self->input = self->output;
-            self->output = zs_pipe_new ();
+                printf ("D [%04zd]: strict\n", needle);
+            //  Function gets no input; we could pass null, though for
+            //  now we pass an empty input pipe
+            zs_pipe_purge (self->input);
         }
         else
-        if (opcode == VM_PERIOD) {
+        if (opcode == VM_MODEST) {
             if (self->verbose)
-                printf ("D [%04zd]: period\n", needle);
-            zs_pipe_purge (self->input);
-            zs_pipe_purge (self->output);
+                printf ("D [%04zd]: modest\n", needle);
+            zs_pipe_pull (self->input, self->output, false);
         }
         else
-        if (opcode == VM_NEST) {
+        if (opcode == VM_GREEDY) {
             if (self->verbose)
-                printf ("D [%04zd]: nest stack=%zd\n", needle, self->pipe_stack_ptr);
-            self->pipe_stack [self->pipe_stack_ptr] = self->output;
+                printf ("D [%04zd]: greedy\n", needle);
+            zs_pipe_pull (self->input, self->output, true);
+        }
+        else
+        if (opcode == VM_NESTED) {
+            if (self->verbose)
+                printf ("D [%04zd]: nested stack=%zd\n", needle, self->output_stack_ptr);
+            self->output_stack [self->output_stack_ptr] = self->output;
+            self->output_stack_ptr++;
             self->output = zs_pipe_new ();
             zs_pipe_purge (self->input);
-            self->pipe_stack_ptr++;
         }
         else
         if (opcode == VM_UNNEST) {
             if (self->verbose)
-                printf ("D [%04zd]: unnest stack=%zd\n", needle, self->pipe_stack_ptr);
-            assert (self->pipe_stack_ptr > 0);
-            self->pipe_stack_ptr--;
+                printf ("D [%04zd]: unnest stack=%zd\n", needle, self->output_stack_ptr);
+            assert (self->output_stack_ptr > 0);
+            self->output_stack_ptr--;
             zs_pipe_destroy (&self->input);
             self->input = self->output;
-            self->output = self->pipe_stack [self->pipe_stack_ptr];
+            self->output = self->output_stack [self->output_stack_ptr];
+        }
+        else
+        if (opcode == VM_PHRASE) {
+            if (self->verbose)
+                printf ("D [%04zd]: phrase\n", needle);
+            zs_pipe_mark (self->output);
+        }
+        else
+        if (opcode == VM_SENTENCE) {
+            if (self->verbose)
+                printf ("D [%04zd]: sentence\n", needle);
+            //  TODO: send results to console/actor pipe
+            puts (zs_vm_results (self));
         }
         else
         if (opcode == VM_GUARD) {
@@ -717,43 +763,58 @@ zs_vm_run (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  Return results as string, after successful execution. Caller must not
+//  modify returned value.
+
+const char *
+zs_vm_results (zs_vm_t *self)
+{
+    zstr_free (&self->results);
+    self->results = zs_pipe_paste (self->output);
+    return self->results;
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Selftest
 
 //  These are the atomics we use in the selftest application
 static int
-s_add (zs_vm_t *self)
+s_add (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "add", "Add all the values");
+        zs_vm_register (self, "add", zs_type_greedy, "Add all the values");
     else {
         int64_t sum = 0;
-        while (zs_pipe_size (zs_vm_input (self)) > 0)
-            sum += zs_pipe_recv_whole (zs_vm_input (self));
-        zs_pipe_send_whole (zs_vm_output (self), sum);
+        while (!zs_pipe_recv (input))
+            sum += zs_pipe_whole (input);
+        zs_pipe_send_whole (output, sum);
     }
     return 0;
 }
 
 static int
-s_count (zs_vm_t *self)
+s_count (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "count", "Eat and count all the values");
+        zs_vm_register (self, "count", zs_type_greedy, "Eat and count all the values");
     else {
-        zs_pipe_send_whole (zs_vm_output (self), zs_pipe_size (zs_vm_input (self)));
-        zs_pipe_purge (zs_vm_input (self));
+        int64_t count = 0;
+        while (!zs_pipe_recv (input))
+            count++;
+        zs_pipe_send_whole (output, count);
     }
     return 0;
 }
 
 static int
-s_assert (zs_vm_t *self)
+s_assert (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "assert", "Assert first two values are the same");
+        zs_vm_register (self, "assert", zs_type_greedy, "Assert first two values are the same");
     else {
-        int64_t first = zs_pipe_recv_whole (zs_vm_input (self));
-        int64_t second = zs_pipe_recv_whole (zs_vm_input (self));
+        int64_t first = zs_pipe_recv_whole (input);
+        int64_t second = zs_pipe_recv_whole (input);
         if (first != second) {
             printf ("E: assertion failed, %" PRId64 " != %" PRId64 "\n", first, second);
             return -1;          //  Destroy the thread
@@ -763,12 +824,12 @@ s_assert (zs_vm_t *self)
 }
 
 static int
-s_year (zs_vm_t *self)
+s_year (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "year", "Tell us what year it is");
+        zs_vm_register (self, "year", zs_type_strict, "Tell us what year it is");
     else
-        zs_pipe_send_whole (zs_vm_output (self), 2015);
+        zs_pipe_send_whole (output, 2015);
     return 0;
 }
 
@@ -791,88 +852,74 @@ zs_vm_test (bool verbose)
     zs_vm_probe (vm, s_year);
 
     //  --------------------------------------------------------------------
-    //  sub: (<OK> <Guys>, count 2, assert)
+    //  sub: (<OK> <Guys> count 2 assert)
 
     zs_vm_compile_define (vm, "sub");
     zs_vm_compile_string (vm, "OK");
     zs_vm_compile_string (vm, "Guys");
-    zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_greedy (vm, "count");
     zs_vm_compile_whole  (vm, 2);
-    zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "assert");
+    zs_vm_compile_greedy (vm, "assert");
     zs_vm_compile_commit (vm);
 
     //  --------------------------------------------------------------------
     //  main: (
-    //      123 1000000000, sum 1000000123, assert.
-    //      <Hello,> <World>, count 2, assert.
-    //      sum (123 456) 579, assert.
-    //      sum (123 count (1 2 3)) 126, assert.
-    //      year year, count 2, assert.
+    //      123 1000000000 sum 1000000123 assert,
+    //      <Hello,> <World> count 2 assert,
+    //      add (123 456) 579 assert,
+    //      add (123 count (1 2 3)) 126 assert,
+    //      year year count 2 assert
     //  )
     zs_vm_compile_define (vm, "main");
 
     zs_vm_compile_whole  (vm, 123);
     zs_vm_compile_whole  (vm, 1000000000);
-    zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "add");
+    zs_vm_compile_greedy (vm, "add");
     zs_vm_compile_whole  (vm, 1000000123);
+    zs_vm_compile_greedy (vm, "assert");
     zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "assert");
-    zs_vm_compile_period (vm);
 
     zs_vm_compile_string (vm, "Hello,");
     zs_vm_compile_string (vm, "World");
-    zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_greedy (vm, "count");
     zs_vm_compile_whole  (vm, 2);
+    zs_vm_compile_greedy (vm, "assert");
     zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "assert");
-    zs_vm_compile_period (vm);
 
-    rc = zs_vm_compile_nest (vm, "add");
-    assert (rc == 0);
+    zs_vm_compile_nested (vm, "add");
     zs_vm_compile_whole  (vm, 123);
     zs_vm_compile_whole  (vm, 456);
     zs_vm_compile_unnest (vm);
     zs_vm_compile_whole  (vm, 579);
+    zs_vm_compile_greedy (vm, "assert");
     zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "assert");
-    zs_vm_compile_period (vm);
 
-    rc = zs_vm_compile_nest (vm, "add");
-    assert (rc == 0);
+    zs_vm_compile_nested (vm, "add");
     zs_vm_compile_whole  (vm, 123);
-    rc = zs_vm_compile_nest (vm, "count");
-    assert (rc == 0);
+    zs_vm_compile_nested (vm, "count");
     zs_vm_compile_whole  (vm, 1);
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_whole  (vm, 3);
     zs_vm_compile_unnest (vm);
     zs_vm_compile_unnest (vm);
     zs_vm_compile_whole  (vm, 126);
+    zs_vm_compile_greedy (vm, "assert");
     zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "assert");
-    zs_vm_compile_period (vm);
 
-    zs_vm_compile_inline (vm, "year");
-    zs_vm_compile_inline (vm, "year");
-    zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_strict (vm, "year");
+    zs_vm_compile_strict (vm, "year");
+    zs_vm_compile_greedy (vm, "count");
     zs_vm_compile_whole  (vm, 2);
-    zs_vm_compile_phrase (vm);
-    zs_vm_compile_inline (vm, "assert");
-    zs_vm_compile_period (vm);
+    zs_vm_compile_greedy (vm, "assert");
 
     zs_vm_compile_commit (vm);
 
     //  --------------------------------------------------------------------
     //  sub sub main
     zs_vm_compile_define (vm, "go");
-    zs_vm_compile_inline (vm, "sub");
-    zs_vm_compile_inline (vm, "sub");
-    zs_vm_compile_inline (vm, "main");
+    zs_vm_compile_greedy (vm, "sub");
+    zs_vm_compile_greedy (vm, "sub");
+    zs_vm_compile_greedy (vm, "main");
     zs_vm_compile_commit (vm);
     if (verbose)
         zs_vm_dump (vm);

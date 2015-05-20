@@ -20,14 +20,14 @@
         <action name = "compile string" />
         <action name = "get next token" />
     </event>
-    <event name = "simple fn" next = "building shell">
+    <event name = "inline fn" next = "building shell">
         <action name = "compile define shell" />
-        <action name = "compile inline" />
+        <action name = "compile inline call" />
         <action name = "get next token" />
     </event>
-    <event name = "complex fn" next = "building shell">
+    <event name = "nested fn" next = "building shell">
         <action name = "compile define shell" />
-        <action name = "compile nest" />
+        <action name = "compile nested call" />
         <action name = "get next token" />
     </event>
     <event name = "define fn" next = "building function">
@@ -61,12 +61,12 @@
         <action name = "compile string" />
         <action name = "get next token" />
     </event>
-    <event name = "simple fn">
-        <action name = "compile inline" />
+    <event name = "inline fn">
+        <action name = "compile inline call" />
         <action name = "get next token" />
     </event>
-    <event name = "complex fn">
-        <action name = "compile nest" />
+    <event name = "nested fn">
+        <action name = "compile nested call" />
         <action name = "get next token" />
     </event>
     <event name = "close list">
@@ -74,11 +74,11 @@
         <action name = "get next token" />
     </event>
     <event name = "phrase">
-        <action name = "compile phrase" />
+        <action name = "compile end of phrase" />
         <action name = "get next token" />
     </event>
     <event name = "sentence">
-        <action name = "compile period" />
+        <action name = "compile end of sentence" />
         <action name = "get next token" />
     </event>
     <event name = "completed" next = "starting">
@@ -97,11 +97,11 @@
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "simple fn" next = "starting">
+    <event name = "inline fn" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "complex fn" next = "starting">
+    <event name = "nested fn" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>

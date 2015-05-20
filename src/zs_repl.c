@@ -41,7 +41,6 @@ struct _zs_repl_t {
     zs_vm_t *vm;                //  Execution context
     bool completed;             //  Input formed a complete phrase
     uint scope;                 //  Nesting scope, 0..n
-    char *results;              //  Expression results, if any
 };
 
 //  ---------------------------------------------------------------------------
@@ -61,8 +60,8 @@ zs_repl_new (void)
         s_register_zs_units_misc (self->vm);
 
         //  Set token type to event map
-        self->events [zs_lex_simple_fn] = simple_fn_event;
-        self->events [zs_lex_complex_fn] = complex_fn_event;
+        self->events [zs_lex_inline_fn] = inline_fn_event;
+        self->events [zs_lex_nested_fn] = nested_fn_event;
         self->events [zs_lex_define_fn] = define_fn_event;
         self->events [zs_lex_string] = string_event;
         self->events [zs_lex_number] = number_event;
@@ -88,7 +87,6 @@ zs_repl_destroy (zs_repl_t **self_p)
         fsm_destroy (&self->fsm);
         zs_lex_destroy (&self->lex);
         zs_vm_destroy (&self->vm);
-        zstr_free (&self->results);
         free (self);
         *self_p = NULL;
     }
@@ -175,62 +173,44 @@ compile_string (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  compile_inline
+//  compile_inline_call
 //
 
 static void
-compile_inline (zs_repl_t *self)
+compile_inline_call (zs_repl_t *self)
 {
-    if (zs_vm_compile_inline (self->vm, zs_lex_token (self->lex)))
-        fsm_set_exception (self->fsm, invalid_event);
+    const char *function = zs_lex_token (self->lex);
+    switch (zs_vm_function_type (self->vm, function)) {
+        //  VM takes care of plumbing and function call
+        case zs_type_strict:
+            if (zs_vm_compile_strict (self->vm, function))
+                fsm_set_exception (self->fsm, invalid_event);
+            break;
+        case zs_type_modest:
+            if (zs_vm_compile_modest (self->vm, function))
+                fsm_set_exception (self->fsm, invalid_event);
+            break;
+        case zs_type_greedy:
+            if (zs_vm_compile_greedy (self->vm, function))
+                fsm_set_exception (self->fsm, invalid_event);
+            break;
+        case zs_type_unknown:
+            fsm_set_exception (self->fsm, invalid_event);
+            break;
+    }
 }
 
 
 //  ---------------------------------------------------------------------------
-//  compile_phrase
+//  compile_nested_call
 //
 
 static void
-compile_phrase (zs_repl_t *self)
-{
-    if (zs_vm_compile_phrase (self->vm))
-        fsm_set_exception (self->fsm, invalid_event);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compile_period
-//
-
-static void
-compile_period (zs_repl_t *self)
-{
-    zs_vm_compile_period (self->vm);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compile_nest
-//
-
-static void
-compile_nest (zs_repl_t *self)
+compile_nested_call (zs_repl_t *self)
 {
     self->scope++;
-    if (zs_vm_compile_nest (self->vm, zs_lex_token (self->lex)))
+    if (zs_vm_compile_nested (self->vm, zs_lex_token (self->lex)))
         fsm_set_exception (self->fsm, invalid_event);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  compile_define
-//
-
-static void
-compile_define (zs_repl_t *self)
-{
-    self->scope++;
-    zs_vm_compile_define (self->vm, zs_lex_token (self->lex));
 }
 
 
@@ -251,6 +231,18 @@ compile_unnest (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  compile_define
+//
+
+static void
+compile_define (zs_repl_t *self)
+{
+    self->scope++;
+    zs_vm_compile_define (self->vm, zs_lex_token (self->lex));
+}
+
+
+//  ---------------------------------------------------------------------------
 //  compile_unnest_or_commit
 //
 
@@ -264,6 +256,28 @@ compile_unnest_or_commit (zs_repl_t *self)
         zs_vm_compile_commit (self->vm);
         fsm_set_exception (self->fsm, completed_event);
     }
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_end_of_phrase
+//
+
+static void
+compile_end_of_phrase (zs_repl_t *self)
+{
+    zs_vm_compile_phrase (self->vm);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_end_of_sentence
+//
+
+static void
+compile_end_of_sentence (zs_repl_t *self)
+{
+    zs_vm_compile_sentence (self->vm);
 }
 
 
@@ -309,6 +323,7 @@ static void
 rollback_the_function (zs_repl_t *self)
 {
     zs_vm_compile_rollback (self->vm);
+    self->scope = 0;
 }
 
 
@@ -353,9 +368,7 @@ zs_repl_completed (zs_repl_t *self)
 const char *
 zs_repl_results (zs_repl_t *self)
 {
-    zstr_free (&self->results);
-    self->results = zs_pipe_paste (zs_vm_output (self->vm));
-    return self->results;
+    return zs_vm_results (self->vm);
 }
 
 
@@ -395,7 +408,12 @@ zs_repl_test (bool verbose)
     //  @selftest
     zs_repl_t *repl = zs_repl_new ();
     zs_repl_verbose (repl, verbose);
+    s_repl_assert (repl, "1 2 3 add", "6");
+    s_repl_assert (repl, "1 2, k", "1000 2000");
     s_repl_assert (repl, "1 2 3, add", "6");
+    s_repl_assert (repl, "1 2 3, 4 5 6 add", "1 2 3 15");
+    s_repl_assert (repl, "1 2 3, 4 5 6, add", "21");
+    s_repl_assert (repl, "1 2 3 count, 1 1 add, subtract", "1");
     s_repl_assert (repl, "add (1 2 3)", "6");
     s_repl_assert (repl, "add (add (1 2 3) count (4 5 6))", "9");
     s_repl_assert (repl, "clr", "");
