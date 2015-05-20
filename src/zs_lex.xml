@@ -74,37 +74,37 @@
         <action name = "parse next character" />
     </event>
     <event name = "open list" next = "expecting token">
-        <action name = "have complex fn token" />
+        <action name = "have nested fn token" />
     </event>
     <event name = "close list" next = "expecting token">
-        <action name = "have simple fn token" />
+        <action name = "have inline fn token" />
         <action name = "push back to previous" />
     </event>
     <event name = "comma" next = "expecting token">
-        <action name = "have simple fn token" />
+        <action name = "have inline fn token" />
         <action name = "push back to previous" />
     </event>
     <event name = "period" next = "expecting token">
-        <action name = "have simple fn token" />
+        <action name = "have inline fn token" />
         <action name = "push back to previous" />
     </event>
     <event name = "finished" next = "expecting token">
-        <action name = "have simple fn token" />
+        <action name = "have inline fn token" />
     </event>
 </state>
 
 <state name = "after function">
     <event name = "finished" next = "expecting token">
-        <action name = "have simple fn token" />
+        <action name = "have inline fn token" />
     </event>
     <event name = "open list" next = "expecting token">
-        <action name = "have complex fn token" />
+        <action name = "have nested fn token" />
     </event>
     <event name = "colon" next = "after function colon">
         <action name = "parse next character" />
     </event>
     <event name = "*" next = "expecting token">
-        <action name = "have simple fn token" />
+        <action name = "have inline fn token" />
         <action name = "push back to previous" />
     </event>
 </state>

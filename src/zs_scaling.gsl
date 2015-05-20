@@ -44,19 +44,16 @@ s_apply_scale (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
 .for class.atomic
 .   atomic.type ?= "whole"
 static int
-s_$(name:) (zs_vm_t *self)
+s_$(name:) (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
-    zs_pipe_t *output = zs_vm_output (self);
     if (zs_vm_probing (self)) {
-        zs_vm_register (self, "$(atomic.name:)", "$(string.trim (atomic.?''):left)");
+        zs_vm_register (self, "$(atomic.name:)", zs_type_modest, "$(string.trim (atomic.?''):left)");
 .   for alias
-        zs_vm_register (self, "$(alias.name:)", NULL);
+        zs_vm_register (self, "$(alias.name:)", zs_type_modest, NULL);
 .   endfor
     }
-    else
-    if (zs_pipe_size (zs_vm_input (self))) {
-        zs_pipe_t *input = zs_vm_input (self);
-        //  List function; recv and process all values
+    else {
+        //  Process all values on input pipe
         while (zs_pipe_recv (input) == 0) {
 .   if type = "real"
             //  Always coerce to a real value
@@ -67,25 +64,6 @@ s_$(name:) (zs_vm_t *self)
             zs_pipe_send (output);
         }
     }
-    else
-    if (zs_pipe_size (output)) {
-        //  Unary function; pull last value off pipe
-        zs_pipe_pull (output);
-.   if type = "real"
-        //  Always coerce to a real value
-        zs_pipe_set_real (output, zs_pipe_real (output) * $(value:));
-.   else
-        s_apply_scale (output, output, (int64_t) ($(value:)));
-.   endif
-        zs_pipe_send (output);
-    }
-    else
-        //  Constant; send multipler as value
-.   if type = "real"
-        zs_pipe_send_real (output, $(value:));
-.   else
-        zs_pipe_send_whole (output, (int64_t) ($(value:)));
-.   endif
     return 0;
 }
 

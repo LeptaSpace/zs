@@ -24,8 +24,25 @@ extern "C" {
 typedef struct _zs_vm_t zs_vm_t;
 #endif
 
+//  Atomic function types
+typedef enum {
+    //  A strict function is nullary (never takes arguments); it is a constant
+    //  or a measurement of the physical enviornment, e.g. time or temperature.
+    zs_type_strict,
+    //  A modest function is singular (unary) by default; however we can force
+    //  it to work on a list of values.
+    zs_type_modest,
+    //  A greedy function operates on as many values as it can, this means
+    //  the current phrase or sentence. User-defined functions are always
+    //  greedy.
+    zs_type_greedy,
+    //  If a function name is not defined, zs_vm_resolve returns this.
+    zs_type_unknown
+} zs_type_t;
+
+
 //  Virtual machine atomic function type
-typedef int (zs_vm_fn_t) (zs_vm_t *self);
+typedef int (zs_vm_fn_t) (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output);
 
 //  @interface
 //  Create a new empty virtual machine. Returns the reference if successful,
@@ -54,7 +71,12 @@ bool
 //  failed due to an internal error. If hint is NULL, uses same hint as last
 //  registered method (this is for aliases).
 int
-    zs_vm_register (zs_vm_t *self, const char *name, const char *hint);
+    zs_vm_register (zs_vm_t *self, const char *name, zs_type_t type, const char *hint);
+
+//  Resolve a function name, return type of function or zs_type_unknown if
+//  not defined. Resolves user-defined functions, then atomics, then builtins.
+zs_type_t
+    zs_vm_function_type (zs_vm_t *self, const char *name);
 
 //  Compile a whole number constant into the virtual machine.
 //  Whole numbers are stored thus:
@@ -88,40 +110,43 @@ void
 int
     zs_vm_compile_rollback (zs_vm_t *self);
 
-//  Compile inline function call. The function gets the current input and
-//  output pipes. Returns 0 if OK or -1 if the function was not defined.
+//  Compile a strict function call; the function gets no input. Returns 0
+//  if OK or -1 if the function was not defined.
 int
-    zs_vm_compile_inline (zs_vm_t *self, const char *name);
+    zs_vm_compile_strict (zs_vm_t *self, const char *name);
 
-//  Compile end of phrase. The next function gets the previous output pipe
-//  as its new input pipe.
+//  Compile a modest function call; the function gets a single input value
+//  which is the last value produced by the phrase. Returns 0 if OK or -1
+//  if the function was not defined.
 int
-    zs_vm_compile_phrase (zs_vm_t *self);
+    zs_vm_compile_modest (zs_vm_t *self, const char *name);
 
-//  Compile end of sentence. This separates sentences so the next sentence
-//  gets clean pipes. Next function gets empty input and output pipes.
+//  Compile a greedy function call. The function gets all output produced
+//  by the phrase. Returns 0 if OK, or -1 if the function was not defined.
 int
-    zs_vm_compile_period (zs_vm_t *self);
+    zs_vm_compile_greedy (zs_vm_t *self, const char *name);
 
-//  Compile an nest operation, saves the current output pipe and creates a
-//  new input pipe. Saves the function, which is exectuted by the matching
-//  unnest operation. Returns 0 if OK or -1 if the function was not defined.
+//  Compile a nested function call. The current sentence is stacked and we
+//  start a new sentence. The actual function call is executed when we hit
+//  the matching unnest. Returns 0 if OK or -1 if the function was not
+//  defined.
 int
-    zs_vm_compile_nest (zs_vm_t *self, const char *name);
+    zs_vm_compile_nested (zs_vm_t *self, const char *name);
 
-//  Compile an unnest operation. Uses the current output pipe as input, and
-//  popes the previously saved output pipe, then calls the function specified
-//  in the original nest call.
+//  Compile an unnest operation; this executes the nested function on the
+//  current phrase or sentence.
 void
     zs_vm_compile_unnest (zs_vm_t *self);
 
-//  Return input pipe for the execution context
-zs_pipe_t *
-    zs_vm_input (zs_vm_t *self);
+//  Compile end of phrase. This appends the phrase output to the current
+//  sentence output, and starts a new phrase.
+void
+    zs_vm_compile_phrase (zs_vm_t *self);
 
-//  Return output pipe for the execution context
-zs_pipe_t *
-    zs_vm_output (zs_vm_t *self);
+//  Compile end of sentence. This prints the sentence output and starts a
+//  new sentence.
+void
+    zs_vm_compile_sentence (zs_vm_t *self);
 
 //  Dump VM contents (state and code)
 void
@@ -156,6 +181,11 @@ void
 //  stopped due to some error. Each run of the VM starts with clean pipes.
 int
     zs_vm_run (zs_vm_t *self);
+
+//  Return results as string, after successful execution. Caller must not
+//  modify returned value.
+const char *
+    zs_vm_results (zs_vm_t *self);
 
 //  Self test of this class
 void

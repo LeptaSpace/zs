@@ -90,15 +90,15 @@ Both Forth and Lisp offer you their salaciously unfiltered virtual machines, and
 
 Whereas my young daughter correctly and immediately understood this without any explanation:
 
-    1 2 3 4 5 sum
+    1 2 3 4 5 add
 
 And then extrapolated to "you could also say average, or median!"
 
 What should this do?
 
-    1 2 3 4 5 echo
+    1 2 3 4 5
 
-Answer: "1 2 3 4 5" and not "5 4 3 2 1".
+Answer: print "1 2 3 4 5" and not "5 4 3 2 1".
 
 Forth is too low on the abstraction level. Do I want to have to explain things like word sizes to my kids just so they can switch on the heating? Clearly not. We can't make throwable code if we care about bits and bytes. And we have C to deal with that part.
 
@@ -106,7 +106,7 @@ I never used Lisp, so my criticisms here are vague and opinionated. I dislike re
 
 Long ago I learned most people can learn three levels of nesting: this one, the one above, and the one below. Recursion also reinforces the common fallacy that because things at different levels are self-similar, *they are the same*. Star systems may spin like atoms. However they are not the same thing. This is my data. This is the parent. Here are its children. Do the appropriate work, and climb up and down the tree as needed.
 
-I've no opinion on Lisp's parenthesis except they feel like they're in the wrong place:
+Lisp's parenthesis feel like they're in the wrong place:
 
     (command argument argument)
 
@@ -136,18 +136,6 @@ And when data is message, we can handle bad data simply by discarding it. Functi
 
 I'm also going to experiment with better text forms. Conventional strings don't work that well, leading to Python's """ and Perl's "OK, I give up, do whatever you like" solutions. I don't see why regular expressions, commands, keystrokes, or template code should have different syntaxes. They're all text. For now I'm using < and >, and will explore other ways to represent text.
 
-### First Steps
-
-So far what do I have?
-
-* A lexer (zs_lex) that breaks input into tokens. This should become a language atomic at some stage, pushing input tokens to a pipe.
-* A pipe class (zs_pipe) that holds numbers and strings. This is not meant to be fast; it just shows the idea.
-* A virtual machine class (zs_vm) that compiles and executes bytecode. It supports a basic syntax that I'll explain in a second.
-* A REPL class (zs_repl) that connects the lexer to the VM. It's really quite simple.
-* A main program (zs) that acts as a shell.
-
-The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
-
 ### Experimental Notes
 
 Most language designers use grammar like early web designers used fonts. The more the merrier, surely! After all, why did God give us such a rich toolkit for building languages, if we were not meant to use it?
@@ -158,31 +146,91 @@ The basic grammar of ZeroScript is therefore just a series of numbers, strings, 
 
 The language looks like this (taken from the VM self test):
 
-    sub: (<OK> <Guys>, count 2, assert)
+    sub: (<OK> <Guys> count 2 assert)
     main: (
-        123 1000000000, sum 1000000123, assert.
-        <Hello,> <World>, count 2, assert.
-        sum (123 456) 579, assert.
-        sum (123 count (1 2 3)) 126, assert.
+        123 1000000000 sum 1000000123 assert,
+        <Hello,> <World> count 2 assert,
+        add (123 456) 579 assert,
+        add (123 count (1 2 3)) 126 assert,
+        year year count 2 assert
     )
     sub sub main
 
 * Strings are enclosed in < and > rather than " and " which are unpleasant to parse properly.
-* Phrases are connected by commas or put in parentheses; the output of each phrase is piped into the next.
-* Phrases are grouped into sentences, separated by periods. The period after the last phrase is cosmetic.
+* Functions are postfix, or prefix if you use ( and ) to enclose their arguments.
+* Words are grouped into sentences and phrases, which I'll explain in a second.
 * The rest should be obvious at first reading, that is the point.
 
 It's a softly functional language. Functions have no state, and there are no variables or assignments. A function can produce a constant value:
 
-    greeting: (<Hello, fellow humans!>)
+    > greeting: (<Hello, fellow humans!>)
+    > greeting
+    <Hello, fellow humans!>
 
-I'm assuming the real world magically produces interesting values like "temperature" and "CPU load %" and "disk space free" and "amount left in wallet". And most often, or always, these are read-only values. One does not modify the current temperature. Side-effects seems honest, e.g. switching on the heating or cooling should eventually change the temperature.
+Our grammar thus has just a few syntactic elements:
 
-So each function takes some input and produces some output. Nature does not use stacks, however it does often form orderly queues. It seems fair that the outputs of multiple functions get queued up. So functions write to an "output pipe".
+    function: ( something )
+    function ( something )
+    something, something, something.
 
-There seem to be two kinds of input to a function. One, the last single item produced by the previous function. Two, all the items produced by the previous functions. I call this the "zero, one, many" rule.
+### Words, Phrases, and Sentences
 
-Here's how we can write long numbers:
+Forgive me for this. This is an experiment in making the language easier and more obvious. It seems to work and is pleasant to use.
+
+These should all be obvious:
+
+    > 1 2 3
+    1 2 3
+    > 1 2 3 add
+    6
+    > 1 2 3 count, 1 1 add
+    3 2
+    > 1 2 3 count, 1 1 add, subtract
+    1
+
+I'll come to adding aliases like "+" and "-" later. How does that final "subtract" know what to do? Let me make a more delicate example of my target syntax:
+
+    > 1 day 2 weeks add
+    1296000
+
+Which shows the result in seconds. Or,
+
+    > 1 day 2 weeks add 1 day divide
+    15
+
+Note how the phrase is built up from left to right. It is simpler to use parentheses:
+
+    > divide (add (1 day 2 weeks) 1 day)
+
+However when we write this, we're always editing the *start* of the phrase rather than adding to it at the end. Also, parenthesis... easy for parsers, harder for humans.
+
+I can break this phrase into smaller phrases:
+
+    > 1 day 2 weeks add, 1 day, divide
+    15
+
+There seem to be three kinds of function:
+
+* Functions that take no arguments ("nullary") and produce some magic value. These are key to measuring the real world: time, temperature, free disk space, etc. It makes no sense to write these. One does not modify the current temperature. Side-effects seem honest, e.g. switching on the heating or cooling should eventually change the measurable temperature.
+* Functions that take a single argument, and which can be convinced to work on a set or list of values. For example, the "day" and "weels" functions are multipliers (returning the number of seconds in a day and week respectively).
+* Functions that take multiple arguments, and the more the better. These functions should be able to work on lists of zero, one, two, or a thousand values.
+
+I've called these "strict", "modest", and "greedy" functions. When we define atomics, we tell the virtual machine what kind of function we're making. When we construct functions out of others, the new function takes the type of the first word in its body.
+
+The input to a modest or greedy function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
+
+It turns out we can make this work pretty well using a single special symbol (comma) to provide hints to the compiler. The comma breaks the code into "phrases". Each phrase produces some output, which accumulates as we worj through the phrases.
+
+Before we call a function, the VM prepares an input pipe based on the type of the function and where we use it:
+
+* A modest function operates on the previous value in the current phrase, if there's one: "1 k". If we use a modest function at the start of a phrase, then it operates on the whole previous phrase: "1 2 3, k". This is like using parentheses: "k (1 2 3)".
+* A greedy function operators on the previous values in the current phrase, if there are any: "1 2 3 add". If we use a greedy function at the start of a phrase, it operators on the whole sentence so far: "1 2 3, 4 5 6, add".
+
+This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive.
+
+I'm trying to avoid binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style.
+
+Once we have this working, we can start to make numbers fun to write:
 
     > 64 Gi
     68719476736
@@ -190,13 +238,6 @@ Here's how we can write long numbers:
     2251799813685248
     > 32 Ki
     32768
-
-Where these functions operate on the most recent value. For now this means they treat the output pipe like a stack. It's not beautiful, so I'm looking for better abstractions.
-
-However these is also possible (the two forms do the same):
-
-    > 16 32 64, Gi
-    17179869184 34359738368 68719476736
     > Gi (16 32 64)
     17179869184 34359738368 68719476736
 
@@ -216,21 +257,9 @@ There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z an
     > 1 a
     1e-18
 
-I implemented these SI scaling functions using GSL code generation to reduce the work. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_si_units.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_si_units.xml), which produce the source code in [zs_si_units.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_si_units.h). It's a nice way to not have to write and improve lots of code. For example when I decided to add list capabilities to these functions, it was literally a 10-line change to the script and then "make code" and it all worked.
+I implemented these SI scaling functions using GSL code generation to reduce the work. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_units_si.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.xml), which produce the source code in [zs_units_si.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.h). It's a nice way to not have to write and improve lots of code.
 
-I'm going to be using GSL and code generation aggressively in the tooling for this project. Expect a lot of state machines at the heart of more complex classes.
-
-Our grammar thus has just a few elements:
-
-    function: ( something )
-    function ( something )
-    something, function
-
-And because using a comma to separate phrases was fun, I added a period to end a sentence:
-
-    something, function.
-
-What that does is empty all pipes so the next function starts with a clean slate. I've no idea if this makes sense in real programs, though it does help in writing test cases.
+The commas work well, so I'm using a period to end a sentence. What this does is print the previous phrases' output, and start afresh.
 
 The zs_lex state machine deals with parsing these different cases:
 
@@ -243,6 +272,18 @@ Numbers are either whole numbers or real numbers. Wholes get coerced into real a
 *TODO: write an FSM-based analyzer for numbers that handles the various forms we aim to support.*
 
 *TODO: allow comments starting with '#', to end of line*
+
+### First Steps
+
+So far what do I have?
+
+* A lexer (zs_lex) that breaks input into tokens. This should become a language atomic at some stage, pushing input tokens to a pipe. It's based on a state machine.
+* A pipe class (zs_pipe) that holds numbers and strings. This is not meant to be fast; it just shows the idea.
+* A virtual machine class (zs_vm) that compiles and executes bytecode. It supports a basic syntax that I'll explain in a second.
+* A REPL class (zs_repl) that connects the lexer to the VM, based on a state machine.
+* A main program (zs) that acts as a shell.
+
+The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
 
 ### The Virtual Machine
 
@@ -323,6 +364,8 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
 * http://en.wikipedia.org/wiki/Metric_prefix
+* http://en.wikipedia.org/wiki/Arity
+* http://en.wikipedia.org/wiki/Concatenative_programming_language
 
 ## Technicalities
 

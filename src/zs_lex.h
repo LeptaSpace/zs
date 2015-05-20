@@ -22,8 +22,8 @@ typedef struct _zs_lex_t zs_lex_t;
 #endif
 
 typedef enum {
-    zs_lex_simple_fn,       //  function
-    zs_lex_complex_fn,      //  function (
+    zs_lex_inline_fn,       //  function
+    zs_lex_nested_fn,       //  function (
     zs_lex_define_fn,       //  function: (
     zs_lex_close_list,      //  ) close list
     zs_lex_string,          //  <string>

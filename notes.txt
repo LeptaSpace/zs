@@ -1,53 +1,57 @@
 TODO
 
-pass input, output pipes to atomics
-
-help on function
-    how to put function onto pipe
-    ? xyz
-
-help (xyz)
-    get hint on xyz if it's an atomic
-    else show code for xyz if it's a function
+OK - register function types
+OK - provide input/output to call API
+OK - add VALUE/PHRASE/SENTENCE atomics
 
 
-problem with () notation is you have to think in advance
-
-    add (max (1 2 3) min (4 5 6))
-        - unlimited levels of nesting
-    or
-    1 2 3, max. 4 5 6, min. add.
-        - two levels of nesting only
-
-    nest
-    1 2 3, max      take set of 1 2 3 and apply max
-    .               send result up and clear
-    4 5 6, min      take set of 4 5 6 and apply min
-    .               send result up and clear
-    add             since there's nothing here, look up
-                    take set of 3, 4 and apply add
-
-    period operator takes current outputs and sends to parent output
-        - what is parent output?
-
-    atomic function
-        - if input set is empty and parent is not empty
-        - unnest and execute function on parent
+user functions take type of first function
 
 
-    nest: push output, new output, new input
-    unnest: input <= output
+register atomic, set type
+    strict, lazy, greedy
 
-        else
-        if (opcode == VM_UNNEST) {
-            if (self->verbose)
-                printf ("D [%04zd]: unnest stack=%zd\n", needle, self->pipe_stack_ptr);
-            assert (self->pipe_stack_ptr > 0);
-            self->pipe_stack_ptr--;
-            zs_pipe_destroy (&self->input);
-            self->input = self->output;
-            self->output = self->pipe_stack [self->pipe_stack_ptr];
-        }
+parsing sentence:
+    - start phrase at beginning
+    - "," ends previous phrase and starts new one
+    - sentence output is held as own list
+    - "." ends sentence (prints sentence output)
+    - ")" ends sentence (unnest, send to parent)
+
+parsing function
+    - lookup name and get type
+    - if followed by "(" then push sentence and start new one
+    - resolve function type to: PURE, LAZY, WEAK
+    - phrase state: empty (start), or busy (middle)
+
+    start-of-phrase:
+        pure
+            eat sentence
+            execute function
+        lazy
+            eat phrase
+            execute function
+        weak
+            input is null
+            execute function
+
+    busy-with-phrase:
+        pure
+            eat phrase
+            execute function
+        lazy
+            eat value
+            execute function
+        weak
+            input is null
+            execute function
+
+    atomics
+        NEST
+        UNNEST
+        NOM         - EAT VALUE
+        NOMNOM      - EAT PHRASE (current or previous)
+        NOMNOMNOM   - EAT SENTENCE
 
 
 
@@ -88,17 +92,25 @@ provide atomics with input & output pipe automatically:
         input provides list
 
 
-pipe as stack?
-    1 2 3, k 2, m
-    sum (k (1 2 3) M (2))
 
 
+help on function
+    how to put function onto pipe
+    ? xyz
+
+help (xyz)
+    get hint on xyz if it's an atomic
+    else show code for xyz if it's a function
+
+    -> how do we know to pass a function rather than execute it?
+    1. @ before function name
+    2. atomic can force this
 
 
-0, 1 many - conditionals and loops are the same; we repeat a function N times
+0, 1 many - conditionals and loops are the same; we repeat a phrase N times
 
     compute { execute }
-    sum { echo <*> }
+    5 { <*> <*> <*>}
 
     forever { sleep (1) temperature }
     until (12 PM) { sleep (1) temperature }
@@ -156,19 +168,4 @@ string atomics
         repeat      (repeat string N times)
         match       (string vs. pattern or pattern vs. string)
         replace     (string mashing,...)
-
-
-******** DONE
-
-Exponentiation functions
-    Atomics that operate on last value in output
-
-    Ki Mi Gi Ti Pi Ei
-    h k M G T P E Z Y
-    d c m u n p f a z y
-
-    http://en.wikipedia.org/wiki/Metric_prefix
-
-    > 123 k 1 k, sum
-    124000
 
