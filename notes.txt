@@ -1,98 +1,37 @@
 TODO
 
-OK - register function types
-OK - provide input/output to call API
-OK - add VALUE/PHRASE/SENTENCE atomics
+- allow comments starting with '#', to end of line*
+
+- allow symbolic operators (+, *, etc.)
+
+- arithmetic functions have to support reals
+
+- coerce modest function to strict
+    - if input is empty, assume 1
+    - k -> 1000
+
+- make zs_repl into an actor
+    - accept input on pipe
+    - return output to pipe (end of sentence)
+
+- array functions
+    - modest function that takes additional subjects
+    - register type zs_type_array
+    - syntax: inputs, operands fn
+    - alternative:  fn (operands)
+        e.g.    n times
+                1 2 3, 2 times
+                2 times (1 2 3)
+    - 2 3, times (1 2 3) ???
+    - receive on input pipe, separated by mark
+
+    list functions: avg, sum, min, max, count, product
+    array functions: plus +, minus -, times * x, divide / :, power ^, ...
 
 
-user functions take type of first function
+- user functions take type of first function
 
-
-register atomic, set type
-    strict, lazy, greedy
-
-parsing sentence:
-    - start phrase at beginning
-    - "," ends previous phrase and starts new one
-    - sentence output is held as own list
-    - "." ends sentence (prints sentence output)
-    - ")" ends sentence (unnest, send to parent)
-
-parsing function
-    - lookup name and get type
-    - if followed by "(" then push sentence and start new one
-    - resolve function type to: PURE, LAZY, WEAK
-    - phrase state: empty (start), or busy (middle)
-
-    start-of-phrase:
-        pure
-            eat sentence
-            execute function
-        lazy
-            eat phrase
-            execute function
-        weak
-            input is null
-            execute function
-
-    busy-with-phrase:
-        pure
-            eat phrase
-            execute function
-        lazy
-            eat value
-            execute function
-        weak
-            input is null
-            execute function
-
-    atomics
-        NEST
-        UNNEST
-        NOM         - EAT VALUE
-        NOMNOM      - EAT PHRASE (current or previous)
-        NOMNOMNOM   - EAT SENTENCE
-
-
-
-computations
-
-    choices                                             parsing     surprise    set
-        infix notation      a - b + c                     *          *****       *
-            with parens     a - (b + c)                   *          ****        *
-            or without      automatic priority
-        postfix notation    a b - c +                     **          **         *
-            order?          a - b or b - a?
-        function notation   + (- (a b) c)                 ****         *       *****
-        comma notation      a b, - c, +                   ****         *       *****
-
-    answer: make operators as functions/atomics
-        + * / - % ^
-
-    answer: allow a b, - c, +
-
-if atomic is called on line by itself
-    then show hint
-        perhaps registration tweak to allow function to run on empty data
-if atomic is called with empty list
-    then run atomic?
-
-provide atomics with input & output pipe automatically:
-    zs_pipe_t *input, zs_pipe_t *output
-
-    if called inline
-        input is null
-        if output has values
-            can behave as unary function
-            pull & send last value
-        if output is empty
-            then do what?
-
-    if called on list
-        input provides list
-
-
-
+- profile every function, simple counter, 'n top' atomic sorts & prints top n
 
 help on function
     how to put function onto pipe
@@ -120,15 +59,6 @@ help (xyz)
         below (15 C) { heating (on) }
 
 
-Comments
-
-    #   starts a comment until the end of the line
-        no multiline comments
-
-Numbers and units
-
-    expressive number support
-
 
 Multiline strings
     <
@@ -145,6 +75,7 @@ Multi-line indented strings
     and another value
     and then more
     >
+
 
 string atomics
     1, many
@@ -168,4 +99,3 @@ string atomics
         repeat      (repeat string N times)
         match       (string vs. pattern or pattern vs. string)
         replace     (string mashing,...)
-

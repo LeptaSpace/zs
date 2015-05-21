@@ -132,25 +132,9 @@
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
-    <event name = "slash">
+    <event name = "percent" next = "expecting token">
         <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
-    <event name = "colon">
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
-    <event name = "asterisk">
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
-    <event name = "caret">
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
-    <event name = "percent">
-        <action name = "store the character" />
-        <action name = "parse next character" />
+        <action name = "have number token" />
     </event>
     <event name = "close list" next = "expecting token">
         <action name = "have number token" />

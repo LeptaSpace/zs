@@ -1,5 +1,5 @@
 /*  =========================================================================
-    zs_lex -
+    zs_lex - break input into lexical tokens
 
     Copyright (c) the Contributors as noted in the AUTHORS file.
     This file is part of the ZeroScript experiment.

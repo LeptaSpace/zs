@@ -18,6 +18,7 @@
 */
 
 #include "zs_classes.h"
+#include "zs_strtod.c"
 
 
 //  This holds an item in our value queue
@@ -259,7 +260,7 @@ zs_pipe_real (zs_pipe_t *self)
         else
         if (self->value->type == 's') {
             char *end = self->value->string;
-            double real = strtod (self->value->string, &end);
+            double real = zs_strtod (self->value->string, &end);
             return end > self->value->string? real: 0;
         }
     }
