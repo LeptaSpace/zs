@@ -18,27 +18,27 @@
 
 **<a href="#toc3-181">Words, Phrases, and Sentences</a>**
 
-**<a href="#toc3-282">First Steps</a>**
+**<a href="#toc3-287">First Steps</a>**
 
-**<a href="#toc3-295">The Virtual Machine</a>**
+**<a href="#toc3-300">The Virtual Machine</a>**
 
-**<a href="#toc3-310">Extensibility</a>**
+**<a href="#toc3-315">Extensibility</a>**
 
-**<a href="#toc3-343">Arguments and Flamewars</a>**
+**<a href="#toc3-348">Arguments and Flamewars</a>**
 
-**<a href="#toc3-352">Other Goals</a>**
+**<a href="#toc3-357">Other Goals</a>**
 
-**<a href="#toc2-367">Design Notes</a>**
+**<a href="#toc2-372">Design Notes</a>**
 
-**<a href="#toc2-375">Bibliography</a>**
+**<a href="#toc2-380">Bibliography</a>**
 
-**<a href="#toc2-383">Technicalities</a>**
+**<a href="#toc2-388">Technicalities</a>**
 
-**<a href="#toc3-386">Ownership and License</a>**
+**<a href="#toc3-391">Ownership and License</a>**
 
-**<a href="#toc3-397">Building and Installing</a>**
+**<a href="#toc3-402">Building and Installing</a>**
 
-**<a href="#toc3-428">This Document</a>**
+**<a href="#toc3-433">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -306,11 +306,16 @@ The zs_lex state machine deals with parsing these different cases:
 
 Numbers are either whole numbers or real numbers. Wholes get coerced into real automatically as needed. To get the closest whole for a given real, use the 'whole' function.
 
-*TODO: write an FSM-based analyzer for numbers that handles the various forms we aim to support.*
+For convenience, numbers can end with '%' indicating they're a percentage (this just divides the value by 100). Real numbers can be specified in scientific notation. So:
 
-*TODO: allow comments starting with '#', to end of line*
+    > 23%
+    0.23
+    > 23e-4
+    0.0023
 
-<A name="toc3-282" title="First Steps" />
+You can write comments using '#' until the end of the line. There are no multiline comments. Longer comments should perhaps be defined as functions, e.g. license, author, and so on.
+
+<A name="toc3-287" title="First Steps" />
 ### First Steps
 
 So far what do I have?
@@ -323,7 +328,7 @@ So far what do I have?
 
 The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
 
-<A name="toc3-295" title="The Virtual Machine" />
+<A name="toc3-300" title="The Virtual Machine" />
 ### The Virtual Machine
 
 I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
@@ -338,7 +343,7 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which I'll now explain.
 
-<A name="toc3-310" title="Extensibility" />
+<A name="toc3-315" title="Extensibility" />
 ### Extensibility
 
 Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
@@ -371,7 +376,7 @@ And here's the code for that function:
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
-<A name="toc3-343" title="Arguments and Flamewars" />
+<A name="toc3-348" title="Arguments and Flamewars" />
 ### Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -380,7 +385,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
-<A name="toc3-352" title="Other Goals" />
+<A name="toc3-357" title="Other Goals" />
 ### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -395,7 +400,7 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-367" title="Design Notes" />
+<A name="toc2-372" title="Design Notes" />
 ## Design Notes
 
 * Any language aspect that takes more than 10 minutes to understand is too complex.
@@ -403,7 +408,7 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
 * Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
 
-<A name="toc2-375" title="Bibliography" />
+<A name="toc2-380" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
@@ -411,10 +416,10 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * http://en.wikipedia.org/wiki/Arity
 * http://en.wikipedia.org/wiki/Concatenative_programming_language
 
-<A name="toc2-383" title="Technicalities" />
+<A name="toc2-388" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-386" title="Ownership and License" />
+<A name="toc3-391" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -425,7 +430,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-397" title="Building and Installing" />
+<A name="toc3-402" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -456,7 +461,7 @@ Here's how to build ZeroScript from GitHub:
 
 You will need the pkg-config, libtool, and autoreconf packages.
 
-<A name="toc3-428" title="This Document" />
+<A name="toc3-433" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).

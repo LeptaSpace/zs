@@ -28,7 +28,6 @@ TODO
     list functions: avg, sum, min, max, count, product
     array functions: plus +, minus -, times * x, divide / :, power ^, ...
 
-
 - user functions take type of first function
 
 - profile every function, simple counter, 'n top' atomic sorts & prints top n

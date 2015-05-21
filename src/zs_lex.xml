@@ -196,11 +196,26 @@
     </event>
 </state>
 
+<state name = "reading comment">
+    <event name = "newline" next = "expecting token">
+        <action name = "parse next character" />
+    </event>
+    <event name = "finished" next = "expecting token">
+        <action name = "have null token" />
+    </event>
+    <event name = "*">
+        <action name = "parse next character" />
+    </event>
+</state>
+
 <state name = "defaults">
     <event name = "other" next = "expecting token">
         <action name = "have invalid token" />
     </event>
     <event name = "whitespace">
+        <action name = "parse next character" />
+    </event>
+    <event name = "comment" next = "reading comment">
         <action name = "parse next character" />
     </event>
     <event name = "newline">

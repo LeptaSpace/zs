@@ -32,6 +32,9 @@
         % at end of number divides by 100
 
     , and . are used as punctuation.
+
+    # marks a comment to the end of the line
+
 @end
 */
 
@@ -93,6 +96,7 @@ zs_lex_new (void)
         s_set_events (self, ">", close_quote_event);
         s_set_events (self, "(", open_list_event);
         s_set_events (self, ")", close_list_event);
+        s_set_events (self, "#", comment_event);
         s_set_events (self, " \t", whitespace_event);
         s_set_events (self, "\n", newline_event);
     }
@@ -413,7 +417,7 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, " which continues over two lines>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "pi: ( 22/7 )") == zs_lex_define_fn);
+    assert (zs_lex_first (lex, "pi: ( 22.7 )") == zs_lex_define_fn);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
@@ -428,7 +432,7 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_close_list);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "something(22/7*2)") == zs_lex_nested_fn);
+    assert (zs_lex_first (lex, "something(22.7e2)") == zs_lex_nested_fn);
     assert (streq (zs_lex_token (lex), "something"));
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_close_list);
@@ -443,21 +447,11 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, "3.141592653589793238462643383279502884197169") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "1/2 1:2 1024*1024 10^10 1v2 99:70 66%") == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
+    assert (zs_lex_first (lex, "66%") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
 
     assert (zs_lex_first (lex, "1E10 3.14e+000 1,000,000") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_null);
-
-    assert (zs_lex_first (lex, "2*3 2^64-1") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
 
@@ -472,6 +466,8 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_sentence);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
+
+    assert (zs_lex_first (lex, "# This is a comment") == zs_lex_null);
 
     //  Test various invalid tokens
     assert (zs_lex_first (lex, "[Hello, World>") == zs_lex_invalid);

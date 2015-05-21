@@ -276,6 +276,8 @@ For convenience, numbers can end with '%' indicating they're a percentage (this 
     > 23e-4
     0.0023
 
+You can write comments using '#' until the end of the line. There are no multiline comments. Longer comments should perhaps be defined as functions, e.g. license, author, and so on.
+
 ### First Steps
 
 So far what do I have?

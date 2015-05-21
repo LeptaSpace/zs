@@ -26,7 +26,8 @@ typedef enum {
     after_number_comma_state = 6,
     after_number_period_state = 7,
     reading_string_state = 8,
-    defaults_state = 9
+    reading_comment_state = 9,
+    defaults_state = 10
 } state_t;
 
 typedef enum {
@@ -46,11 +47,10 @@ typedef enum {
     newline_event = 13,
     colon_event = 14,
     open_list_event = 15,
-    asterisk_event = 16,
-    caret_event = 17,
-    percent_event = 18,
-    close_quote_event = 19,
-    other_event = 20
+    percent_event = 16,
+    close_quote_event = 17,
+    other_event = 18,
+    comment_event = 19
 } event_t;
 
 //  Names for state machine logging and error reporting
@@ -65,6 +65,7 @@ s_state_name [] = {
     "after_number_comma",
     "after_number_period",
     "reading_string",
+    "reading_comment",
     "defaults"
 };
 
@@ -86,11 +87,10 @@ s_event_name [] = {
     "newline",
     "colon",
     "open_list",
-    "asterisk",
-    "caret",
     "percent",
     "close_quote",
-    "other"
+    "other",
+    "comment"
 };
 
 //  Action prototypes
@@ -371,6 +371,17 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
+            }
+            else
             if (self->event == newline_event) {
                 if (!self->exception) {
                     //  parse_next_character
@@ -584,6 +595,17 @@ fsm_execute (fsm_t *self)
                 if (!self->exception)
                     self->state = expecting_token_state;
             }
+            else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
+            }
             else {
                 //  Handle all other events
                 if (!self->exception) {
@@ -681,6 +703,17 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
+            }
+            else
             if (self->event == newline_event) {
                 if (!self->exception) {
                     //  parse_next_character
@@ -763,66 +796,6 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == slash_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
-            if (self->event == colon_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
-            if (self->event == asterisk_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
-            if (self->event == caret_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
             if (self->event == percent_event) {
                 if (!self->exception) {
                     //  store_the_character
@@ -831,11 +804,13 @@ fsm_execute (fsm_t *self)
                     store_the_character (self->parent);
                 }
                 if (!self->exception) {
-                    //  parse_next_character
+                    //  have_number_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
+                        zsys_debug ("zs_lex:                $ have_number_token");
+                    have_number_token (self->parent);
                 }
+                if (!self->exception)
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == close_list_event) {
@@ -919,6 +894,17 @@ fsm_execute (fsm_t *self)
                 }
                 if (!self->exception)
                     self->state = expecting_token_state;
+            }
+            else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
             }
             else {
                 //  Handle all other events
@@ -1066,6 +1052,39 @@ fsm_execute (fsm_t *self)
             }
         }
         else
+        if (self->state == reading_comment_state) {
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == finished_event) {
+                if (!self->exception) {
+                    //  have_null_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_null_token");
+                    have_null_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else {
+                //  Handle all other events
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+            }
+        }
+        else
         if (self->state == defaults_state) {
             if (self->event == other_event) {
                 if (!self->exception) {
@@ -1085,6 +1104,17 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_lex:                $ parse_next_character");
                     parse_next_character (self->parent);
                 }
+            }
+            else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
             }
             else
             if (self->event == newline_event) {
