@@ -231,8 +231,8 @@ push_back_to_previous (zs_lex_t *self)
 static void
 store_comma_character (zs_lex_t *self)
 {
-    self->current = ',';
-    store_the_character (self);
+    self->token [self->token_size++] = ',';
+    self->token [self->token_size] = 0;
 }
 
 
@@ -243,8 +243,8 @@ store_comma_character (zs_lex_t *self)
 static void
 store_period_character (zs_lex_t *self)
 {
-    self->current = '.';
-    store_the_character (self);
+    self->token [self->token_size++] = '.';
+    self->token [self->token_size] = 0;
 }
 
 
@@ -255,8 +255,8 @@ store_period_character (zs_lex_t *self)
 static void
 store_newline_character (zs_lex_t *self)
 {
-    self->current = '\n';
-    store_the_character (self);
+    self->token [self->token_size++] = '\n';
+    self->token [self->token_size] = 0;
 }
 
 

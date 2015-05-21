@@ -55,6 +55,7 @@ zs_repl_new (void)
     if (self) {
         self->fsm = fsm_new (self);
         self->lex = zs_lex_new ();
+
         self->vm = zs_vm_new ();
         s_register_atomics (self->vm);
         s_register_zs_units_si (self->vm);
