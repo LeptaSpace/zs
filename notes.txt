@@ -1,7 +1,5 @@
 TODO
 
-- allow comments starting with '#', to end of line*
-
 - allow symbolic operators (+, *, etc.)
 
 - arithmetic functions have to support reals

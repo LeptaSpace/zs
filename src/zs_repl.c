@@ -446,6 +446,7 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "sub: (<hello>)", "");
     s_repl_assert (repl, "sub", "hello");
     s_repl_assert (repl, "add (k (1 2 3) M (2))", "2006000");
+    s_repl_assert (repl, "k", "1000");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");
