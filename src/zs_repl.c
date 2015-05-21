@@ -22,6 +22,7 @@
 #include "zs_atomics.h"         //  Core atomics
 #include "zs_units_si.h"        //  SI scaling functions
 #include "zs_units_misc.h"      //  Miscellaneous scaling functions
+#include "zs_strtod.c"          //  Coerced strtod function
 
 //  This holds an entry in the dictionary
 typedef struct {
@@ -54,6 +55,7 @@ zs_repl_new (void)
     if (self) {
         self->fsm = fsm_new (self);
         self->lex = zs_lex_new ();
+
         self->vm = zs_vm_new ();
         s_register_atomics (self->vm);
         s_register_zs_units_si (self->vm);
@@ -157,7 +159,30 @@ compile_define_shell (zs_repl_t *self)
 static void
 compile_number (zs_repl_t *self)
 {
-    zs_vm_compile_whole (self->vm, atoll (zs_lex_token (self->lex)));
+    char *number = strdup (zs_lex_token (self->lex));
+    assert (strlen (number) > 0);
+
+    //  Check if it's a percentage; this also coerces number to real
+    bool percentage = false;
+    if (number [strlen (number) - 1] == '%') {
+        number [strlen (number) - 1] = 0;
+        percentage = true;
+    }
+    //  Try to convert as whole number
+    char *end = number;
+    int64_t whole = (int64_t) strtoll (number, &end, 10);
+    if (*end == 0 && !percentage)
+        zs_vm_compile_whole (self->vm, whole);
+    else {
+        //  Try to convert as real number
+        end = number;
+        double real = zs_strtod (number, &end);
+        if (*end == 0)
+            zs_vm_compile_real (self->vm, percentage? real / 100: real);
+        else
+            fsm_set_exception (self->fsm, invalid_event);
+    }
+    free (number);
 }
 
 
@@ -416,10 +441,8 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "1 2 3 count, 1 1 add, subtract", "1");
     s_repl_assert (repl, "add (1 2 3)", "6");
     s_repl_assert (repl, "add (add (1 2 3) count (4 5 6))", "9");
-    s_repl_assert (repl, "clr", "");
     s_repl_assert (repl, "add (1 2 3", "");
     s_repl_assert (repl, ")", "6");
-    s_repl_assert (repl, "clr", "");
     s_repl_assert (repl, "sub: (<hello>)", "");
     s_repl_assert (repl, "sub", "hello");
     s_repl_assert (repl, "add (k (1 2 3) M (2))", "2006000");

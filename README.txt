@@ -269,9 +269,12 @@ The zs_lex state machine deals with parsing these different cases:
 
 Numbers are either whole numbers or real numbers. Wholes get coerced into real automatically as needed. To get the closest whole for a given real, use the 'whole' function.
 
-*TODO: write an FSM-based analyzer for numbers that handles the various forms we aim to support.*
+For convenience, numbers can end with '%' indicating they're a percentage (this just divides the value by 100). Real numbers can be specified in scientific notation. So:
 
-*TODO: allow comments starting with '#', to end of line*
+    > 23%
+    0.23
+    > 23e-4
+    0.0023
 
 ### First Steps
 

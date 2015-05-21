@@ -1,5 +1,5 @@
 /*  =========================================================================
-    zs_lex - the ZeroScript lexer
+    zs_lex - break input into lexical tokens
 
     Copyright (c) the Contributors as noted in the AUTHORS file.
     This file is part of the ZeroScript language, http://zeroscript.org.
@@ -26,12 +26,10 @@
 
     Strings are quoted by < and >.
 
-    Accepts a range of numeric expressions:
-        All digits
-        Periods or commas embedded in number
-        +- as unary sign operators
-        +-/:*x^v binary operators, evaluated ^v then *x/: then +-
-        [0-9]+[eE][+-]?[0-9]+ used once as exponent
+    Accepts real or whole numbers:
+        [sign]integer(.,)fraction(Ee)[sign]exponent (strtod format)
+        whole number preceded by + or -
+        % at end of number divides by 100
 
     , and . are used as punctuation.
 @end
@@ -90,8 +88,6 @@ zs_lex_new (void)
         s_set_events (self, ".", period_event);
         s_set_events (self, ",", comma_event);
         s_set_events (self, ":", colon_event);
-        s_set_events (self, "*", asterisk_event);
-        s_set_events (self, "^", caret_event);
         s_set_events (self, "%", percent_event);
         s_set_events (self, "<", open_quote_event);
         s_set_events (self, ">", close_quote_event);
@@ -235,8 +231,8 @@ push_back_to_previous (zs_lex_t *self)
 static void
 store_comma_character (zs_lex_t *self)
 {
-    self->current = ',';
-    store_the_character (self);
+    self->token [self->token_size++] = ',';
+    self->token [self->token_size] = 0;
 }
 
 
@@ -247,8 +243,8 @@ store_comma_character (zs_lex_t *self)
 static void
 store_period_character (zs_lex_t *self)
 {
-    self->current = '.';
-    store_the_character (self);
+    self->token [self->token_size++] = '.';
+    self->token [self->token_size] = 0;
 }
 
 
@@ -259,8 +255,8 @@ store_period_character (zs_lex_t *self)
 static void
 store_newline_character (zs_lex_t *self)
 {
-    self->current = '\n';
-    store_the_character (self);
+    self->token [self->token_size++] = '\n';
+    self->token [self->token_size] = 0;
 }
 
 
@@ -304,7 +300,7 @@ have_define_fn_token (zs_lex_t *self)
 static void
 have_number_token (zs_lex_t *self)
 {
-    self->type = zs_lex_number;
+   self->type = zs_lex_number;
 }
 
 
