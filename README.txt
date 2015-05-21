@@ -211,22 +211,24 @@ I can break this phrase into smaller phrases:
 
 There seem to be three kinds of function:
 
-* Functions that take no arguments ("nullary") and produce some magic value. These are key to measuring the real world: time, temperature, free disk space, etc. It makes no sense to write these. One does not modify the current temperature. Side-effects seem honest, e.g. switching on the heating or cooling should eventually change the measurable temperature.
-* Functions that take a single argument, and which can be convinced to work on a set or list of values. For example, the "day" and "weels" functions are multipliers (returning the number of seconds in a day and week respectively).
-* Functions that take multiple arguments, and the more the better. These functions should be able to work on lists of zero, one, two, or a thousand values.
+* Functions that take no arguments ("nullary") and produce some magic value. These are key to measuring the real world: time, temperature, free disk space, etc. It makes no sense to write these. One does not modify the current temperature. Side-effects seem honest, e.g. switching on the heating or cooling should eventually change the measurable temperature. I call these "strict" functions.
+* Functions that take a single argument, and which can be convinced to work on a set or list of values. For example, the "day" and "weeks" functions are multipliers (returning the number of seconds in a day and week respectively). I call these "modest" functions.
+* Functions that take a list of arguments. These functions should be able to work on lists of zero, one, two, or a thousand values. I call these "greedy" functions.
+* Functions that apply one value to a list of values. I call these "array" functions.
 
-I've called these "strict", "modest", and "greedy" functions. When we define atomics, we tell the virtual machine what kind of function we're making. When we construct functions out of others, the new function takes the type of the first word in its body.
+When we define atomics, we tell the virtual machine what type of function we're making (strict, modest, greedy, or array). When we construct functions out of others, the new function takes the type of the first word in its body.
 
-The input to a modest or greedy function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
+The input to a non-strict function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
 
 It turns out we can make this work pretty well using a single special symbol (comma) to provide hints to the compiler. The comma breaks the code into "phrases". Each phrase produces some output, which accumulates as we worj through the phrases.
 
 Before we call a function, the VM prepares an input pipe based on the type of the function and where we use it:
 
 * A modest function operates on the previous value in the current phrase, if there's one: "1 k". If we use a modest function at the start of a phrase, then it operates on the whole previous phrase: "1 2 3, k". This is like using parentheses: "k (1 2 3)".
-* A greedy function operators on the previous values in the current phrase, if there are any: "1 2 3 add". If we use a greedy function at the start of a phrase, it operators on the whole sentence so far: "1 2 3, 4 5 6, add".
+* A greedy function operates on the previous values in the current phrase, if there are any: "1 2 3 add". If we use a greedy function at the start of a phrase, it operators on the whole sentence so far: "1 2 3, 4 5 6, add".
+* An array function operates on a value and a phrase: "1 2 3, 2 times".
 
-This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive.
+This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive. FIFO pipes are more intuitive.
 
 I'm trying to avoid binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style.
 
@@ -247,6 +249,8 @@ The scaling functions work as constants, if they're used alone:
 
     > Gi
     1073741824
+    > Z
+    1e+21
 
 There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z and y):
 
@@ -257,15 +261,27 @@ There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z an
     > 1 a
     1e-18
 
-I implemented these SI scaling functions using GSL code generation to reduce the work. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_units_si.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.xml), which produce the source code in [zs_units_si.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.h). It's a nice way to not have to write and improve lots of code.
-
 The commas work well, so I'm using a period to end a sentence. What this does is print the previous phrases' output, and start afresh.
 
-The zs_lex state machine deals with parsing these different cases:
+Here is how array functions work:
 
-    123,456 123.456             #   Two numbers
-    123, 456 123. 456           #   Four numbers, two sentences, three phrases
-    123,echo                    #   Prints "123"
+    > 1 2 3, 2 times
+    2 4 6
+
+And for fun we can write this in different ways:
+
+    > 1 2 3, 2 x
+    2 4 6
+    > 1 2 3, 2 *
+    2 4 6
+
+There's a function 'help' that prints all available functions:
+
+    > help
+    check help sum product count mean min max assert whole plus +
+    minus - times * x divide / Ki Mi Gi Ti Pi Ei da h k M G T P E
+    Z Y d c m u n p f a z y minutes minute hours hour days day
+    weeks week years year
 
 Numbers are either whole numbers or real numbers. Wholes get coerced into real automatically as needed. To get the closest whole for a given real, use the 'whole' function.
 
@@ -289,6 +305,12 @@ So far what do I have?
 * A main program (zs) that acts as a shell.
 
 The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
+
+The zs_lex state machine deals with parsing these different cases:
+
+    123,456 123.456             #   Two numbers
+    123, 456 123. 456           #   Four numbers, two sentences, three phrases
+    123,echo                    #   Prints "123"
 
 ### The Virtual Machine
 
@@ -335,6 +357,13 @@ And here's the code for that function:
     }
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
+
+### Code Generation
+
+We use GSL code generation to build the core language pieces. There are two cases:
+
+* Generating the scaling atomics. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_units_si.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.xml), which produce the source code in [zs_units_si.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.h).
+* Generating the state machines. See zs_lex.xml and zs_repl.xml.
 
 ### Arguments and Flamewars
 

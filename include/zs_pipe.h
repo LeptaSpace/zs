@@ -67,10 +67,10 @@ void
     zs_pipe_send_string (zs_pipe_t *self, const char *string);
 
 //  Receives the next value off the pipe, into the register. Any previous
-//  value in the register is lost. Returns 0 if a value was successfully
-//  received. If no values were received, returns -1. This method does not
-//  block.
-int
+//  value in the register is lost. Returns true if a value was successfully
+//  received. If no values were received, returns false. This method does
+//  not block.
+bool
     zs_pipe_recv (zs_pipe_t *self);
 
 //  Returns the type of the register, 'w' for whole, 'r' for real, or 's' for
@@ -118,18 +118,23 @@ char *
 void
     zs_pipe_mark (zs_pipe_t *self);
 
-//  Pulls a list of values from the source pipe into the pipe. The pull
-//  algorithm works depending on whether the pipe is at the end of a
-//  phrase or not, and whether the greedy argument is true or false:
-//
-//                  End of phrase:      In phrase:
-//  Greedy:         pull entire pipe    pull current phrase
-//  Not greedy:     pull last phrase    pull last single value
-//
-//  Any existing values in the pipe are first removed. This implements
-//  the necessary pipe mechanics for modest and greedy functions.
+//  Pulls a list of values from the source pipe into the pipe. This function
+//  does a "modest" pull: in a phrase, pulls the last single value. After a
+//  phrase, pulls the preceding phrase. Empties the pipe beforehand.
 void
-    zs_pipe_pull (zs_pipe_t *self, zs_pipe_t *source, bool greedy);
+    zs_pipe_pull_modest (zs_pipe_t *self, zs_pipe_t *source);
+
+//  Pulls a list of values from the source pipe into the pipe. This function
+//  does a "greedy" pull: in a phrase, pulls the current phrase. After a
+//  phrase, pulls the preceding entire sentence. Empties the pipe beforehand.
+void
+    zs_pipe_pull_greedy (zs_pipe_t *self, zs_pipe_t *source);
+
+//  Pulls a list of values from the source pipe into the pipe. This function
+//  does an "array" pull. TBD.
+
+void
+    zs_pipe_pull_array (zs_pipe_t *self, zs_pipe_t *source);
 
 //  Return pipe contents, as string. Caller must free it when done. Values are
 //  separated by spaces. This empties the pipe.

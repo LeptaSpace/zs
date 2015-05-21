@@ -84,10 +84,9 @@ zs_lex_new (void)
         s_set_events (self, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", letter_event);
         s_set_events (self, "abcdefghijklmnopqrstuvwxyz", letter_event);
         s_set_events (self, "0123456789", digit_event);
+        s_set_events (self, "/*^_", usable_event);
         s_set_events (self, "-", hyphen_event);
         s_set_events (self, "+", plus_event);
-        s_set_events (self, "/", slash_event);
-        s_set_events (self, "_", underscore_event);
         s_set_events (self, ".", period_event);
         s_set_events (self, ",", comma_event);
         s_set_events (self, ":", colon_event);
@@ -468,6 +467,23 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_null);
 
     assert (zs_lex_first (lex, "# This is a comment") == zs_lex_null);
+
+    //  Test operators
+    assert (zs_lex_first (lex, "+ - * / ^") == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_null);
+
+    //  These also work, which may need tightening
+    assert (zs_lex_first (lex, "++ -- ** // ^^ *2") == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_next (lex) == zs_lex_null);
 
     //  Test various invalid tokens
     assert (zs_lex_first (lex, "[Hello, World>") == zs_lex_invalid);
