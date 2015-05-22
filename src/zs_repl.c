@@ -204,29 +204,8 @@ compile_string (zs_repl_t *self)
 static void
 compile_inline_call (zs_repl_t *self)
 {
-    const char *function = zs_lex_token (self->lex);
-    switch (zs_vm_function_type (self->vm, function)) {
-        //  VM takes care of plumbing and the function call
-        case zs_type_strict:
-            if (zs_vm_compile_strict (self->vm, function))
-                fsm_set_exception (self->fsm, invalid_event);
-            break;
-        case zs_type_modest:
-            if (zs_vm_compile_modest (self->vm, function))
-                fsm_set_exception (self->fsm, invalid_event);
-            break;
-        case zs_type_greedy:
-            if (zs_vm_compile_greedy (self->vm, function))
-                fsm_set_exception (self->fsm, invalid_event);
-            break;
-        case zs_type_array:
-            if (zs_vm_compile_array (self->vm, function))
-                fsm_set_exception (self->fsm, invalid_event);
-            break;
-        case zs_type_unknown:
-            fsm_set_exception (self->fsm, invalid_event);
-            break;
-    }
+    if (zs_vm_compile_inline (self->vm, zs_lex_token (self->lex)))
+        fsm_set_exception (self->fsm, invalid_event);
 }
 
 
@@ -451,6 +430,10 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "sub", "hello");
     s_repl_assert (repl, "sum (k (1 2 3) M (2))", "2006000");
     s_repl_assert (repl, "k", "1000");
+    s_repl_assert (repl, "fn: (sum)", "");
+    s_repl_assert (repl, "1 2 3 fn", "6");
+    s_repl_assert (repl, "1 2 3, fn", "6");
+    s_repl_assert (repl, "fn (1 2 3)", "6");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

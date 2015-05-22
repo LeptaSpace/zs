@@ -26,9 +26,9 @@ typedef struct _zs_vm_t zs_vm_t;
 
 //  Atomic function types
 typedef enum {
-    //  A strict function is nullary (never takes arguments); it is a constant
-    //  or a measurement of the physical enviornment, e.g. time or temperature.
-    zs_type_strict,
+    //  A nullary function is never takes arguments; it is a constant or a
+    //  measurement of the physical enviornment, e.g. time or temperature.
+    zs_type_nullary,
     //  A modest function is singular (unary) by default; however we can force
     //  it to work on a list of values. An exmaple is "k".
     zs_type_modest,
@@ -75,11 +75,6 @@ bool
 int
     zs_vm_register (zs_vm_t *self, const char *name, zs_type_t type, const char *hint);
 
-//  Resolve a function name, return type of function or zs_type_unknown if
-//  not defined. Resolves user-defined functions, then atomics, then builtins.
-zs_type_t
-    zs_vm_function_type (zs_vm_t *self, const char *name);
-
 //  Compile a whole number constant into the virtual machine.
 //  Whole numbers are stored thus:
 //      [VM_WHOLE][8 bytes in host format]
@@ -112,27 +107,11 @@ void
 int
     zs_vm_compile_rollback (zs_vm_t *self);
 
-//  Compile a strict function call; the function gets no input. Returns 0
-//  if OK or -1 if the function is not defined.
+//  Compile an inline function call; the actual pipe semantics depend on the
+//  type of the function. Returns 0 if successful, -1 if the function is not
+//  defined.
 int
-    zs_vm_compile_strict (zs_vm_t *self, const char *name);
-
-//  Compile a modest function call; the function gets a single input value
-//  which is the last value produced by the phrase. Returns 0 if OK or -1
-//  if the function is not defined.
-int
-    zs_vm_compile_modest (zs_vm_t *self, const char *name);
-
-//  Compile a greedy function call. The function gets all output produced
-//  by the phrase. Returns 0 if OK, or -1 if the function is not defined.
-int
-    zs_vm_compile_greedy (zs_vm_t *self, const char *name);
-
-//  Compile an array function call. The function gets previous output,
-//  split into two phrases. Returns 0 if OK, or -1 if the function is
-//  not defined.
-int
-    zs_vm_compile_array (zs_vm_t *self, const char *name);
+    zs_vm_compile_inline (zs_vm_t *self, const char *name);
 
 //  Compile a nested function call. The current sentence is stacked and we
 //  start a new sentence. The actual function call is executed when we hit

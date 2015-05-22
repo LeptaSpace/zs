@@ -120,19 +120,18 @@ void
 
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "modest" pull: in a phrase, pulls the last single value. After a
-//  phrase, pulls the preceding phrase. Empties the pipe beforehand.
+//  phrase, pulls the preceding phrase.
 void
     zs_pipe_pull_modest (zs_pipe_t *self, zs_pipe_t *source);
 
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "greedy" pull: in a phrase, pulls the current phrase. After a
-//  phrase, pulls the preceding entire sentence. Empties the pipe beforehand.
+//  phrase, pulls the preceding entire sentence.
 void
     zs_pipe_pull_greedy (zs_pipe_t *self, zs_pipe_t *source);
 
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does an "array" pull. TBD.
-
 void
     zs_pipe_pull_array (zs_pipe_t *self, zs_pipe_t *source);
 

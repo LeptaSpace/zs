@@ -211,14 +211,14 @@ I can break this phrase into smaller phrases:
 
 There seem to be three kinds of function:
 
-* Functions that take no arguments ("nullary") and produce some magic value. These are key to measuring the real world: time, temperature, free disk space, etc. It makes no sense to write these. One does not modify the current temperature. Side-effects seem honest, e.g. switching on the heating or cooling should eventually change the measurable temperature. I call these "strict" functions.
+* Functions that take no arguments and produce some magic value. These are key to measuring the real world: time, temperature, free disk space, etc. It makes no sense to write these. One does not modify the current temperature. Side-effects seem honest, e.g. switching on the heating or cooling should eventually change the measurable temperature. I use the standard term "nullary" for these functions.
 * Functions that take a single argument, and which can be convinced to work on a set or list of values. For example, the "day" and "weeks" functions are multipliers (returning the number of seconds in a day and week respectively). I call these "modest" functions.
 * Functions that take a list of arguments. These functions should be able to work on lists of zero, one, two, or a thousand values. I call these "greedy" functions.
 * Functions that apply one value to a list of values. I call these "array" functions.
 
-When we define atomics, we tell the virtual machine what type of function we're making (strict, modest, greedy, or array). When we construct functions out of others, the new function takes the type of the first word in its body.
+When we define atomics, we tell the virtual machine what type of function we're making (nullary, modest, greedy, or array). When we construct functions out of others, the new function takes the type of the first word in its body.
 
-The input to a non-strict function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
+The input to a non-nullary function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
 
 It turns out we can make this work pretty well using a single special symbol (comma) to provide hints to the compiler. The comma breaks the code into "phrases". Each phrase produces some output, which accumulates as we worj through the phrases.
 

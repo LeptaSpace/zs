@@ -1,23 +1,52 @@
 TODO
 
-DONE - array functions
-    - register type zs_type_array
-    - syntax: inputs, operands fn
-    - alternative:  fn (operands)
-        e.g.    n times
-                1 2 3, 2 times
-                2 times (1 2 3)
-    - 2 3, times (1 2 3) ???
-    - 2 3, times ???
-    - receive on input pipe (first is array operand)
+Problem: should not change pipes for user defined FN
 
-DONE - allow symbolic operators (+, *, etc.)
+Problem: REPL shows continuation after fn definition
+Problem: how to compile & run a paper script
+Problem: define test case for each atomic, in ZS
+Problem: function compilation too complex
+    - get type, use type -> single call to VM
+Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
+
+
+-- when do we wipe input?
+    1 2 3 xx yy zz?
+
+    fn: (sum)
+    fn (1 2 3) -> 0
+
+        -> because sum is greedy
+        ... greedy/anything after unnest nop
+        ... or don't wipe input?
+
+
+sum (1)
+
+    output: 1
+    unnest: append to previous output
+    sum:
+
+fn: (sum)
+fn (1)
+    output: 1
+
+
 
 - array functions like modest...
     1 2 +
     - input is 2 1
     1 2, 3 +
     - input is 3 1 2
+
+    fn: (1000 *)
+
+        - what's the input?
+        - 1000 is constant, skip it
+        - * is array, so fn is array?
+    >> how to get current phrase as input to function ()?
+
+
 
 - make core atomics work with reals
     - start with whole
@@ -37,7 +66,6 @@ DONE - allow symbolic operators (+, *, etc.)
 - expressive constants: 1/2 1:2 2^16-1 1024*1024
     contain + - /: *x ^
     simple stack-based evaluator in zs_lex
-
 
 help on function
     how to put function onto pipe

@@ -63,9 +63,8 @@
 //  These are the pipe operations, managing output and input pipes so that
 //  functions what they need. The pipe operation is always compiled after a
 //  VM_PIPE opcode.
-#define VM_PIPE_NEST    0       //  Push output, open new scope
-#define VM_PIPE_UNNEST  1       //  Pop output, close scope
-#define VM_PIPE_STRICT  2       //  Prepare strict function call
+#define VM_PIPE_NEST    1       //  Push output, open new scope
+#define VM_PIPE_UNNEST  2       //  Pop output, close scope
 #define VM_PIPE_MODEST  3       //  Prepare modest function call
 #define VM_PIPE_GREEDY  4       //  Prepare greedy function call
 #define VM_PIPE_ARRAY   5       //  Prepare array function call
@@ -73,7 +72,7 @@
 
 static const char *
 pipe_op_name [] = {
-    "NEST", "UNNEST", "STRICT", "MODEST", "GREEDY", "ARRAY", "MARK"
+    "?", "NEST", "UNNEST", "MODEST", "GREEDY", "ARRAY", "MARK"
 };
 
 #include "zs_classes.h"
@@ -199,29 +198,27 @@ s_try_function (zs_vm_t *self, const char *name)
 }
 
 //  Compile call to function, atomic, or builtin (in that order)
-static int
+static void
 s_compile_call (zs_vm_t *self, byte pipe_op, const char *name)
 {
-    self->code [self->code_size++] = VM_PIPE;
-    self->code [self->code_size++] = pipe_op;
+    //  A non-zero pipe_op means we muck with the plumbing
+    if (pipe_op) {
+        self->code [self->code_size++] = VM_PIPE;
+        self->code [self->code_size++] = pipe_op;
+    }
     int found;
     if ((found = s_try_function (self, name)) != -1) {
         self->code [self->code_size++] = VM_CALL;
         self->code [self->code_size++] = (byte) (found >> 8);
         self->code [self->code_size++] = (byte) (found & 0xFF);
-        return 0;
     }
-    if ((found = s_try_atomic (self, name)) != -1) {
+    else
+    if ((found = s_try_atomic (self, name)) != -1
+    ||  (found = s_try_builtin (self, name)) != -1)
         self->code [self->code_size++] = (byte) found;
-        return 0;
-    }
-    if ((found = s_try_builtin (self, name)) != -1) {
-        self->code [self->code_size++] = (byte) found;
-        return 0;
-    }
-    //  Undo PIPE operation
-    self->code_size -= 2;
-    return -1;
+    else
+        //  Cannot come here
+        assert (false);
 }
 
 
@@ -306,26 +303,6 @@ zs_vm_register (zs_vm_t *self, const char *name, zs_type_t type, const char *hin
         hint = self->atomics [self->nbr_atomics - 1]->hint;
     self->atomics [self->nbr_atomics++] = s_atomic_new (self->probing, name, type, hint);
     return 0;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Resolve a function name, return type of function or zs_type_unknown if
-//  not defined. Resolves user-defined functions, then atomics, then builtins.
-
-zs_type_t
-zs_vm_function_type (zs_vm_t *self, const char *name)
-{
-    int found;
-    if (s_try_function (self, name) != -1)
-        return zs_type_greedy;      //  User functions are always greedy
-    else
-    if ((found = s_try_atomic (self, name)) != -1)
-        return self->atomics [found]->type;
-    else
-    if (s_try_builtin (self, name) != -1)
-        return zs_type_strict;      //  Builtins are always strict
-    return zs_type_unknown;
 }
 
 
@@ -445,48 +422,46 @@ zs_vm_compile_rollback (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Compile a strict function call; the function gets no input. Returns 0
-//  if OK or -1 if the function was not defined.
+//  Compile an inline function call; the actual pipe semantics depend on the
+//  type of the function. Returns 0 if successful, -1 if the function is not
+//  defined.
 
 int
-zs_vm_compile_strict (zs_vm_t *self, const char *name)
+zs_vm_compile_inline (zs_vm_t *self, const char *name)
 {
-    return s_compile_call (self, VM_PIPE_STRICT, name);
-}
+    //  User-defined functions do not touch the pipes; they're effectively
+    //  macros that inline their contents where they are invoked
+    int found;
+    if (s_try_function (self, name) != -1)
+        s_compile_call (self, 0, name);
+    else
+    //  Atomics are the ones that need the extra work
+    if ((found = s_try_atomic (self, name)) != -1) {
+        switch (self->atomics [found]->type) {
+            case zs_type_nullary:
+                s_compile_call (self, 0, name);
+                break;
+            case zs_type_modest:
+                s_compile_call (self, VM_PIPE_MODEST, name);
+                break;
+            case zs_type_greedy:
+                s_compile_call (self, VM_PIPE_GREEDY, name);
+                break;
+            case zs_type_array:
+                s_compile_call (self, VM_PIPE_ARRAY, name);
+                break;
+            case zs_type_unknown:
+                assert (false);
+                break;
+        }
+    }
+    else
+    if (s_try_builtin (self, name) != -1)
+        s_compile_call (self, 0, name);
+    else
+        return -1;
 
-
-//  ---------------------------------------------------------------------------
-//  Compile a modest function call; the function gets a single input value
-//  which is the last value produced by the phrase. Returns 0 if OK or -1
-//  if the function was not defined.
-
-int
-zs_vm_compile_modest (zs_vm_t *self, const char *name)
-{
-    return s_compile_call (self, VM_PIPE_MODEST, name);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Compile a greedy function call. The function gets all output produced
-//  by the phrase. Returns 0 if OK, or -1 if the function was not defined.
-
-int
-zs_vm_compile_greedy (zs_vm_t *self, const char *name)
-{
-    return s_compile_call (self, VM_PIPE_GREEDY, name);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Compile an array function call. The function gets previous output,
-//  split into two phrases. Returns 0 if OK, or -1 if the function is
-//  not defined.
-
-int
-zs_vm_compile_array (zs_vm_t *self, const char *name)
-{
-    return s_compile_call (self, VM_PIPE_ARRAY, name);
+    return 0;
 }
 
 
@@ -721,7 +696,7 @@ zs_vm_run (zs_vm_t *self)
                     self->output_stack [self->output_stack_ptr] = self->output;
                     self->output_stack_ptr++;
                     self->output = zs_pipe_new ();
-                    zs_pipe_purge (self->input);
+//                     zs_pipe_purge (self->input);
                     break;
                 case VM_PIPE_UNNEST:
                     assert (self->output_stack_ptr > 0);
@@ -729,9 +704,6 @@ zs_vm_run (zs_vm_t *self)
                     zs_pipe_destroy (&self->input);
                     self->input = self->output;
                     self->output = self->output_stack [self->output_stack_ptr];
-                    break;
-                case VM_PIPE_STRICT:
-                    zs_pipe_purge (self->input);
                     break;
                 case VM_PIPE_MODEST:
                     zs_pipe_pull_modest (self->input, self->output);
@@ -837,7 +809,7 @@ static int
 s_year (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "year", zs_type_strict, "Tell us what year it is");
+        zs_vm_register (self, "year", zs_type_nullary, "Tell us what year it is");
     else
         zs_pipe_send_whole (output, 2015);
     return 0;
@@ -867,9 +839,9 @@ zs_vm_test (bool verbose)
     zs_vm_compile_define (vm, "sub");
     zs_vm_compile_string (vm, "OK");
     zs_vm_compile_string (vm, "Guys");
-    zs_vm_compile_greedy (vm, "count");
+    zs_vm_compile_inline (vm, "count");
     zs_vm_compile_whole  (vm, 2);
-    zs_vm_compile_greedy (vm, "assert");
+    zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_commit (vm);
 
     //  --------------------------------------------------------------------
@@ -884,16 +856,16 @@ zs_vm_test (bool verbose)
 
     zs_vm_compile_whole  (vm, 123);
     zs_vm_compile_whole  (vm, 1000000000);
-    zs_vm_compile_greedy (vm, "sum");
+    zs_vm_compile_inline (vm, "sum");
     zs_vm_compile_whole  (vm, 1000000123);
-    zs_vm_compile_greedy (vm, "assert");
+    zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
 
     zs_vm_compile_string (vm, "Hello,");
     zs_vm_compile_string (vm, "World");
-    zs_vm_compile_greedy (vm, "count");
+    zs_vm_compile_inline (vm, "count");
     zs_vm_compile_whole  (vm, 2);
-    zs_vm_compile_greedy (vm, "assert");
+    zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
 
     zs_vm_compile_nested (vm, "sum");
@@ -901,7 +873,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_whole  (vm, 456);
     zs_vm_compile_unnest (vm);
     zs_vm_compile_whole  (vm, 579);
-    zs_vm_compile_greedy (vm, "assert");
+    zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
 
     zs_vm_compile_nested (vm, "sum");
@@ -913,23 +885,23 @@ zs_vm_test (bool verbose)
     zs_vm_compile_unnest (vm);
     zs_vm_compile_unnest (vm);
     zs_vm_compile_whole  (vm, 126);
-    zs_vm_compile_greedy (vm, "assert");
+    zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
 
-    zs_vm_compile_strict (vm, "year");
-    zs_vm_compile_strict (vm, "year");
-    zs_vm_compile_greedy (vm, "count");
-    zs_vm_compile_whole  (vm, 2);
-    zs_vm_compile_greedy (vm, "assert");
+    zs_vm_compile_inline  (vm, "year");
+    zs_vm_compile_inline  (vm, "year");
+    zs_vm_compile_inline  (vm, "count");
+    zs_vm_compile_whole   (vm, 2);
+    zs_vm_compile_inline  (vm, "assert");
 
     zs_vm_compile_commit (vm);
 
     //  --------------------------------------------------------------------
     //  sub sub main
     zs_vm_compile_define (vm, "go");
-    zs_vm_compile_greedy (vm, "sub");
-    zs_vm_compile_greedy (vm, "sub");
-    zs_vm_compile_greedy (vm, "main");
+    zs_vm_compile_inline (vm, "sub");
+    zs_vm_compile_inline (vm, "sub");
+    zs_vm_compile_inline (vm, "main");
     zs_vm_compile_commit (vm);
     if (verbose)
         zs_vm_dump (vm);

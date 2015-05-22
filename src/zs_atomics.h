@@ -14,13 +14,13 @@
 #define ZS_ATOMICS_H_INCLUDED
 
 //  ---------------------------------------------------------------------------
-//  Strict functions
+//  Nullary functions
 
 static int
 s_check (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "check", zs_type_strict, "Run internal checks");
+        zs_vm_register (self, "check", zs_type_nullary, "Run internal checks");
     else {
         int verbose = (zs_pipe_recv_whole (input) != 0);
         zs_lex_test (verbose);
@@ -36,7 +36,7 @@ static int
 s_help (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "help", zs_type_strict, "List all known functions");
+        zs_vm_register (self, "help", zs_type_nullary, "List all known functions");
     else {
         const char *name = zs_vm_function_first (self);
         while (name) {
