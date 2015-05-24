@@ -34,9 +34,6 @@
         <action name = "compile define" />
         <action name = "get next token" />
     </event>
-    <event name = "completed">
-        <action name = "signal completed" />
-    </event>
 </state>
 
 <state name = "building shell" inherit = "building function">
@@ -45,10 +42,10 @@
         <action name = "get next token" />
     </event>
     <event name = "completed" next = "starting">
+        <action name = "compile end of sentence" />
         <action name = "compile commit shell" />
         <action name = "run virtual machine" />
         <action name = "rollback the function" />
-        <action name = "signal completed" />
     </event>
 </state>
 
@@ -81,13 +78,13 @@
         <action name = "compile end of sentence" />
         <action name = "get next token" />
     </event>
-    <event name = "completed" next = "starting">
-    </event>
 </state>
 
 <state name = "defaults">
     <event name = "finished">
         <action name = "check if completed" />
+    </event>
+    <event name = "completed" next = "starting">
     </event>
     <event name = "number" next = "starting">
         <action name = "rollback the function" />

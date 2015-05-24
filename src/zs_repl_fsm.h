@@ -31,8 +31,8 @@ typedef enum {
     inline_fn_event = 3,
     nested_fn_event = 4,
     define_fn_event = 5,
-    completed_event = 6,
-    close_list_event = 7,
+    close_list_event = 6,
+    completed_event = 7,
     phrase_event = 8,
     sentence_event = 9,
     finished_event = 10,
@@ -57,8 +57,8 @@ s_event_name [] = {
     "inline_fn",
     "nested_fn",
     "define_fn",
-    "completed",
     "close_list",
+    "completed",
     "phrase",
     "sentence",
     "finished",
@@ -73,14 +73,13 @@ static void compile_string (zs_repl_t *self);
 static void compile_inline_call (zs_repl_t *self);
 static void compile_nested_call (zs_repl_t *self);
 static void compile_define (zs_repl_t *self);
-static void signal_completed (zs_repl_t *self);
 static void compile_unnest (zs_repl_t *self);
+static void compile_end_of_sentence (zs_repl_t *self);
 static void compile_commit_shell (zs_repl_t *self);
 static void run_virtual_machine (zs_repl_t *self);
 static void rollback_the_function (zs_repl_t *self);
 static void compile_unnest_or_commit (zs_repl_t *self);
 static void compile_end_of_phrase (zs_repl_t *self);
-static void compile_end_of_sentence (zs_repl_t *self);
 static void check_if_completed (zs_repl_t *self);
 static void signal_syntax_error (zs_repl_t *self);
 
@@ -287,15 +286,6 @@ fsm_execute (fsm_t *self)
                     self->state = building_function_state;
             }
             else
-            if (self->event == completed_event) {
-                if (!self->exception) {
-                    //  signal_completed
-                    if (self->animate)
-                        zsys_debug ("zs_repl:               $ signal_completed");
-                    signal_completed (self->parent);
-                }
-            }
-            else
             if (self->event == finished_event) {
                 if (!self->exception) {
                     //  check_if_completed
@@ -303,6 +293,14 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_repl:               $ check_if_completed");
                     check_if_completed (self->parent);
                 }
+            }
+            else
+            if (self->event == completed_event) {
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("zs_repl:               $ completed");
+                if (!self->exception)
+                    self->state = starting_state;
             }
             else
             if (self->event == phrase_event) {
@@ -398,6 +396,12 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == completed_event) {
                 if (!self->exception) {
+                    //  compile_end_of_sentence
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ compile_end_of_sentence");
+                    compile_end_of_sentence (self->parent);
+                }
+                if (!self->exception) {
                     //  compile_commit_shell
                     if (self->animate)
                         zsys_debug ("zs_repl:               $ compile_commit_shell");
@@ -414,12 +418,6 @@ fsm_execute (fsm_t *self)
                     if (self->animate)
                         zsys_debug ("zs_repl:               $ rollback_the_function");
                     rollback_the_function (self->parent);
-                }
-                if (!self->exception) {
-                    //  signal_completed
-                    if (self->animate)
-                        zsys_debug ("zs_repl:               $ signal_completed");
-                    signal_completed (self->parent);
                 }
                 if (!self->exception)
                     self->state = starting_state;
@@ -671,14 +669,6 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == completed_event) {
-                //  No action - just logging
-                if (self->animate)
-                    zsys_debug ("zs_repl:               $ completed");
-                if (!self->exception)
-                    self->state = starting_state;
-            }
-            else
             if (self->event == finished_event) {
                 if (!self->exception) {
                     //  check_if_completed
@@ -686,6 +676,14 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_repl:               $ check_if_completed");
                     check_if_completed (self->parent);
                 }
+            }
+            else
+            if (self->event == completed_event) {
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("zs_repl:               $ completed");
+                if (!self->exception)
+                    self->state = starting_state;
             }
             else
             if (self->event == define_fn_event) {
@@ -737,6 +735,14 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_repl:               $ check_if_completed");
                     check_if_completed (self->parent);
                 }
+            }
+            else
+            if (self->event == completed_event) {
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("zs_repl:               $ completed");
+                if (!self->exception)
+                    self->state = starting_state;
             }
             else
             if (self->event == number_event) {

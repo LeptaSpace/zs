@@ -55,6 +55,7 @@ zs_repl_new (void)
     if (self) {
         self->fsm = fsm_new (self);
         self->lex = zs_lex_new ();
+        self->completed = true;
 
         self->vm = zs_vm_new ();
         s_register_atomics (self->vm);
@@ -297,8 +298,10 @@ compile_end_of_sentence (zs_repl_t *self)
 static void
 check_if_completed (zs_repl_t *self)
 {
-    if (self->scope == 0)
+    if (self->scope == 0) {
         fsm_set_exception (self->fsm, completed_event);
+        self->completed = true;
+    }
 }
 
 
@@ -333,17 +336,6 @@ rollback_the_function (zs_repl_t *self)
 {
     zs_vm_compile_rollback (self->vm);
     self->scope = 0;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  signal_completed
-//
-
-static void
-signal_completed (zs_repl_t *self)
-{
-    self->completed = true;
 }
 
 

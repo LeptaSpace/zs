@@ -1,8 +1,5 @@
 TODO
 
-
-Problem: REPL shows continuation after fn definition
-
 Problem: how to compile & run a paper script
 
 Problem: define test case for each atomic, in ZS
@@ -24,8 +21,6 @@ Problem: "K: (1000 *), K (1 2 3)" does not compile
     - default for * is "multiple by 1"?
     - how to add hint for function....
     k: <Multiply by 1000> (1000 *)
-
-- if input pipe contains any real, tell function this
 
 - pipes can probably be built as single tree structure
 
@@ -49,8 +44,12 @@ Problem: "K: (1000 *), K (1 2 3)" does not compile
     simple stack-based evaluator in zs_lex
 
 help on function
-    how to put function onto pipe
-    ? xyz
+    how to put function reference onto pipe
+    (function)
+    now (function) now -
+    now (function (args)) now -
+
+
 
 help (xyz)
     get hint on xyz if it's an atomic

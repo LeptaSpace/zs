@@ -26,30 +26,17 @@ int main (int argc, char *argv [])
             strncat (input, argv [argn++], 1024);
             strncat (input, " ", 1024);
         }
-        if (zs_repl_execute (repl, input) == 0) {
-            if (zs_repl_completed (repl))
-                puts (zs_repl_results (repl));
-            else
-                puts ("E: incomplete");
-        }
-        else
+        if (zs_repl_execute (repl, input))
             puts ("E: syntax error");
     }
     else {
         //  If run without arguments, drop into REPL shell
         while (!zctx_interrupted) {
-            printf ("> ");                  //  Our normal prompt
+            printf (zs_repl_completed (repl)? "> ": ": ");
             char input [1024 + 2];          //  1024 chars + LF + null
-            if (!fgets (input, 1026, stdin))
+            if (!fgets (input, 1026, stdin) || streq (input, "quit\n"))
                 break;
-
-            if (zs_repl_execute (repl, input) == 0) {
-                if (zs_repl_completed (repl))
-                    puts (zs_repl_results (repl));
-                else
-                    printf ("...");
-            }
-            else {
+            if (zs_repl_execute (repl, input)) {
                 printf ("  %*c\n", zs_repl_offset (repl), '^');
                 puts ("Syntax error");
             }
