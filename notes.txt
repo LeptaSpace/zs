@@ -8,6 +8,11 @@ Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
 
 Problem: "K: (1000 *), K (1 2 3)" does not compile
 
+Problem: zs shell does not allow editing
+
+Solution: use GNU readline when available
+
+- $shell$ does not allow definitions...
 
 ---------------------------
 
@@ -22,12 +27,7 @@ Problem: "K: (1000 *), K (1 2 3)" does not compile
     - how to add hint for function....
     k: <Multiply by 1000> (1000 *)
 
-- pipes can probably be built as single tree structure
-
-- make core atomics work with reals
-    - start with whole
-    - if we hit any real, then flip to real loop
-    - strings...? **for later**
+- pipes can probably be built as single tree structure?
 
 - selftests for atomics
 
