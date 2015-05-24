@@ -287,8 +287,12 @@ s_divide (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         double operand = zs_pipe_recv_real (input);
-        while (zs_pipe_recv (input))
+        printf ("/ OPERAND: %g\n", operand);
+        while (zs_pipe_recv (input)) {
+            double value = zs_pipe_real (input);
+            printf ("/ INTO: %g\n", value);
             zs_pipe_send_real (output, zs_pipe_real (input) / operand);
+        }
     }
     return 0;
 }

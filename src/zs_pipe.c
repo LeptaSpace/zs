@@ -400,30 +400,34 @@ s_pull_values (zs_pipe_t *self, zs_pipe_t *source)
 //  ---------------------------------------------------------------------------
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "modest" pull: in a phrase, pulls the last single value. After a
-//  phrase, pulls the preceding phrase.
+//  phrase, pulls the preceding phrase. If the input is empty, provides a
+//  constant '1' input.
 
 void
 zs_pipe_pull_modest (zs_pipe_t *self, zs_pipe_t *source)
 {
     value_t *value = (value_t *) zlistx_last (source->values);
-    if (!value)
-        return;                 //  Nothing to do
-
-    if (value->type == '|') {
-        //  Pull last phrase; skip back until we hit the start of the
-        //  pipe or a mark (before the current mark)
-        value = (value_t *) zlistx_prev (source->values);
-        while (value && value->type != '|')
+    if (value) {
+        if (value->type == '|') {
+            //  Pull last phrase; skip back until we hit the start of the
+            //  pipe or a mark (before the current mark)
             value = (value_t *) zlistx_prev (source->values);
-    }
-    //  Ensure cursor points to first valid value, if any
-    if (!value)
-        zlistx_first (source->values);
-    else
-    if (value->type == '|')
-        zlistx_next (source->values);
+            while (value && value->type != '|')
+                value = (value_t *) zlistx_prev (source->values);
+        }
+        //  Ensure cursor points to first valid value, if any
+        if (!value)
+            zlistx_first (source->values);
+        else
+        if (value->type == '|')
+            zlistx_next (source->values);
 
-    s_pull_values (self, source);
+        s_pull_values (self, source);
+    }
+    //  Push a constant 1 if the input is empty; a modest function always
+    //  gets at least one input value
+    if (zlistx_size (self->values) == 0)
+        zs_pipe_send_whole (self, 1);
 }
 
 

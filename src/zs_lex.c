@@ -16,8 +16,8 @@
     compositions and invocations, strings, numbers, and open or close
     lists. It does not validate any semantics.
 @discuss
-    Functions start with a letter and contain letters, digits, hyphens,
-    slashes, and underscores.
+    Functions contain letters, digits, hyphens, slashes, and underscores,
+    and may not start with a digit.
 
     A inline function is a name. A nested function is a name followed
     by a list. A definition is a function followed by ':' and a list.
