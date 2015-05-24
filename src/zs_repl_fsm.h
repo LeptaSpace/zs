@@ -33,10 +33,11 @@ typedef enum {
     define_fn_event = 5,
     close_list_event = 6,
     completed_event = 7,
-    phrase_event = 8,
-    sentence_event = 9,
-    finished_event = 10,
-    invalid_event = 11
+    committed_event = 8,
+    phrase_event = 9,
+    sentence_event = 10,
+    finished_event = 11,
+    invalid_event = 12
 } event_t;
 
 //  Names for state machine logging and error reporting
@@ -59,6 +60,7 @@ s_event_name [] = {
     "define_fn",
     "close_list",
     "completed",
+    "committed",
     "phrase",
     "sentence",
     "finished",
@@ -483,6 +485,17 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
+            if (self->event == committed_event) {
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = starting_state;
+            }
+            else
             if (self->event == phrase_event) {
                 if (!self->exception) {
                     //  compile_end_of_phrase
@@ -637,6 +650,17 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_repl:               $ get_next_token");
                     get_next_token (self->parent);
                 }
+            }
+            else
+            if (self->event == committed_event) {
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = starting_state;
             }
             else
             if (self->event == phrase_event) {

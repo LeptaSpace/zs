@@ -4,9 +4,10 @@ Problem: how to compile & run a paper script
 
 Problem: define test case for each atomic, in ZS
 
-Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
+Problem: "f:() f()" causes assertion failure in src/zs_vm.c:386
 
-Problem: "K: (1000 *), K (1 2 3)" does not compile
+
+Problem: "K: (1000 *) K (1 2 3)" does not compile
 
 Problem: zs shell does not allow editing
 Solution: use GNU readline when available
@@ -16,8 +17,6 @@ Problem: $shell$ does not allow definitions
 This means we can't define a function and use it on the same line
 Solution: remove need to define a $shell$ function
 
-Problem: shell does not do function name completion
-Solution: add readline support (using editline)
 
 
 ---------------------------

@@ -70,6 +70,9 @@
         <action name = "compile unnest or commit" />
         <action name = "get next token" />
     </event>
+    <event name = "committed" next = "starting">
+        <action name = "get next token" />
+    </event>
     <event name = "phrase">
         <action name = "compile end of phrase" />
         <action name = "get next token" />

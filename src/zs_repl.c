@@ -264,8 +264,10 @@ compile_unnest_or_commit (zs_repl_t *self)
     assert (self->scope);
     if (--self->scope)
         zs_vm_compile_unnest (self->vm);
-    else
+    else {
         zs_vm_compile_commit (self->vm);
+        fsm_set_exception (self->fsm, committed_event);
+    }
 }
 
 
