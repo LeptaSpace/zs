@@ -18,29 +18,31 @@
 
 **<a href="#toc3-181">Words, Phrases, and Sentences</a>**
 
-**<a href="#toc3-303">First Steps</a>**
+**<a href="#toc3-312">Defining a Function</a>**
 
-**<a href="#toc3-322">The Virtual Machine</a>**
+**<a href="#toc3-329">The Code</a>**
 
-**<a href="#toc3-337">Extensibility</a>**
+**<a href="#toc3-342">The Virtual Machine</a>**
 
-**<a href="#toc3-370">Code Generation</a>**
+**<a href="#toc3-357">Extensibility</a>**
 
-**<a href="#toc3-378">Arguments and Flamewars</a>**
+**<a href="#toc3-390">Code Generation</a>**
 
-**<a href="#toc3-387">Other Goals</a>**
+**<a href="#toc3-398">Arguments and Flamewars</a>**
 
-**<a href="#toc2-402">Design Notes</a>**
+**<a href="#toc3-407">Other Goals</a>**
 
-**<a href="#toc2-410">Bibliography</a>**
+**<a href="#toc2-422">Design Notes</a>**
 
-**<a href="#toc2-418">Technicalities</a>**
+**<a href="#toc2-430">Bibliography</a>**
 
-**<a href="#toc3-421">Ownership and License</a>**
+**<a href="#toc2-438">Technicalities</a>**
 
-**<a href="#toc3-432">Building and Installing</a>**
+**<a href="#toc3-441">Ownership and License</a>**
 
-**<a href="#toc3-463">This Document</a>**
+**<a href="#toc3-452">Building and Installing</a>**
+
+**<a href="#toc3-483">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -250,26 +252,35 @@ I can break this phrase into smaller phrases:
 
 There seem to be three kinds of function:
 
-* Functions that take no arguments ("nullary") and produce some magic value. These are key to measuring the real world: time, temperature, free disk space, etc. It makes no sense to write these. One does not modify the current temperature. Side-effects seem honest, e.g. switching on the heating or cooling should eventually change the measurable temperature. I call these "strict" functions.
+* Functions that take no arguments and produce some magic value. These are key to measuring the real world: time, temperature, free disk space, etc. It makes no sense to write these. One does not modify the current temperature. Side-effects seem honest, e.g. switching on the heating or cooling should eventually change the measurable temperature. I use the standard term "nullary" for these functions.
 * Functions that take a single argument, and which can be convinced to work on a set or list of values. For example, the "day" and "weeks" functions are multipliers (returning the number of seconds in a day and week respectively). I call these "modest" functions.
 * Functions that take a list of arguments. These functions should be able to work on lists of zero, one, two, or a thousand values. I call these "greedy" functions.
-* Functions that apply one value to a list of values. I call these "array" functions.
+* Functions that apply one value to a list of values. For example, "multiply these numbers by ten". I call these "array" functions.
 
-When we define atomics, we tell the virtual machine what type of function we're making (strict, modest, greedy, or array). When we construct functions out of others, the new function takes the type of the first word in its body.
+When we define atomics, we tell the virtual machine what type of function we're making (nullary, modest, greedy, or array). When we construct functions out of others, the new function takes the type of the first word in its body.
 
-The input to a non-strict function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
+The input to a non-nullary function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
 
-It turns out we can make this work pretty well using a single special symbol (comma) to provide hints to the compiler. The comma breaks the code into "phrases". Each phrase produces some output, which accumulates as we worj through the phrases.
+It turns out we can make this work pretty well using a single special symbol (comma) to provide hints to the compiler. The comma breaks the code into "phrases". Each phrase produces some output, which accumulates as we work through the phrases.
+
+The commas work well, so I'm using a period to end a sentence. What this does is print the previous phrases' output, and start afresh.
 
 Before we call a function, the VM prepares an input pipe based on the type of the function and where we use it:
 
 * A modest function operates on the previous value in the current phrase, if there's one: "1 k". If we use a modest function at the start of a phrase, then it operates on the whole previous phrase: "1 2 3, k". This is like using parentheses: "k (1 2 3)".
 * A greedy function operates on the previous values in the current phrase, if there are any: "1 2 3 add". If we use a greedy function at the start of a phrase, it operators on the whole sentence so far: "1 2 3, 4 5 6, add".
-* An array function operates on a value and a phrase: "1 2 3, 2 times".
+* An array function applies one value (the last value) to a phrase. Internally the last value is passed first, so the function can use it as an operand: "1 2 3, 2 times". The comma can help readability though isn't necessary.
 
-This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive. FIFO pipes are more intuitive.
+This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive. FIFO pipes seem more intuitive and more fitting for a language that aims to stretch itself over multiple threads, cores, boxes, and clouds.
 
-I'm trying to avoid binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style.
+I'm trying to avoid forced-binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style. Hence the array functions. Here is how array functions work:
+
+    > 1 2 3, 2 times
+    2 4 6
+    > 22 7 /
+    3.14286
+    > 21 22 23, 7 /
+    3 3.14286 3.28571
 
 Once we have this working, we can start to make numbers fun to write:
 
@@ -284,7 +295,7 @@ Once we have this working, we can start to make numbers fun to write:
 
 Here the scaling function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
 
-The scaling functions work as constants, if they're used alone:
+Type the name of a scaling function to see what value it uses:
 
     > Gi
     1073741824
@@ -300,27 +311,27 @@ There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z an
     > 1 a
     1e-18
 
-The commas work well, so I'm using a period to end a sentence. What this does is print the previous phrases' output, and start afresh.
+Scaling functions let you calculate in natural units. These functions multiply their input (scale up). There are corresponding scale-down functions which start with "/":
 
-Here is how array functions work:
+    > 150 M /year
+    4.75647
 
-    > 1 2 3, 2 times
-    2 4 6
+The year, month, day, week, msec functions scale up or down to a number of seconds:
 
-And for fun we can write this in different ways:
+    > 150 M /year /msec
+    4756.47
 
-    > 1 2 3, 2 x
-    2 4 6
-    > 1 2 3, 2 *
-    2 4 6
+Which is a nice simple way of calculating "If I have to handle 150 million requests a year, how many is that per millisecond?"
 
 There's a function 'help' that prints all available functions:
 
     > help
-    check help sum product count mean min max assert whole plus +
-    minus - times * x divide / Ki Mi Gi Ti Pi Ei da h k M G T P E
-    Z Y d c m u n p f a z y minutes minute hours hour days day
-    weeks week years year
+    check help sum product count mean min max assert whole plus + minus
+    - times * x divide / Ki /Ki Mi /Mi Gi /Gi Ti /Ti Pi /Pi Ei /Ei da
+    /da h /h k /k M /M G /G T /T P /P E /E Z /Z Y /Y d /d c /c m /m u
+    /u n /n p /p f /f a /a z /z y /y minutes minute /minutes /minute
+    hours hour /hours /hour days day /days /day weeks week /weeks /week
+    years year /years /year msecs msec /msecs /msec
 
 Numbers are either whole numbers or real numbers. Wholes get coerced into real automatically as needed. To get the closest whole for a given real, use the 'whole' function.
 
@@ -333,10 +344,27 @@ For convenience, numbers can end with '%' indicating they're a percentage (this 
 
 You can write comments using '#' until the end of the line. There are no multiline comments. Longer comments should perhaps be defined as functions, e.g. license, author, and so on.
 
-<A name="toc3-303" title="First Steps" />
-### First Steps
+<A name="toc3-312" title="Defining a Function" />
+### Defining a Function
 
-So far what do I have?
+To define a new function (or redefine any existing function), use this syntax:
+
+    name: ( body )
+
+Where the body can be any valid sentence, including empty. The body can stretch over many lines, as long as the ": (" comes together on the same line as the function name. Here's how to alias an existing function:
+
+    run_my_selftests: (check)
+
+Here are some other examples
+
+    > K (1000 *)
+    > K (1 2 3)
+    1000 2000 3000
+
+<A name="toc3-329" title="The Code" />
+### The Code
+
+The code has these pieces:
 
 * A lexer (zs_lex) that breaks input into tokens. This should become a language atomic at some stage, pushing input tokens to a pipe. It's based on a state machine.
 * A pipe class (zs_pipe) that holds numbers and strings. This is not meant to be fast; it just shows the idea.
@@ -344,15 +372,9 @@ So far what do I have?
 * A REPL class (zs_repl) that connects the lexer to the VM, based on a state machine.
 * A main program (zs) that acts as a shell.
 
-The fsm_c.gsl script builds the state machines, which are XML models (don't laugh, it works nicely).
+The fsm_c.gsl script builds the state machines, which are XML models that drive GSL code generation.
 
-The zs_lex state machine deals with parsing these different cases:
-
-    123,456 123.456             #   Two numbers
-    123, 456 123. 456           #   Four numbers, two sentences, three phrases
-    123,echo                    #   Prints "123"
-
-<A name="toc3-322" title="The Virtual Machine" />
+<A name="toc3-342" title="The Virtual Machine" />
 ### The Virtual Machine
 
 I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
@@ -367,7 +389,7 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which I'll now explain.
 
-<A name="toc3-337" title="Extensibility" />
+<A name="toc3-357" title="Extensibility" />
 ### Extensibility
 
 Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
@@ -383,24 +405,24 @@ So for example the "check" atomic runs the ZeroScript self-tests. Here's how we 
 And here's the code for that function:
 
     static int
-    s_check (zs_vm_t *self)
+    s_check (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     {
         if (zs_vm_probing (self))
-            zs_vm_register (self, "check", "Run internal checks");
+            zs_vm_register (self, "check", zs_type_nullary, "Run internal checks");
         else {
-            int verbose = (zs_pipe_dequeue_number (zs_vm_input (self)) != 0);
+            int verbose = (zs_pipe_recv_whole (input) != 0);
             zs_lex_test (verbose);
             zs_pipe_test (verbose);
             zs_vm_test (verbose);
             zs_repl_test (verbose);
-            zs_pipe_queue_string (zs_vm_output (self), "Checks passed successfully");
+            zs_pipe_send_string (output, "Checks passed successfully");
         }
         return 0;
     }
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
-<A name="toc3-370" title="Code Generation" />
+<A name="toc3-390" title="Code Generation" />
 ### Code Generation
 
 We use GSL code generation to build the core language pieces. There are two cases:
@@ -408,7 +430,7 @@ We use GSL code generation to build the core language pieces. There are two case
 * Generating the scaling atomics. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_units_si.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.xml), which produce the source code in [zs_units_si.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.h).
 * Generating the state machines. See zs_lex.xml and zs_repl.xml.
 
-<A name="toc3-378" title="Arguments and Flamewars" />
+<A name="toc3-398" title="Arguments and Flamewars" />
 ### Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -417,7 +439,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
-<A name="toc3-387" title="Other Goals" />
+<A name="toc3-407" title="Other Goals" />
 ### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -432,7 +454,7 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-402" title="Design Notes" />
+<A name="toc2-422" title="Design Notes" />
 ## Design Notes
 
 * Any language aspect that takes more than 10 minutes to understand is too complex.
@@ -440,7 +462,7 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
 * Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
 
-<A name="toc2-410" title="Bibliography" />
+<A name="toc2-430" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
@@ -448,10 +470,10 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * http://en.wikipedia.org/wiki/Arity
 * http://en.wikipedia.org/wiki/Concatenative_programming_language
 
-<A name="toc2-418" title="Technicalities" />
+<A name="toc2-438" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-421" title="Ownership and License" />
+<A name="toc3-441" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -462,7 +484,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-432" title="Building and Installing" />
+<A name="toc3-452" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -493,7 +515,7 @@ Here's how to build ZeroScript from GitHub:
 
 You will need the pkg-config, libtool, and autoreconf packages.
 
-<A name="toc3-463" title="This Document" />
+<A name="toc3-483" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).

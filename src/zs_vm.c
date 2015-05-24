@@ -301,6 +301,7 @@ zs_vm_register (zs_vm_t *self, const char *name, zs_type_t type, const char *hin
     assert (hint || self->nbr_atomics);
     if (hint == NULL)
         hint = self->atomics [self->nbr_atomics - 1]->hint;
+    assert (self->nbr_atomics < 240);
     self->atomics [self->nbr_atomics++] = s_atomic_new (self->probing, name, type, hint);
     return 0;
 }

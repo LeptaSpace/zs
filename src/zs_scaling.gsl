@@ -22,9 +22,9 @@
 
 #ifndef S_APPLY_SCALE_DEFINED
 #define S_APPLY_SCALE_DEFINED
-//  Applies a whole scale to a pipe register
+//  Applies a scale up to a pipe register
 static void
-s_apply_scale (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
+s_scale_up (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
 {
     if (zs_pipe_type (input) == 'w')
         zs_pipe_set_whole (output, zs_pipe_whole (input) * scale);
@@ -44,34 +44,42 @@ s_apply_scale (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
 .for class.atomic
 .   atomic.type ?= "whole"
 static int
-s_$(name:) (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_$(name:)_up (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self)) {
-        zs_vm_register (self, "$(atomic.name:)", zs_type_modest, "$(string.trim (atomic.?''):left)");
+        zs_vm_register (self, "$(atomic.name:)", zs_type_modest, "Scale up by $(string.trim (atomic.?''):left)");
 .   for alias
         zs_vm_register (self, "$(alias.name:)", zs_type_modest, NULL);
 .   endfor
     }
     else {
         //  Process all values on input pipe
-        size_t set_size = 0;
         while (zs_pipe_recv (input)) {
 .   if type = "real"
             //  Always coerce to a real value
             zs_pipe_set_real (output, zs_pipe_real (input) * $(value:));
 .   else
-            s_apply_scale (input, output, (int64_t) ($(value:)));
+            s_scale_up (input, output, (int64_t) ($(value:)));
 .   endif
             zs_pipe_send (output);
-            set_size++;
         }
-        //  If input set was empty, operate as constant
-        if (set_size == 0)
-.   if type = "real"
-            zs_pipe_send_real (output, $(value:));
-.   else
-            zs_pipe_send_whole (output, (int64_t) $(value:));
-.   endif
+    }
+    return 0;
+}
+
+static int
+s_$(name:)_down (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self)) {
+        zs_vm_register (self, "/$(atomic.name:)", zs_type_modest, "Scale down by $(string.trim (atomic.?''):left)");
+.   for alias
+        zs_vm_register (self, "/$(alias.name:)", zs_type_modest, NULL);
+.   endfor
+    }
+    else {
+        //  Process all values on input pipe, always coerce to real
+        while (zs_pipe_recv (input))
+            zs_pipe_send_real (output, zs_pipe_real (input) / (double) ($(value:)));
     }
     return 0;
 }
@@ -81,7 +89,8 @@ static void
 s_register_$(class.name) (zs_vm_t *self)
 {
 .for class.atomic
-    zs_vm_probe (self, s_$(name:));
+    zs_vm_probe (self, s_$(name:)_up);
+    zs_vm_probe (self, s_$(name:)_down);
 .endfor
 }
 #endif

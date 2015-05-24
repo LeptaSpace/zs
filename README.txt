@@ -220,7 +220,9 @@ When we define atomics, we tell the virtual machine what type of function we're 
 
 The input to a non-nullary function forms a FIFO list. The output of one function has to go magically to the next. I wanted to avoid having to write special symbols (like the UNIX pipe character) to make this magic happen.
 
-It turns out we can make this work pretty well using a single special symbol (comma) to provide hints to the compiler. The comma breaks the code into "phrases". Each phrase produces some output, which accumulates as we worj through the phrases.
+It turns out we can make this work pretty well using a single special symbol (comma) to provide hints to the compiler. The comma breaks the code into "phrases". Each phrase produces some output, which accumulates as we work through the phrases.
+
+The commas work well, so I'm using a period to end a sentence. What this does is print the previous phrases' output, and start afresh.
 
 Before we call a function, the VM prepares an input pipe based on the type of the function and where we use it:
 
@@ -230,7 +232,14 @@ Before we call a function, the VM prepares an input pipe based on the type of th
 
 This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive. FIFO pipes seem more intuitive and more fitting for a language that aims to stretch itself over multiple threads, cores, boxes, and clouds.
 
-I'm trying to avoid forced-binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style. Hence the array functions.
+I'm trying to avoid forced-binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style. Hence the array functions. Here is how array functions work:
+
+    > 1 2 3, 2 times
+    2 4 6
+    > 22 7 /
+    3.14286
+    > 21 22 23, 7 /
+    3 3.14286 3.28571
 
 Once we have this working, we can start to make numbers fun to write:
 
@@ -245,7 +254,7 @@ Once we have this working, we can start to make numbers fun to write:
 
 Here the scaling function works on a list rather than a single value. I like the first form because it reduces the need for parenthesis. The second form is less surprising to some people, and lets us nest functions.
 
-The scaling functions work as constants, if they're used alone:
+Type the name of a scaling function to see what value it uses:
 
     > Gi
     1073741824
@@ -261,26 +270,27 @@ There are also the SI fractional scaling functions (d, c, m, u, n, p, f, a, z an
     > 1 a
     1e-18
 
-The commas work well, so I'm using a period to end a sentence. What this does is print the previous phrases' output, and start afresh.
+Scaling functions let you calculate in natural units. These functions multiply their input (scale up). There are corresponding scale-down functions which start with "/":
 
-Here is how array functions work:
+    > 150 M /year
+    4.75647
 
-    > 1 2 3, 2 times
-    2 4 6
-    > 1 year 1 week 1 day /
-    365 7
-    > 22 7 /
-    3.14286
-    > 21 22 23, 7 /
-    3 3.14286 3.28571
+The year, month, day, week, msec functions scale up or down to a number of seconds:
+
+    > 150 M /year /msec
+    4756.47
+
+Which is a nice simple way of calculating "If I have to handle 150 million requests a year, how many is that per millisecond?"
 
 There's a function 'help' that prints all available functions:
 
     > help
-    check help sum product count mean min max assert whole plus +
-    minus - times * x divide / Ki Mi Gi Ti Pi Ei da h k M G T P E
-    Z Y d c m u n p f a z y minutes minute hours hour days day
-    weeks week years year
+    check help sum product count mean min max assert whole plus + minus
+    - times * x divide / Ki /Ki Mi /Mi Gi /Gi Ti /Ti Pi /Pi Ei /Ei da
+    /da h /h k /k M /M G /G T /T P /P E /E Z /Z Y /Y d /d c /c m /m u
+    /u n /n p /p f /f a /a z /z y /y minutes minute /minutes /minute
+    hours hour /hours /hour days day /days /day weeks week /weeks /week
+    years year /years /year msecs msec /msecs /msec
 
 Numbers are either whole numbers or real numbers. Wholes get coerced into real automatically as needed. To get the closest whole for a given real, use the 'whole' function.
 
@@ -292,6 +302,22 @@ For convenience, numbers can end with '%' indicating they're a percentage (this 
     0.0023
 
 You can write comments using '#' until the end of the line. There are no multiline comments. Longer comments should perhaps be defined as functions, e.g. license, author, and so on.
+
+### Defining a Function
+
+To define a new function (or redefine any existing function), use this syntax:
+
+    name: ( body )
+
+Where the body can be any valid sentence, including empty. The body can stretch over many lines, as long as the ": (" comes together on the same line as the function name. Here's how to alias an existing function:
+
+    run_my_selftests: (check)
+
+Here are some other examples
+
+    > K (1000 *)
+    > K (1 2 3)
+    1000 2000 3000
 
 ### The Code
 

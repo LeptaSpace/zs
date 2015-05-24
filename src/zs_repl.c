@@ -252,6 +252,9 @@ compile_define (zs_repl_t *self)
 
 //  ---------------------------------------------------------------------------
 //  compile_unnest_or_commit
+//  If we are closing a scope, we've successfully compiled a new function
+//  definition, so we can commit it. We do not allow function definitions
+//  inside each other, they are always at scope = 0.
 //
 
 static void
@@ -260,10 +263,8 @@ compile_unnest_or_commit (zs_repl_t *self)
     assert (self->scope);
     if (--self->scope)
         zs_vm_compile_unnest (self->vm);
-    else {
+    else
         zs_vm_compile_commit (self->vm);
-        fsm_set_exception (self->fsm, completed_event);
-    }
 }
 
 
@@ -434,6 +435,8 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "1 2 3 fn", "6");
     s_repl_assert (repl, "1 2 3, fn", "6");
     s_repl_assert (repl, "fn (1 2 3)", "6");
+    s_repl_assert (repl, "K: (1000 *)", "");
+    s_repl_assert (repl, "K (1 2 3)", "1000 2000 3000");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

@@ -2,26 +2,26 @@
     Miscellaneous scaling functions
     <atomic name = "minutes" value = "60LL">
         <alias name = "minute" />
-        Seconds in a minute
+        seconds per minute
     </atomic>
     <atomic name = "hours" value = "60LL * 60LL">
         <alias name = "hour" />
-        Seconds in a hour
+        seconds per hour
     </atomic>
     <atomic name = "days" value = "60LL * 60LL * 24LL">
         <alias name = "day" />
-        Seconds in a day
+        seconds per day
     </atomic>
     <atomic name = "weeks" value = "60LL * 60LL * 24LL * 7LL">
         <alias name = "week" />
-        Seconds in a week
+        seconds per week
     </atomic>
     <atomic name = "years" value = "60LL * 60LL * 24LL * 365LL">
         <alias name = "year" />
-        Seconds in a non-leap year
+        seconds per non-leap year
     </atomic>
     <atomic name = "msecs" value = "0.001" type = "real">
         <alias name = "msec" />
-        Divide by 1000 (real)
+        seconds per 1/1000
     </atomic>
 </class>
