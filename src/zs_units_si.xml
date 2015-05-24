@@ -42,10 +42,10 @@
     <atomic name = "E" value = "1E18">
         Multiply by 10^18
     </atomic>
-    <atomic name = "Z" value = "1E21">
+    <atomic name = "Z" value = "1E21" type = "real">
         Multiply by 10^21
     </atomic>
-    <atomic name = "Y" value = "1E24">
+    <atomic name = "Y" value = "1E24" type = "real">
         Multiply by 10^24
     </atomic>
 

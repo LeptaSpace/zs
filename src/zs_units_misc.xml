@@ -20,4 +20,8 @@
         <alias name = "year" />
         Seconds in a non-leap year
     </atomic>
+    <atomic name = "msecs" value = "0.001" type = "real">
+        <alias name = "msec" />
+        Divide by 1000 (real)
+    </atomic>
 </class>

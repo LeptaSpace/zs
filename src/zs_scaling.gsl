@@ -54,7 +54,8 @@ s_$(name:) (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         //  Process all values on input pipe
-        while (zs_pipe_recv (input) == 0) {
+        size_t set_size = 0;
+        while (zs_pipe_recv (input)) {
 .   if type = "real"
             //  Always coerce to a real value
             zs_pipe_set_real (output, zs_pipe_real (input) * $(value:));
@@ -62,7 +63,15 @@ s_$(name:) (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
             s_apply_scale (input, output, (int64_t) ($(value:)));
 .   endif
             zs_pipe_send (output);
+            set_size++;
         }
+        //  If input set was empty, operate as constant
+        if (set_size == 0)
+.   if type = "real"
+            zs_pipe_send_real (output, $(value:));
+.   else
+            zs_pipe_send_whole (output, (int64_t) $(value:));
+.   endif
     }
     return 0;
 }

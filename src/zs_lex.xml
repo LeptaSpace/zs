@@ -10,17 +10,22 @@
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
-    <event name = "hyphen" next = "reading number">
+    <event name = "hyphen" next = "after unary sign">
         <action name = "start new token" />
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
-    <event name = "plus" next = "reading number">
+    <event name = "plus" next = "after unary sign">
         <action name = "start new token" />
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
     <event name = "digit" next = "reading number">
+        <action name = "start new token" />
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "usable" next = "reading function">
         <action name = "start new token" />
         <action name = "store the character" />
         <action name = "parse next character" />
@@ -56,11 +61,7 @@
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
-    <event name = "slash">
-        <action name = "store the character" />
-        <action name = "parse next character" />
-    </event>
-    <event name = "underscore">
+    <event name = "usable">
         <action name = "store the character" />
         <action name = "parse next character" />
     </event>
@@ -112,6 +113,29 @@
 <state name = "after function colon" inherit = "defaults">
     <event name = "open list" next = "expecting token">
         <action name = "have define fn token" />
+    </event>
+</state>
+
+<state name = "after unary sign" inherit = "reading function">
+    <event name = "digit" next = "reading number">
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "letter" next = "reading function">
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "hyphen" next = "reading function">
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "plus" next = "reading function">
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "percent" next = "expecting token">
+        <action name = "store the character" />
+        <action name = "have number token" />
     </event>
 </state>
 
@@ -196,11 +220,26 @@
     </event>
 </state>
 
+<state name = "reading comment">
+    <event name = "newline" next = "expecting token">
+        <action name = "parse next character" />
+    </event>
+    <event name = "finished" next = "expecting token">
+        <action name = "have null token" />
+    </event>
+    <event name = "*">
+        <action name = "parse next character" />
+    </event>
+</state>
+
 <state name = "defaults">
     <event name = "other" next = "expecting token">
         <action name = "have invalid token" />
     </event>
     <event name = "whitespace">
+        <action name = "parse next character" />
+    </event>
+    <event name = "comment" next = "reading comment">
         <action name = "parse next character" />
     </event>
     <event name = "newline">

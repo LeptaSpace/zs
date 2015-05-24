@@ -1,37 +1,47 @@
 TODO
 
-- allow comments starting with '#', to end of line*
 
-- allow symbolic operators (+, *, etc.)
+Problem: REPL shows continuation after fn definition
+Problem: how to compile & run a paper script
+Problem: define test case for each atomic, in ZS
+Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
 
-- arithmetic functions have to support reals
+K: (1000 *)
+K (1 2) => 1 2000 instead of 1000 2000
 
-- coerce modest function to strict
-    - if input is empty, assume 1
-    - k -> 1000
+- repl primitive takes list of lines, executes
+
+- rewrite scaling primitives in ZS?
+<
+    k: (<Multiply by 1000> 1000 *)
+    M: (<Multiply by 1M> 1000000 *)
+> repl
+    - default for * is "multiple by 1"?
+    - how to add hint for function....
+    k: <Multiply by 1000> (1000 *)
+
+- if input pipe contains any real, tell function this
+
+- pipes can probably be built as single tree structure
+
+- make core atomics work with reals
+    - start with whole
+    - if we hit any real, then flip to real loop
+    - strings...? **for later**
+
+- selftests for atomics
 
 - make zs_repl into an actor
     - accept input on pipe
     - return output to pipe (end of sentence)
 
-- array functions
-    - modest function that takes additional subjects
-    - register type zs_type_array
-    - syntax: inputs, operands fn
-    - alternative:  fn (operands)
-        e.g.    n times
-                1 2 3, 2 times
-                2 times (1 2 3)
-    - 2 3, times (1 2 3) ???
-    - receive on input pipe, separated by mark
-
-    list functions: avg, sum, min, max, count, product
-    array functions: plus +, minus -, times * x, divide / :, power ^, ...
-
-
 - user functions take type of first function
 
 - profile every function, simple counter, 'n top' atomic sorts & prints top n
+
+- expressive constants: 1/2 1:2 2^16-1 1024*1024
+    contain + - /: *x ^
+    simple stack-based evaluator in zs_lex
 
 help on function
     how to put function onto pipe
@@ -45,6 +55,8 @@ help (xyz)
     1. @ before function name
     2. atomic can force this
 
+mark atomics as draft, stable, legacy
+contract for every function/atomic
 
 0, 1 many - conditionals and loops are the same; we repeat a phrase N times
 

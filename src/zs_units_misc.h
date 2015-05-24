@@ -46,10 +46,15 @@ s_minutes (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         //  Process all values on input pipe
-        while (zs_pipe_recv (input) == 0) {
+        size_t set_size = 0;
+        while (zs_pipe_recv (input)) {
             s_apply_scale (input, output, (int64_t) (60LL));
             zs_pipe_send (output);
+            set_size++;
         }
+        //  If input set was empty, operate as constant
+        if (set_size == 0)
+            zs_pipe_send_whole (output, (int64_t) 60LL);
     }
     return 0;
 }
@@ -63,10 +68,15 @@ s_hours (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         //  Process all values on input pipe
-        while (zs_pipe_recv (input) == 0) {
+        size_t set_size = 0;
+        while (zs_pipe_recv (input)) {
             s_apply_scale (input, output, (int64_t) (60LL * 60LL));
             zs_pipe_send (output);
+            set_size++;
         }
+        //  If input set was empty, operate as constant
+        if (set_size == 0)
+            zs_pipe_send_whole (output, (int64_t) 60LL * 60LL);
     }
     return 0;
 }
@@ -80,10 +90,15 @@ s_days (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         //  Process all values on input pipe
-        while (zs_pipe_recv (input) == 0) {
+        size_t set_size = 0;
+        while (zs_pipe_recv (input)) {
             s_apply_scale (input, output, (int64_t) (60LL * 60LL * 24LL));
             zs_pipe_send (output);
+            set_size++;
         }
+        //  If input set was empty, operate as constant
+        if (set_size == 0)
+            zs_pipe_send_whole (output, (int64_t) 60LL * 60LL * 24LL);
     }
     return 0;
 }
@@ -97,10 +112,15 @@ s_weeks (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         //  Process all values on input pipe
-        while (zs_pipe_recv (input) == 0) {
+        size_t set_size = 0;
+        while (zs_pipe_recv (input)) {
             s_apply_scale (input, output, (int64_t) (60LL * 60LL * 24LL * 7LL));
             zs_pipe_send (output);
+            set_size++;
         }
+        //  If input set was empty, operate as constant
+        if (set_size == 0)
+            zs_pipe_send_whole (output, (int64_t) 60LL * 60LL * 24LL * 7LL);
     }
     return 0;
 }
@@ -114,10 +134,38 @@ s_years (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         //  Process all values on input pipe
-        while (zs_pipe_recv (input) == 0) {
+        size_t set_size = 0;
+        while (zs_pipe_recv (input)) {
             s_apply_scale (input, output, (int64_t) (60LL * 60LL * 24LL * 365LL));
             zs_pipe_send (output);
+            set_size++;
         }
+        //  If input set was empty, operate as constant
+        if (set_size == 0)
+            zs_pipe_send_whole (output, (int64_t) 60LL * 60LL * 24LL * 365LL);
+    }
+    return 0;
+}
+
+static int
+s_msecs (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self)) {
+        zs_vm_register (self, "msecs", zs_type_modest, "Divide by 1000 (real)");
+        zs_vm_register (self, "msec", zs_type_modest, NULL);
+    }
+    else {
+        //  Process all values on input pipe
+        size_t set_size = 0;
+        while (zs_pipe_recv (input)) {
+            //  Always coerce to a real value
+            zs_pipe_set_real (output, zs_pipe_real (input) * 0.001);
+            zs_pipe_send (output);
+            set_size++;
+        }
+        //  If input set was empty, operate as constant
+        if (set_size == 0)
+            zs_pipe_send_real (output, 0.001);
     }
     return 0;
 }
@@ -130,5 +178,6 @@ s_register_zs_units_misc (zs_vm_t *self)
     zs_vm_probe (self, s_days);
     zs_vm_probe (self, s_weeks);
     zs_vm_probe (self, s_years);
+    zs_vm_probe (self, s_msecs);
 }
 #endif

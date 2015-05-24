@@ -204,25 +204,8 @@ compile_string (zs_repl_t *self)
 static void
 compile_inline_call (zs_repl_t *self)
 {
-    const char *function = zs_lex_token (self->lex);
-    switch (zs_vm_function_type (self->vm, function)) {
-        //  VM takes care of plumbing and function call
-        case zs_type_strict:
-            if (zs_vm_compile_strict (self->vm, function))
-                fsm_set_exception (self->fsm, invalid_event);
-            break;
-        case zs_type_modest:
-            if (zs_vm_compile_modest (self->vm, function))
-                fsm_set_exception (self->fsm, invalid_event);
-            break;
-        case zs_type_greedy:
-            if (zs_vm_compile_greedy (self->vm, function))
-                fsm_set_exception (self->fsm, invalid_event);
-            break;
-        case zs_type_unknown:
-            fsm_set_exception (self->fsm, invalid_event);
-            break;
-    }
+    if (zs_vm_compile_inline (self->vm, zs_lex_token (self->lex)))
+        fsm_set_exception (self->fsm, invalid_event);
 }
 
 
@@ -433,19 +416,24 @@ zs_repl_test (bool verbose)
     //  @selftest
     zs_repl_t *repl = zs_repl_new ();
     zs_repl_verbose (repl, verbose);
-    s_repl_assert (repl, "1 2 3 add", "6");
+    s_repl_assert (repl, "1 2 3 sum", "6");
     s_repl_assert (repl, "1 2, k", "1000 2000");
-    s_repl_assert (repl, "1 2 3, add", "6");
-    s_repl_assert (repl, "1 2 3, 4 5 6 add", "1 2 3 15");
-    s_repl_assert (repl, "1 2 3, 4 5 6, add", "21");
-    s_repl_assert (repl, "1 2 3 count, 1 1 add, subtract", "1");
-    s_repl_assert (repl, "add (1 2 3)", "6");
-    s_repl_assert (repl, "add (add (1 2 3) count (4 5 6))", "9");
-    s_repl_assert (repl, "add (1 2 3", "");
+    s_repl_assert (repl, "1 2 3, sum", "6");
+    s_repl_assert (repl, "1 2 3, 4 5 6 sum", "1 2 3 15");
+    s_repl_assert (repl, "1 2 3, 4 5 6, sum", "21");
+    s_repl_assert (repl, "1 2 3 count, 1 1 sum, min", "2");
+    s_repl_assert (repl, "sum (1 2 3)", "6");
+    s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
+    s_repl_assert (repl, "sum (1 2 3", "");
     s_repl_assert (repl, ")", "6");
     s_repl_assert (repl, "sub: (<hello>)", "");
     s_repl_assert (repl, "sub", "hello");
-    s_repl_assert (repl, "add (k (1 2 3) M (2))", "2006000");
+    s_repl_assert (repl, "sum (k (1 2 3) M (2))", "2006000");
+    s_repl_assert (repl, "k", "1000");
+    s_repl_assert (repl, "fn: (sum)", "");
+    s_repl_assert (repl, "1 2 3 fn", "6");
+    s_repl_assert (repl, "1 2 3, fn", "6");
+    s_repl_assert (repl, "fn (1 2 3)", "6");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

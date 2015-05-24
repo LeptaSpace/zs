@@ -22,11 +22,13 @@ typedef enum {
     reading_function_state = 2,
     after_function_state = 3,
     after_function_colon_state = 4,
-    reading_number_state = 5,
-    after_number_comma_state = 6,
-    after_number_period_state = 7,
-    reading_string_state = 8,
-    defaults_state = 9
+    after_unary_sign_state = 5,
+    reading_number_state = 6,
+    after_number_comma_state = 7,
+    after_number_period_state = 8,
+    reading_string_state = 9,
+    reading_comment_state = 10,
+    defaults_state = 11
 } state_t;
 
 typedef enum {
@@ -35,22 +37,20 @@ typedef enum {
     hyphen_event = 2,
     plus_event = 3,
     digit_event = 4,
-    open_quote_event = 5,
-    close_list_event = 6,
-    comma_event = 7,
-    period_event = 8,
-    finished_event = 9,
-    slash_event = 10,
-    underscore_event = 11,
-    whitespace_event = 12,
-    newline_event = 13,
-    colon_event = 14,
-    open_list_event = 15,
-    asterisk_event = 16,
-    caret_event = 17,
-    percent_event = 18,
-    close_quote_event = 19,
-    other_event = 20
+    usable_event = 5,
+    open_quote_event = 6,
+    close_list_event = 7,
+    comma_event = 8,
+    period_event = 9,
+    finished_event = 10,
+    whitespace_event = 11,
+    newline_event = 12,
+    colon_event = 13,
+    open_list_event = 14,
+    percent_event = 15,
+    close_quote_event = 16,
+    other_event = 17,
+    comment_event = 18
 } event_t;
 
 //  Names for state machine logging and error reporting
@@ -61,10 +61,12 @@ s_state_name [] = {
     "reading_function",
     "after_function",
     "after_function_colon",
+    "after_unary_sign",
     "reading_number",
     "after_number_comma",
     "after_number_period",
     "reading_string",
+    "reading_comment",
     "defaults"
 };
 
@@ -75,22 +77,20 @@ s_event_name [] = {
     "hyphen",
     "plus",
     "digit",
+    "usable",
     "open_quote",
     "close_list",
     "comma",
     "period",
     "finished",
-    "slash",
-    "underscore",
     "whitespace",
     "newline",
     "colon",
     "open_list",
-    "asterisk",
-    "caret",
     "percent",
     "close_quote",
-    "other"
+    "other",
+    "comment"
 };
 
 //  Action prototypes
@@ -249,7 +249,7 @@ fsm_execute (fsm_t *self)
                     parse_next_character (self->parent);
                 }
                 if (!self->exception)
-                    self->state = reading_number_state;
+                    self->state = after_unary_sign_state;
             }
             else
             if (self->event == plus_event) {
@@ -272,7 +272,7 @@ fsm_execute (fsm_t *self)
                     parse_next_character (self->parent);
                 }
                 if (!self->exception)
-                    self->state = reading_number_state;
+                    self->state = after_unary_sign_state;
             }
             else
             if (self->event == digit_event) {
@@ -296,6 +296,29 @@ fsm_execute (fsm_t *self)
                 }
                 if (!self->exception)
                     self->state = reading_number_state;
+            }
+            else
+            if (self->event == usable_event) {
+                if (!self->exception) {
+                    //  start_new_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ start_new_token");
+                    start_new_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_function_state;
             }
             else
             if (self->event == open_quote_event) {
@@ -371,6 +394,17 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
+            }
+            else
             if (self->event == newline_event) {
                 if (!self->exception) {
                     //  parse_next_character
@@ -438,22 +472,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == slash_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
-            if (self->event == underscore_event) {
+            if (self->event == usable_event) {
                 if (!self->exception) {
                     //  store_the_character
                     if (self->animate)
@@ -583,6 +602,17 @@ fsm_execute (fsm_t *self)
                 }
                 if (!self->exception)
                     self->state = expecting_token_state;
+            }
+            else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
             }
             else {
                 //  Handle all other events
@@ -681,6 +711,17 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
+            }
+            else
             if (self->event == newline_event) {
                 if (!self->exception) {
                     //  parse_next_character
@@ -688,6 +729,247 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_lex:                $ parse_next_character");
                     parse_next_character (self->parent);
                 }
+            }
+            else {
+                //  Handle all other events
+                if (!self->exception) {
+                    //  have_invalid_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_invalid_token");
+                    have_invalid_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+        }
+        else
+        if (self->state == after_unary_sign_state) {
+            if (self->event == digit_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_number_state;
+            }
+            else
+            if (self->event == letter_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_function_state;
+            }
+            else
+            if (self->event == hyphen_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_function_state;
+            }
+            else
+            if (self->event == plus_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_function_state;
+            }
+            else
+            if (self->event == percent_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  have_number_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_number_token");
+                    have_number_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == usable_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+            }
+            else
+            if (self->event == whitespace_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = after_function_state;
+            }
+            else
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = after_function_state;
+            }
+            else
+            if (self->event == colon_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = after_function_colon_state;
+            }
+            else
+            if (self->event == open_list_event) {
+                if (!self->exception) {
+                    //  have_nested_fn_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_nested_fn_token");
+                    have_nested_fn_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == close_list_event) {
+                if (!self->exception) {
+                    //  have_inline_fn_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_inline_fn_token");
+                    have_inline_fn_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == comma_event) {
+                if (!self->exception) {
+                    //  have_inline_fn_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_inline_fn_token");
+                    have_inline_fn_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == period_event) {
+                if (!self->exception) {
+                    //  have_inline_fn_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_inline_fn_token");
+                    have_inline_fn_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == finished_event) {
+                if (!self->exception) {
+                    //  have_inline_fn_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_inline_fn_token");
+                    have_inline_fn_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == other_event) {
+                if (!self->exception) {
+                    //  have_invalid_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_invalid_token");
+                    have_invalid_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
             }
             else {
                 //  Handle all other events
@@ -763,66 +1045,6 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == slash_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
-            if (self->event == colon_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
-            if (self->event == asterisk_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
-            if (self->event == caret_event) {
-                if (!self->exception) {
-                    //  store_the_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ store_the_character");
-                    store_the_character (self->parent);
-                }
-                if (!self->exception) {
-                    //  parse_next_character
-                    if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
-                }
-            }
-            else
             if (self->event == percent_event) {
                 if (!self->exception) {
                     //  store_the_character
@@ -831,11 +1053,13 @@ fsm_execute (fsm_t *self)
                     store_the_character (self->parent);
                 }
                 if (!self->exception) {
-                    //  parse_next_character
+                    //  have_number_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ parse_next_character");
-                    parse_next_character (self->parent);
+                        zsys_debug ("zs_lex:                $ have_number_token");
+                    have_number_token (self->parent);
                 }
+                if (!self->exception)
+                    self->state = expecting_token_state;
             }
             else
             if (self->event == close_list_event) {
@@ -919,6 +1143,17 @@ fsm_execute (fsm_t *self)
                 }
                 if (!self->exception)
                     self->state = expecting_token_state;
+            }
+            else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
             }
             else {
                 //  Handle all other events
@@ -1066,6 +1301,39 @@ fsm_execute (fsm_t *self)
             }
         }
         else
+        if (self->state == reading_comment_state) {
+            if (self->event == newline_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == finished_event) {
+                if (!self->exception) {
+                    //  have_null_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_null_token");
+                    have_null_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else {
+                //  Handle all other events
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+            }
+        }
+        else
         if (self->state == defaults_state) {
             if (self->event == other_event) {
                 if (!self->exception) {
@@ -1085,6 +1353,17 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_lex:                $ parse_next_character");
                     parse_next_character (self->parent);
                 }
+            }
+            else
+            if (self->event == comment_event) {
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_comment_state;
             }
             else
             if (self->event == newline_event) {
