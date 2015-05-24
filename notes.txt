@@ -9,12 +9,27 @@ Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
 Problem: "K: (1000 *), K (1 2 3)" does not compile
 
 Problem: zs shell does not allow editing
-
 Solution: use GNU readline when available
 
-- $shell$ does not allow definitions...
+
+Problem: $shell$ does not allow definitions
+This means we can't define a function and use it on the same line
+Solution: remove need to define a $shell$ function
+
+Problem: shell does not do function name completion
+Solution: add readline support (using editline)
+
 
 ---------------------------
+
+- rewrite shell as repl primitive
+    - read line of input, put onto pipe
+    - execute input, display results if any
+    - core of zs.c
+
+- then shell is
+    until (break) { repl }
+
 
 - repl primitive takes list of lines, executes
 

@@ -49,6 +49,16 @@ int
 bool
     zs_repl_completed (zs_repl_t *self);
 
+//  Return latest function by name; use with first to iterate through
+//  functions. Returns function name or NULL if there are none defined.
+const char *
+    zs_repl_first (zs_repl_t *self);
+
+//  Return previous function by name; use after first to iterate through
+//  functions. Returns function name or NULL if there are no more.
+const char *
+    zs_repl_next (zs_repl_t *self);
+
 //  Return pipe results as string, after successful execution. Caller must
 //  not modify returned value.
 const char *

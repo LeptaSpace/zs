@@ -1,3 +1,0 @@
-cd src
-gcc -g -o zs zs.c zs_lex.c zs_pipe.c zs_repl.c zs_vm.c -DUSE_READLINE -lczmq -lzmq -lreadline
-cd ..

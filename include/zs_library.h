@@ -22,6 +22,7 @@
 
 //  External dependencies
 #include <czmq.h>
+#include <editline.h>
 
 //  ZS version macros for compile-time API detection
 

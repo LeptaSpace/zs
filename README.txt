@@ -277,8 +277,8 @@ Scaling functions let you calculate in natural units. These functions multiply t
 
 The year, month, day, week, msec functions scale up or down to a number of seconds:
 
-    > 150 M /year /msec
-    4756.47
+    > 150 M /year msec
+    0.00475647
 
 Which is a nice simple way of calculating "If I have to handle 150 million requests a year, how many is that per millisecond?"
 
@@ -384,6 +384,10 @@ We use GSL code generation to build the core language pieces. There are two case
 * Generating the scaling atomics. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_units_si.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.xml), which produce the source code in [zs_units_si.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.h).
 * Generating the state machines. See zs_lex.xml and zs_repl.xml.
 
+### The Shell
+
+The zs shell provides command history, editing, and tab completion. We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
+
 ### Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -461,6 +465,8 @@ Here's how to build ZeroScript from GitHub:
     cd ..
 
 You will need the pkg-config, libtool, and autoreconf packages.
+
+Uses: https://github.com/troglobit/editline.
 
 ### This Document
 

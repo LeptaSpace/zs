@@ -8,11 +8,13 @@ ACLOCAL_AMFLAGS = -I config
 AM_CPPFLAGS = \
     ${zmq_CFLAGS} \
     ${czmq_CFLAGS} \
+    ${editline_CFLAGS} \
     -I$(srcdir)/include
 
 project_libs = \
     ${zmq_LIBS} \
-    ${czmq_LIBS}
+    ${czmq_LIBS} \
+    ${editline_LIBS}
 
 SUBDIRS =
 SUBDIRS += doc

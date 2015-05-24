@@ -44,11 +44,6 @@ s_help (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
                 printf ("%s ", name);
             name = zs_vm_function_next (self);
         }
-        name = zs_vm_atomic_first (self);
-        while (name) {
-            printf ("%s ", name);
-            name = zs_vm_atomic_next (self);
-        }
     }
     return 0;
 }
@@ -287,12 +282,8 @@ s_divide (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         double operand = zs_pipe_recv_real (input);
-        printf ("/ OPERAND: %g\n", operand);
-        while (zs_pipe_recv (input)) {
-            double value = zs_pipe_real (input);
-            printf ("/ INTO: %g\n", value);
+        while (zs_pipe_recv (input))
             zs_pipe_send_real (output, zs_pipe_real (input) / operand);
-        }
     }
     return 0;
 }

@@ -305,7 +305,7 @@ zs_pipe_string (zs_pipe_t *self)
         else
         if (self->value->type == 'r') {
             snprintf (self->string_value, sizeof (self->string_value),
-                      "%g", self->value->real);
+                      "%.9g", self->value->real);
             return self->string_value;
         }
         else

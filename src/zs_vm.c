@@ -135,7 +135,8 @@ struct _zs_vm_t {
     size_t call_stack_ptr;          //  Size of call stack
 
     bool verbose;                   //  Trace execution progress
-    size_t iterator;                //  For listing function names
+    size_t iterator;                //  For listing functions & atomics
+    bool userspace;                 //  True when iterating functions
 };
 
 //  Map function guard to code body
@@ -541,64 +542,45 @@ zs_vm_dump (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Return latest function by name; use with _prev to iterate through
+//  Return latest function by name; use with next to iterate through
 //  functions. Returns function name or NULL if there are none defined.
+//  TODO: hide/mask functions that get redefined.
 
 const char *
 zs_vm_function_first (zs_vm_t *self)
 {
     self->iterator = self->code_head;
+    self->userspace = true;
     return zs_vm_function_next (self);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Return previous function by name; use after a _last to iterate through
+//  Return previous function by name; use after first to iterate through
 //  functions. Returns function name or NULL if there are no more.
 
 const char *
 zs_vm_function_next (zs_vm_t *self)
 {
-    if (self->iterator) {
-        assert (self->code [self->iterator] == VM_GUARD);
-        const char *name = s_function_name (self, self->iterator);
-        size_t offset = (self->code [self->iterator + 1] << 8)
-                      +  self->code [self->iterator + 2];
-        assert (self->iterator >= offset);
-        self->iterator -= offset;
-        return name;
+    if (self->userspace) {
+        if (self->iterator) {
+            assert (self->code [self->iterator] == VM_GUARD);
+            const char *name = s_function_name (self, self->iterator);
+            size_t offset = (self->code [self->iterator + 1] << 8)
+                        + self->code [self->iterator + 2];
+            assert (self->iterator >= offset);
+            self->iterator -= offset;
+            return name;
+        }
+        else
+            self->userspace = false;
     }
-    else
-        return NULL;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Return first atomic by name; use with _next to iterate through atomics.
-//  Returns atomic name or NULL if there are none defined.
-
-const char *
-zs_vm_atomic_first (zs_vm_t *self)
-{
-    self->iterator = 0;
-    return zs_vm_atomic_next (self);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Return next atomic by name; use with _first to iterate through atomics.
-//  Returns atomic name or NULL if there are no more defined.
-
-const char *
-zs_vm_atomic_next (zs_vm_t *self)
-{
     if (self->iterator < self->nbr_atomics) {
         const char *name = self->atomics [self->iterator]->name;
         self->iterator++;
         return name;
     }
-    else
-        return NULL;
+    return NULL;
 }
 
 

@@ -91,6 +91,13 @@ include_directories(${CZMQ_INCLUDE_DIRS})
 list(APPEND MORE_LIBRARIES ${CZMQ_LIBRARIES})
 
 ########################################################################
+# EDITLINE dependency
+########################################################################
+find_package(Editline REQUIRED)
+include_directories(${EDITLINE_INCLUDE_DIRS})
+list(APPEND MORE_LIBRARIES ${EDITLINE_LIBRARIES})
+
+########################################################################
 # includes
 ########################################################################
 set (zs_headers
