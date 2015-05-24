@@ -9,6 +9,8 @@ Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
 K: (1000 *)
 K (1 2) => 1 2000 instead of 1000 2000
 
+
+
 - repl primitive takes list of lines, executes
 
 - rewrite scaling primitives in ZS?

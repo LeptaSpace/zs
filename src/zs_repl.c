@@ -434,6 +434,8 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "1 2 3 fn", "6");
     s_repl_assert (repl, "1 2 3, fn", "6");
     s_repl_assert (repl, "fn (1 2 3)", "6");
+    s_repl_assert (repl, "K: (1000 *)", "");
+    s_repl_assert (repl, "K (1 2 3)", "1000 2000 3000");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

@@ -472,7 +472,7 @@ zs_pipe_pull_array (zs_pipe_t *self, zs_pipe_t *source)
 
     //  Move last value to input; this will be first provided to function
     zlistx_detach_cur (source->values);
-    zlistx_add_end (self->values, value);
+    zlistx_add_start (self->values, value);
     if (value->type == 'r') {
         source->nbr_reals--;
         self->nbr_reals++;
