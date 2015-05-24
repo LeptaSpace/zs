@@ -1,52 +1,28 @@
 TODO
 
-Problem: should not change pipes for user defined FN
 
 Problem: REPL shows continuation after fn definition
 Problem: how to compile & run a paper script
 Problem: define test case for each atomic, in ZS
-Problem: function compilation too complex
-    - get type, use type -> single call to VM
 Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
 
+K: (1000 *)
+K (1 2) => 1 2000 instead of 1000 2000
 
--- when do we wipe input?
-    1 2 3 xx yy zz?
+- repl primitive takes list of lines, executes
 
-    fn: (sum)
-    fn (1 2 3) -> 0
+- rewrite scaling primitives in ZS?
+<
+    k: (<Multiply by 1000> 1000 *)
+    M: (<Multiply by 1M> 1000000 *)
+> repl
+    - default for * is "multiple by 1"?
+    - how to add hint for function....
+    k: <Multiply by 1000> (1000 *)
 
-        -> because sum is greedy
-        ... greedy/anything after unnest nop
-        ... or don't wipe input?
+- if input pipe contains any real, tell function this
 
-
-sum (1)
-
-    output: 1
-    unnest: append to previous output
-    sum:
-
-fn: (sum)
-fn (1)
-    output: 1
-
-
-
-- array functions like modest...
-    1 2 +
-    - input is 2 1
-    1 2, 3 +
-    - input is 3 1 2
-
-    fn: (1000 *)
-
-        - what's the input?
-        - 1000 is constant, skip it
-        - * is array, so fn is array?
-    >> how to get current phrase as input to function ()?
-
-
+- pipes can probably be built as single tree structure
 
 - make core atomics work with reals
     - start with whole
@@ -79,6 +55,8 @@ help (xyz)
     1. @ before function name
     2. atomic can force this
 
+mark atomics as draft, stable, legacy
+contract for every function/atomic
 
 0, 1 many - conditionals and loops are the same; we repeat a phrase N times
 

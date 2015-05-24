@@ -34,6 +34,7 @@ struct _zs_pipe_t {
     zlistx_t *values;           //  Simple stupid implementation
     value_t *value;             //  Register value, if any
     char string_value [30];     //  Register value as string
+    size_t nbr_reals;           //  Number of reals on the pipe
 };
 
 static value_t *
@@ -145,6 +146,7 @@ zs_pipe_send (zs_pipe_t *self)
 {
     if (self->value) {
         zlistx_add_end (self->values, self->value);
+        self->nbr_reals += self->value->type == 'r'? 1: 0;
         self->value = NULL;
         return 0;
     }
@@ -187,6 +189,17 @@ zs_pipe_send_string (zs_pipe_t *self, const char *string)
 
 
 //  ---------------------------------------------------------------------------
+//  Returns true if the pipe contains at least one real number. Returns false
+//  otherwise.
+
+bool
+zs_pipe_has_real (zs_pipe_t *self)
+{
+    return (self->nbr_reals > 0);
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Receives the next value off the pipe, into the register. Any previous
 //  value in the register is lost. Returns true if a value was successfully
 //  received. If no values were received, returns false. This method does
@@ -199,11 +212,15 @@ zs_pipe_recv (zs_pipe_t *self)
     while (true) {
         s_value_destroy (&self->value);
         self->value = (value_t *) zlistx_detach (self->values, NULL);
+
         if (!self->value)
             return false;       //  Pipe is empty
         else
-        if (isalpha (self->value->type))
+        if (isalpha (self->value->type)) {
+            if (self->value->type == 'r')
+                self->nbr_reals--;
             return true;        //  We had a normal value
+        }
     }
 }
 
@@ -360,14 +377,19 @@ s_pull_values (zs_pipe_t *self, zs_pipe_t *source)
 {
     //  Pull values from cursor onwards
     while (true) {
-        value_t *value = (value_t *) zlistx_detach
-            (source->values, zlistx_cursor (source->values));
+        value_t *value = (value_t *) zlistx_detach_cur (source->values);
         if (!value)
             break;
-        if (isalpha (value->type))
+        if (isalpha (value->type)) {
             zlistx_add_end (self->values, value);
+            if (value->type == 'r') {
+                source->nbr_reals--;
+                self->nbr_reals++;
+            }
+        }
         else
             s_value_destroy (&value);
+
         value = (value_t *) zlistx_next (source->values);
         if (!value)
             break;
@@ -438,8 +460,8 @@ zs_pipe_pull_greedy (zs_pipe_t *self, zs_pipe_t *source)
 
 //  ---------------------------------------------------------------------------
 //  Pulls a list of values from the source pipe into the pipe. This function
-//  does an "array" pull. Only valid syntax is phrase, value fn. TBX.
-//  I'd like validation in the repl.
+//  does an array pull: (a) move last value to input, then (b) move either rest
+//  of current phrase, or entire previous phrase, to input.
 
 void
 zs_pipe_pull_array (zs_pipe_t *self, zs_pipe_t *source)
@@ -449,10 +471,13 @@ zs_pipe_pull_array (zs_pipe_t *self, zs_pipe_t *source)
         return;             //  Invalid, do nothing
 
     //  Move last value to input; this will be first provided to function
-    zlistx_detach (source->values, zlistx_cursor (source->values));
+    zlistx_detach_cur (source->values);
     zlistx_add_end (self->values, value);
-
-    //  Pull current phrase; skip back until we hit start of pipe or a mark
+    if (value->type == 'r') {
+        source->nbr_reals--;
+        self->nbr_reals++;
+    }
+    //  Skip to start of this or previous phrase
     while (value && value->type != '|')
         value = (value_t *) zlistx_prev (source->values);
 
@@ -514,6 +539,7 @@ zs_pipe_test (bool verbose)
 
     //  @selftest
     zs_pipe_t *pipe = zs_pipe_new ();
+    zs_pipe_t *copy = zs_pipe_new ();
 
     zs_pipe_send_whole (pipe, 12345);
     zs_pipe_send_string (pipe, "Hello World");
@@ -555,8 +581,6 @@ zs_pipe_test (bool verbose)
     zs_pipe_send_whole (pipe, 9);
     zs_pipe_mark (pipe);
     zs_pipe_send_whole (pipe, 10);
-
-    zs_pipe_t *copy = zs_pipe_new ();
 
     //  Modest pull should take single last value
     zs_pipe_pull_modest (copy, pipe);
@@ -627,6 +651,20 @@ zs_pipe_test (bool verbose)
     whole = zs_pipe_recv_whole (copy);
     assert (whole == 6);
     assert (!zs_pipe_recv (copy));
+
+    //  Test casting
+    zs_pipe_purge (pipe);
+    zs_pipe_send_whole (pipe, 1);
+    zs_pipe_send_real  (pipe, 2.0);
+    zs_pipe_send_whole (pipe, 3);
+    assert (zs_pipe_has_real (pipe));
+    double real = zs_pipe_recv_real (pipe);
+    assert (real == 1.0);
+    real = zs_pipe_recv_real (pipe);
+    assert (real == 2.0);
+    assert (!zs_pipe_has_real (pipe));
+    real = zs_pipe_recv_real (pipe);
+    assert (real == 3.0);
 
     zs_pipe_destroy (&copy);
     zs_pipe_destroy (&pipe);

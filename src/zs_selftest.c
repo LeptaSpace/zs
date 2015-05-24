@@ -31,10 +31,10 @@ main (int argc, char *argv [])
 
     printf ("Running zs selftests...\n");
 
-    zs_pipe_test (verbose); 
-    zs_vm_test (verbose); 
-    zs_lex_test (verbose); 
-    zs_repl_test (verbose); 
+    zs_pipe_test (verbose);
+    zs_vm_test (verbose);
+    zs_lex_test (verbose);
+    zs_repl_test (verbose);
 
     printf ("Tests passed OK\n");
     return 0;

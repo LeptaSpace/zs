@@ -62,11 +62,18 @@ s_sum (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
         zs_vm_register (self, "sum", zs_type_greedy, "Sum of the values");
-    else {
-        int64_t sum = 0;
+    else
+    if (zs_pipe_has_real (input)) {
+        double result = 0;
         while (zs_pipe_recv (input))
-            sum += zs_pipe_whole (input);
-        zs_pipe_send_whole (output, sum);
+            result += zs_pipe_real (input);
+        zs_pipe_send_real (output, result);
+    }
+    else {
+        int64_t result = 0;
+        while (zs_pipe_recv (input))
+            result += zs_pipe_whole (input);
+        zs_pipe_send_whole (output, result);
     }
     return 0;
 }
@@ -77,11 +84,17 @@ s_product (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "product", zs_type_greedy, "Product of the values");
     else
-    if (zs_pipe_recv (input)) {
-        int64_t value = zs_pipe_whole (input);
+    if (zs_pipe_has_real (input)) {
+        double result = 1;
         while (zs_pipe_recv (input))
-            value *= zs_pipe_whole (input);
-        zs_pipe_send_whole (output, value);
+            result += zs_pipe_real (input);
+        zs_pipe_send_real (output, result);
+    }
+    else {
+        int64_t result = 1;
+        while (zs_pipe_recv (input))
+            result += zs_pipe_whole (input);
+        zs_pipe_send_whole (output, result);
     }
     return 0;
 }
@@ -92,10 +105,10 @@ s_count (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "count", zs_type_greedy, "Number of values");
     else {
-        int64_t count = 0;
+        int64_t result = 0;
         while (zs_pipe_recv (input))
-            count++;
-        zs_pipe_send_whole (output, count);
+            result++;
+        zs_pipe_send_whole (output, result);
     }
     return 0;
 }
@@ -122,13 +135,22 @@ s_min (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
         zs_vm_register (self, "min", zs_type_greedy, "Minimum of the values");
-    else {
-        int64_t min = zs_pipe_recv_whole (input);
+    else
+    if (zs_pipe_has_real (input)) {
+        double result = zs_pipe_recv_whole (input);
         while (zs_pipe_recv (input)) {
-            if (min > zs_pipe_real (input))
-                min = zs_pipe_real (input);
+            if (result > zs_pipe_real (input))
+                result = zs_pipe_real (input);
         }
-        zs_pipe_send_real (output, min);
+        zs_pipe_send_real (output, result);
+    }
+    else {
+        int64_t result = zs_pipe_recv_whole (input);
+        while (zs_pipe_recv (input)) {
+            if (result > zs_pipe_whole (input))
+                result = zs_pipe_whole (input);
+        }
+        zs_pipe_send_whole (output, result);
     }
     return 0;
 }
@@ -138,13 +160,22 @@ s_max (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
         zs_vm_register (self, "max", zs_type_greedy, "Maximum of the values");
-    else {
-        int64_t max = 0;
+    else
+    if (zs_pipe_has_real (input)) {
+        double result = zs_pipe_recv_whole (input);
         while (zs_pipe_recv (input)) {
-            if (max < zs_pipe_real (input))
-                max = zs_pipe_real (input);
+            if (result < zs_pipe_real (input))
+                result = zs_pipe_real (input);
         }
-        zs_pipe_send_real (output, max);
+        zs_pipe_send_real (output, result);
+    }
+    else {
+        int64_t result = zs_pipe_recv_whole (input);
+        while (zs_pipe_recv (input)) {
+            if (result < zs_pipe_whole (input))
+                result = zs_pipe_whole (input);
+        }
+        zs_pipe_send_whole (output, result);
     }
     return 0;
 }
@@ -191,8 +222,13 @@ s_plus (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         zs_vm_register (self, "+", zs_type_array, NULL);
     }
     else
-    if (zs_pipe_recv (input)) {
-        int64_t operand = zs_pipe_whole (input);
+    if (zs_pipe_has_real (input)) {
+        double operand = zs_pipe_recv_real (input);
+        while (zs_pipe_recv (input))
+            zs_pipe_send_real (output, zs_pipe_real (input) + operand);
+    }
+    else {
+        int64_t operand = zs_pipe_recv_whole (input);
         while (zs_pipe_recv (input))
             zs_pipe_send_whole (output, zs_pipe_whole (input) + operand);
     }
@@ -207,8 +243,13 @@ s_minus (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         zs_vm_register (self, "-", zs_type_array, NULL);
     }
     else
-    if (zs_pipe_recv (input)) {
-        int64_t operand = zs_pipe_whole (input);
+    if (zs_pipe_has_real (input)) {
+        double operand = zs_pipe_recv_real (input);
+        while (zs_pipe_recv (input))
+            zs_pipe_send_real (output, zs_pipe_real (input) - operand);
+    }
+    else {
+        int64_t operand = zs_pipe_recv_whole (input);
         while (zs_pipe_recv (input))
             zs_pipe_send_whole (output, zs_pipe_whole (input) - operand);
     }
@@ -224,8 +265,13 @@ s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         zs_vm_register (self, "x", zs_type_array, NULL);
     }
     else
-    if (zs_pipe_recv (input)) {
-        int64_t operand = zs_pipe_whole (input);
+    if (zs_pipe_has_real (input)) {
+        double operand = zs_pipe_recv_real (input);
+        while (zs_pipe_recv (input))
+            zs_pipe_send_real (output, zs_pipe_real (input) * operand);
+    }
+    else {
+        int64_t operand = zs_pipe_recv_whole (input);
         while (zs_pipe_recv (input))
             zs_pipe_send_whole (output, zs_pipe_whole (input) * operand);
     }
@@ -239,11 +285,10 @@ s_divide (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         zs_vm_register (self, "divide", zs_type_array, "Divide value into all");
         zs_vm_register (self, "/", zs_type_array, NULL);
     }
-    else
-    if (zs_pipe_recv (input)) {
-        int64_t operand = zs_pipe_whole (input);
+    else {
+        double operand = zs_pipe_recv_real (input);
         while (zs_pipe_recv (input))
-            zs_pipe_send_whole (output, zs_pipe_whole (input) / operand);
+            zs_pipe_send_real (output, zs_pipe_real (input) / operand);
     }
     return 0;
 }

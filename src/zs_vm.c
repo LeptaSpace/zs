@@ -687,6 +687,8 @@ zs_vm_run (zs_vm_t *self)
         }
         else
         if (opcode == VM_PIPE) {
+            //  Later we'll rewrite the pipe API to use fixed allocations inside
+            //  the VM. The separate class makes it easy to develop the language.
             byte pipe_op = self->code [needle++];
             if (self->verbose)
                 printf ("D [%04zd]: pipe op=%s\n", needle, pipe_op_name [pipe_op]);
@@ -696,7 +698,6 @@ zs_vm_run (zs_vm_t *self)
                     self->output_stack [self->output_stack_ptr] = self->output;
                     self->output_stack_ptr++;
                     self->output = zs_pipe_new ();
-//                     zs_pipe_purge (self->input);
                     break;
                 case VM_PIPE_UNNEST:
                     assert (self->output_stack_ptr > 0);
