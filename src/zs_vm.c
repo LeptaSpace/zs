@@ -42,8 +42,11 @@
         - decoding costs are insignificant
 
     Current limitations:
-        - max VM code size is 64k
+        - max VM code size is 2^32 (4-byte addresses)
+        - max size of a single function is 64k (2-byte offsets)
         - max nesting depth is 256 (asserted)
+        - max output stack nesting is 256 (asserted)
+        - max function call depth is 256 (asserted)
 @end
 */
 
@@ -150,12 +153,12 @@ struct _zs_vm_t {
     bool userspace;                 //  True when iterating functions
 };
 
-//  Map function guard to code body
+//  Map function address to code body
 static size_t
-s_function_body (zs_vm_t *self, size_t guard)
+s_function_body (zs_vm_t *self, size_t address)
 {
-    if (guard) {
-        size_t body = guard + 3;
+    if (address) {
+        size_t body = address + 3;
         body += strlen ((char *) self->code + body) + 1;
         return body;
     }
@@ -163,12 +166,12 @@ s_function_body (zs_vm_t *self, size_t guard)
         return 0;
 }
 
-//  Map function guard to printable name
+//  Map function address to printable name
 static const char *
-s_function_name (zs_vm_t *self, size_t guard)
+s_function_name (zs_vm_t *self, size_t address)
 {
-    if (guard)
-        return (const char *) self->code + guard + 3;
+    if (address)
+        return (const char *) self->code + address + 3;
     else
         return "";
 }
@@ -193,18 +196,18 @@ s_try_atomic (zs_vm_t *self, const char *name)
     return -1;
 }
 
-//  Return function guard for name, or -1 if not known
+//  Return function address for name, or -1 if not known
 static int
 s_try_function (zs_vm_t *self, const char *name)
 {
-    size_t guard = self->code_head;
-    while (guard) {
-        assert (self->code [guard] == VM_GUARD);
-        if (streq (name, s_function_name (self, guard)))
-            return guard;
-        size_t offset = (self->code [guard + 1] << 8) + self->code [guard + 2];
-        assert (guard >= offset);
-        guard -= offset;
+    size_t address = self->code_head;
+    while (address) {
+        assert (self->code [address] == VM_GUARD);
+        if (streq (name, s_function_name (self, address)))
+            return address;
+        size_t offset = (self->code [address + 1] << 8) + self->code [address + 2];
+        assert (address >= offset);
+        address -= offset;
     }
     return -1;
 }
@@ -222,9 +225,10 @@ s_compile_call (zs_vm_t *self, byte pipe_op, const char *name)
     }
     int found;
     if ((found = s_try_function (self, name)) != -1) {
+        uint32_t address = found;
         self->code [self->code_size++] = VM_CALL;
-        self->code [self->code_size++] = (byte) (found >> 8);
-        self->code [self->code_size++] = (byte) (found & 0xFF);
+        memcpy (self->code + self->code_size, &address, sizeof (address));
+        self->code_size += sizeof (address);
     }
     else
     if ((found = s_try_atomic (self, name)) != -1
@@ -422,12 +426,12 @@ zs_vm_rollback (zs_vm_t *self)
     }
     else
     if (self->code_head > 0) {
-        size_t guard = self->code_head;
-        assert (self->code [guard] == VM_GUARD);
-        size_t offset = (self->code [guard + 1] << 8) + self->code [guard + 2];
-        assert (guard >= offset);
-        self->code_head = guard - offset;
-        self->code_size = guard;
+        size_t address = self->code_head;
+        assert (self->code [address] == VM_GUARD);
+        size_t offset = (self->code [address + 1] << 8) + self->code [address + 2];
+        assert (address >= offset);
+        self->code_head = address - offset;
+        self->code_size = address;
     }
     else
         rc = -1;
@@ -601,7 +605,7 @@ zs_vm_function_next (zs_vm_t *self)
             assert (self->code [self->iterator] == VM_GUARD);
             const char *name = s_function_name (self, self->iterator);
             size_t offset = (self->code [self->iterator + 1] << 8)
-                        + self->code [self->iterator + 2];
+                           + self->code [self->iterator + 2];
             assert (self->iterator >= offset);
             self->iterator -= offset;
             return name;
@@ -663,14 +667,15 @@ zs_vm_run (zs_vm_t *self)
         }
         else
         if (opcode == VM_CALL) {
-            assert (self->call_stack_ptr < MAX_CALLS);
-            self->call_stack [self->call_stack_ptr++] = needle + 2;
-            size_t guard = (self->code [needle] << 8) + self->code [needle + 1];
-            assert (self->code [guard] == VM_GUARD);
+            uint32_t address;
+            memcpy (&address, self->code + needle, sizeof (address));
+            assert (self->code [address] == VM_GUARD);
             if (self->verbose)
                 printf ("D [%04zd]: call function=%s stack=%zd\n", needle,
-                        s_function_name (self, guard), self->call_stack_ptr);
-            needle = s_function_body (self, guard);
+                        s_function_name (self, address), self->call_stack_ptr);
+            assert (self->call_stack_ptr < MAX_CALLS);
+            self->call_stack [self->call_stack_ptr++] = needle + sizeof (address);
+            needle = s_function_body (self, address);
         }
         else
         if (opcode == VM_RETURN) {
