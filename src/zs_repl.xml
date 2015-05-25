@@ -34,10 +34,19 @@
         <action name = "compile define" />
         <action name = "get next token" />
     </event>
+    <event name = "repeat" next = "building shell">
+        <action name = "compile repeat" />
+        <action name = "get next token" />
+    </event>
+    <event name = "again" next = "building shell">
+        <action name = "compile again" />
+        <action name = "get next token" />
+    </event>
 </state>
 
 <state name = "building shell" inherit = "building function">
     <event name = "fn close">
+        <action name = "pop and check scope" />
         <action name = "compile unnest" />
         <action name = "get next token" />
     </event>
@@ -67,6 +76,7 @@
         <action name = "get next token" />
     </event>
     <event name = "fn close">
+        <action name = "pop and check scope" />
         <action name = "compile unnest or commit" />
         <action name = "get next token" />
     </event>
@@ -79,6 +89,15 @@
     </event>
     <event name = "sentence">
         <action name = "compile end of sentence" />
+        <action name = "get next token" />
+    </event>
+    <event name = "repeat">
+        <action name = "compile repeat" />
+        <action name = "get next token" />
+    </event>
+    <event name = "again">
+        <action name = "pop and check scope" />
+        <action name = "compile again" />
         <action name = "get next token" />
     </event>
 </state>
@@ -114,6 +133,14 @@
         <action name = "signal syntax error" />
     </event>
     <event name = "sentence" next = "starting">
+        <action name = "rollback the function" />
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "repeat" next = "starting">
+        <action name = "rollback the function" />
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "again" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>

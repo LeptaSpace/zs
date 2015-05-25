@@ -40,8 +40,16 @@
         - assumed to change externally
         - designed to be added dynamically
         - decoding costs are insignificant
+
+    Current limitations:
+        - max VM code size is 64k
+        - max nesting depth is 256 (asserted)
 @end
 */
+
+#define MAX_SCOPE   256     //  Nesting limit at compile time
+#define MAX_OUTPUT  256     //  Maximum () nesting limit
+#define MAX_CALLS   256     //  Maximum function call depth
 
 //  Bytecodes
 //  - up to 240 class 0 dictionary
@@ -57,6 +65,8 @@
 #define VM_STRING       250     //  Issue a string constant
 #define VM_PIPE         249     //  Execute pipe operation
 #define VM_SENTENCE     248     //  End sentence
+#define VM_REPEAT       247     //  Start repeated section
+#define VM_AGAIN        246     //  End repeated section
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
 
@@ -122,16 +132,17 @@ struct _zs_vm_t {
     size_t code_head;               //  Last defined function
     size_t checkpoint;              //  When defining a function
 
-    char *scope_stack [256];        //  Scope stack, arbitrary size
+    char *scope_stack [MAX_SCOPE];  //  Scope stack, arbitrary size
     size_t scope_stack_ptr;         //  Size of scope stack
 
-    zs_pipe_t *output_stack [256];  //  Output stack, arbitrary size
+    zs_pipe_t *
+        output_stack [MAX_OUTPUT];  //  Output stack, arbitrary size
     size_t output_stack_ptr;        //  Size of output stack
     zs_pipe_t *input;               //  Input to next function
     zs_pipe_t *output;              //  Current phrase output
     char *results;                  //  Sentence results, if any
 
-    size_t call_stack [256];        //  Function call stack
+    size_t call_stack [MAX_CALLS];  //  Function call stack
     size_t call_stack_ptr;          //  Size of call stack
 
     bool verbose;                   //  Trace execution progress
@@ -199,6 +210,8 @@ s_try_function (zs_vm_t *self, const char *name)
 }
 
 //  Compile call to function, atomic, or builtin (in that order)
+//  For now, function call assumes VM size is max. 64K
+
 static void
 s_compile_call (zs_vm_t *self, byte pipe_op, const char *name)
 {
@@ -380,7 +393,7 @@ zs_vm_compile_define (zs_vm_t *self, const char *name)
 //  Close the current function definition.
 
 void
-zs_vm_compile_commit (zs_vm_t *self)
+zs_vm_commit (zs_vm_t *self)
 {
     //  We must have an open function definition
     assert (self->checkpoint);
@@ -400,7 +413,7 @@ zs_vm_compile_commit (zs_vm_t *self)
 //  is then empty).
 
 int
-zs_vm_compile_rollback (zs_vm_t *self)
+zs_vm_rollback (zs_vm_t *self)
 {
     int rc = 0;
     if (self->checkpoint) {
@@ -479,6 +492,7 @@ zs_vm_compile_nested (zs_vm_t *self, const char *name)
     if (s_try_function (self, name) != -1
     ||  s_try_atomic (self, name) != -1
     ||  s_try_builtin (self, name) != -1) {
+        assert (self->scope_stack_ptr < MAX_SCOPE);
         //  We use a scope stack during compilation so it's less work for the
         //  caller, who has the function name now, rather than at closing time.
         self->code [self->code_size++] = VM_PIPE;
@@ -524,6 +538,26 @@ void
 zs_vm_compile_sentence (zs_vm_t *self)
 {
     self->code [self->code_size++] = VM_SENTENCE;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Compile a repeat operation -- TODO
+
+void
+zs_vm_compile_repeat (zs_vm_t *self)
+{
+    self->code [self->code_size++] = VM_REPEAT;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Compile an again operation -- TODO
+
+void
+zs_vm_compile_again (zs_vm_t *self)
+{
+    self->code [self->code_size++] = VM_AGAIN;
 }
 
 
@@ -629,6 +663,7 @@ zs_vm_run (zs_vm_t *self)
         }
         else
         if (opcode == VM_CALL) {
+            assert (self->call_stack_ptr < MAX_CALLS);
             self->call_stack [self->call_stack_ptr++] = needle + 2;
             size_t guard = (self->code [needle] << 8) + self->code [needle + 1];
             assert (self->code [guard] == VM_GUARD);
@@ -672,15 +707,15 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_PIPE) {
             //  Later we'll rewrite the pipe API to use fixed allocations inside
-            //  the VM. The separate class makes it easy to develop the language.
+            //  the VM. The current design makes it easy to develop the language.
             byte pipe_op = self->code [needle++];
             if (self->verbose)
                 printf ("D [%04zd]: pipe op=%s\n", needle, pipe_op_name [pipe_op]);
 
             switch (pipe_op) {
                 case VM_PIPE_NEST:
-                    self->output_stack [self->output_stack_ptr] = self->output;
-                    self->output_stack_ptr++;
+                    assert (self->output_stack_ptr < MAX_OUTPUT);
+                    self->output_stack [self->output_stack_ptr++] = self->output;
                     self->output = zs_pipe_new ();
                     break;
                 case VM_PIPE_UNNEST:
@@ -712,6 +747,12 @@ zs_vm_run (zs_vm_t *self)
             //  For now zs_repl grabs results via the zs_vm_results call
         }
         else
+        if (opcode == VM_REPEAT) {
+        }
+        else
+        if (opcode == VM_AGAIN) {
+        }
+        else
         if (opcode == VM_GUARD) {
             if (self->verbose)
                 printf ("D [%04zd]: guard\n", needle);
@@ -722,6 +763,10 @@ zs_vm_run (zs_vm_t *self)
         if (opcode == VM_STOP) {
             if (self->verbose)
                 printf ("D [%04zd]: stop\n", needle);
+            break;
+        }
+        else {
+            printf ("E [%04zd]: error opcode=%d\n", needle, opcode);
             break;
         }
     }
@@ -810,7 +855,6 @@ zs_vm_test (bool verbose)
         printf ("\n");
 
     //  @selftest
-    int rc;
     zs_vm_t *vm = zs_vm_new ();
     zs_vm_set_verbose (vm, verbose);
 
@@ -828,7 +872,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_inline (vm, "count");
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_inline (vm, "assert");
-    zs_vm_compile_commit (vm);
+    zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
     //  main: (
@@ -880,35 +924,40 @@ zs_vm_test (bool verbose)
     zs_vm_compile_whole   (vm, 2);
     zs_vm_compile_inline  (vm, "assert");
 
-    zs_vm_compile_commit (vm);
+    zs_vm_commit (vm);
+
+//     //  --------------------------------------------------------------------
+//     //  loop: (100 { 1 } count 100 assert)
+//
+//     zs_vm_compile_define (vm, "loop");
+//     zs_vm_compile_whole  (vm, 100);
+//     zs_vm_compile_repeat (vm);
+//     zs_vm_compile_whole  (vm, 1);
+//     zs_vm_compile_again  (vm);
+//     zs_vm_compile_inline (vm, "count");
+//     zs_vm_compile_whole  (vm, 100);
+//     zs_vm_compile_inline (vm, "assert");
+//     zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
-    //  sub sub main
+    //  sub main loop
     zs_vm_compile_define (vm, "go");
     zs_vm_compile_inline (vm, "sub");
-    zs_vm_compile_inline (vm, "sub");
     zs_vm_compile_inline (vm, "main");
-    zs_vm_compile_commit (vm);
+//     zs_vm_compile_inline (vm, "loop");
+    zs_vm_commit (vm);
     if (verbose)
         zs_vm_dump (vm);
 
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == 0);
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == 0);
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == 0);
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == -1);
-    zs_vm_run (vm);
+    //  Unwind the VM, to check that it's sane (don't do this at home)
+    size_t nbr_functions = 0;
+    while (true) {
+        zs_vm_run (vm);
+        if (zs_vm_rollback (vm))
+            break;
+        nbr_functions++;
+    }
+    assert (nbr_functions == 3);
 
     zs_vm_destroy (&vm);
     //  @end

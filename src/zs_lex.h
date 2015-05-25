@@ -30,6 +30,8 @@ typedef enum {
     zs_lex_number,          //  number expression
     zs_lex_phrase,          //  , phrase connector
     zs_lex_sentence,        //  . sentence connector
+    zs_lex_repeat,          //  { open optional/repeat
+    zs_lex_again,           //  } close optional/repeat
     zs_lex_invalid,         //  Syntax error
     zs_lex_null,            //  Nothing to return
     zs_lex_tokens           //  Size of this set
@@ -59,7 +61,7 @@ zs_lex_token_t
 
 //  Return actual token value, if any
 const char *
-    zs_lex_token (zs_lex_t *self);
+    zs_lex_value (zs_lex_t *self);
 
 //  Return position of last processed character in text
 uint

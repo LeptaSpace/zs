@@ -97,7 +97,7 @@ void
 
 //  Close the current function definition.
 void
-    zs_vm_compile_commit (zs_vm_t *self);
+    zs_vm_commit (zs_vm_t *self);
 
 //  Cancel the current or last function definition and reset the virtual
 //  machine to the state before the previous _define. You can call this
@@ -105,7 +105,7 @@ void
 //  Returns 0 if OK, -1 if there was no function to rollback (the machine
 //  is then empty).
 int
-    zs_vm_compile_rollback (zs_vm_t *self);
+    zs_vm_rollback (zs_vm_t *self);
 
 //  Compile an inline function call; the actual pipe semantics depend on the
 //  type of the function. Returns 0 if successful, -1 if the function is not
@@ -134,6 +134,14 @@ void
 //  new sentence.
 void
     zs_vm_compile_sentence (zs_vm_t *self);
+
+//  Compile a repeat operation -- TODO
+void
+    zs_vm_compile_repeat (zs_vm_t *self);
+
+//  Compile an again operation -- TODO
+void
+    zs_vm_compile_again (zs_vm_t *self);
 
 //  Dump VM contents (state and code)
 void

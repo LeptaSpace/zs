@@ -34,8 +34,14 @@
         <action name = "start new token" />
         <action name = "parse next character" />
     </event>
-    <event name = "close list">
+    <event name = "close paren">
         <action name = "have close list token" />
+    </event>
+    <event name = "open brace">
+        <action name = "have repeat token" />
+    </event>
+    <event name = "close brace">
+        <action name = "have again token" />
     </event>
     <event name = "comma">
         <action name = "have phrase token" />
@@ -76,10 +82,18 @@
     <event name = "colon" next = "after function colon">
         <action name = "parse next character" />
     </event>
-    <event name = "open list" next = "expecting token">
+    <event name = "open paren" next = "expecting token">
         <action name = "have fn nested token" />
     </event>
-    <event name = "close list" next = "expecting token">
+    <event name = "close paren" next = "expecting token">
+        <action name = "have fn inline token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "open brace" next = "expecting token">
+        <action name = "have fn inline token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "close brace" next = "expecting token">
         <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
@@ -100,7 +114,7 @@
     <event name = "finished" next = "expecting token">
         <action name = "have fn inline token" />
     </event>
-    <event name = "open list" next = "expecting token">
+    <event name = "open paren" next = "expecting token">
         <action name = "have fn nested token" />
     </event>
     <event name = "colon" next = "after function colon">
@@ -113,7 +127,7 @@
 </state>
 
 <state name = "after function colon" inherit = "defaults">
-    <event name = "open list" next = "expecting token">
+    <event name = "open paren" next = "expecting token">
         <action name = "have fn define token" />
     </event>
 </state>
@@ -173,7 +187,15 @@
         <action name = "store the character" />
         <action name = "have number token" />
     </event>
-    <event name = "close list" next = "expecting token">
+    <event name = "close paren" next = "expecting token">
+        <action name = "have number token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "open brace" next = "expecting token">
+        <action name = "have number token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "close brace" next = "expecting token">
         <action name = "have number token" />
         <action name = "push back to previous" />
     </event>

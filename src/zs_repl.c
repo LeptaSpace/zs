@@ -30,6 +30,7 @@ typedef struct {
     void *exec;                 //  Function body
 } entry_t;
 
+#define SCOPE_MAX   256         //  Arbitrary max.depth
 
 //  Structure of our class
 
@@ -37,12 +38,16 @@ struct _zs_repl_t {
     fsm_t *fsm;                 //  Our finite state machine
     event_t events [zs_lex_tokens];
     zs_lex_t *lex;              //  Lexer instance
+    zs_lex_token_t token;       //  Lexer token value
     const char *input;          //  Line of text we're parsing
     int status;                 //  0 = OK, -1 = error
     zs_vm_t *vm;                //  Execution context
     bool completed;             //  Input formed a complete phrase
-    uint scope;                 //  Nesting scope, 0..n
+    size_t scope;               //  Nesting scope, 0..n
+    zs_lex_token_t
+        scope_stack [SCOPE_MAX];    //  Stack matching closing token
 };
+
 
 //  ---------------------------------------------------------------------------
 //  Create a new repl engine, return the reference if successful, or NULL
@@ -118,9 +123,9 @@ zs_repl_execute (zs_repl_t *self, const char *input)
     self->input = input;
     self->completed = false;
     self->status = 0;
-    zs_lex_token_t token = zs_lex_first (self->lex, self->input);
-    assert (token < zs_lex_tokens);
-    fsm_set_next_event (self->fsm, self->events [token]);
+    self->token = zs_lex_first (self->lex, self->input);
+    assert (self->token < zs_lex_tokens);
+    fsm_set_next_event (self->fsm, self->events [self->token]);
     fsm_execute (self->fsm);
     return self->status;
 }
@@ -136,9 +141,9 @@ zs_repl_execute (zs_repl_t *self, const char *input)
 static void
 get_next_token (zs_repl_t *self)
 {
-    zs_lex_token_t token = zs_lex_next (self->lex);
-    assert (token < zs_lex_tokens);
-    fsm_set_next_event (self->fsm, self->events [token]);
+    self->token = zs_lex_next (self->lex);
+    assert (self->token < zs_lex_tokens);
+    fsm_set_next_event (self->fsm, self->events [self->token]);
 }
 
 
@@ -160,7 +165,7 @@ compile_define_shell (zs_repl_t *self)
 static void
 compile_number (zs_repl_t *self)
 {
-    char *number = strdup (zs_lex_token (self->lex));
+    char *number = strdup (zs_lex_value (self->lex));
     assert (strlen (number) > 0);
 
     //  Check if it's a percentage; this also coerces number to real
@@ -194,7 +199,7 @@ compile_number (zs_repl_t *self)
 static void
 compile_string (zs_repl_t *self)
 {
-    zs_vm_compile_string (self->vm, zs_lex_token (self->lex));
+    zs_vm_compile_string (self->vm, zs_lex_value (self->lex));
 }
 
 
@@ -205,7 +210,7 @@ compile_string (zs_repl_t *self)
 static void
 compile_inline_call (zs_repl_t *self)
 {
-    if (zs_vm_compile_inline (self->vm, zs_lex_token (self->lex)))
+    if (zs_vm_compile_inline (self->vm, zs_lex_value (self->lex)))
         fsm_set_exception (self->fsm, invalid_event);
 }
 
@@ -217,8 +222,22 @@ compile_inline_call (zs_repl_t *self)
 static void
 compile_nested_call (zs_repl_t *self)
 {
-    self->scope++;
-    if (zs_vm_compile_nested (self->vm, zs_lex_token (self->lex)))
+    assert (self->scope < SCOPE_MAX);
+    self->scope_stack [self->scope++] = zs_lex_fn_close;
+    if (zs_vm_compile_nested (self->vm, zs_lex_value (self->lex)))
+        fsm_set_exception (self->fsm, invalid_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  pop_and_check_scope
+//
+
+static void
+pop_and_check_scope (zs_repl_t *self)
+{
+    if (self->scope == 0
+    ||  self->scope_stack [--self->scope] != self->token)
         fsm_set_exception (self->fsm, invalid_event);
 }
 
@@ -230,12 +249,7 @@ compile_nested_call (zs_repl_t *self)
 static void
 compile_unnest (zs_repl_t *self)
 {
-    if (self->scope) {
-        self->scope--;
-        zs_vm_compile_unnest (self->vm);
-    }
-    else
-        fsm_set_exception (self->fsm, invalid_event);
+    zs_vm_compile_unnest (self->vm);
 }
 
 
@@ -246,8 +260,9 @@ compile_unnest (zs_repl_t *self)
 static void
 compile_define (zs_repl_t *self)
 {
-    self->scope++;
-    zs_vm_compile_define (self->vm, zs_lex_token (self->lex));
+    assert (self->scope < SCOPE_MAX);
+    self->scope_stack [self->scope++] = zs_lex_fn_close;
+    zs_vm_compile_define (self->vm, zs_lex_value (self->lex));
 }
 
 
@@ -261,13 +276,36 @@ compile_define (zs_repl_t *self)
 static void
 compile_unnest_or_commit (zs_repl_t *self)
 {
-    assert (self->scope);
-    if (--self->scope)
+    if (self->scope)
         zs_vm_compile_unnest (self->vm);
     else {
-        zs_vm_compile_commit (self->vm);
+        zs_vm_commit (self->vm);
         fsm_set_exception (self->fsm, committed_event);
     }
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_repeat
+//
+
+static void
+compile_repeat (zs_repl_t *self)
+{
+    assert (self->scope < SCOPE_MAX);
+    self->scope_stack [self->scope++] = zs_lex_again;
+    zs_vm_compile_repeat (self->vm);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_again
+//
+
+static void
+compile_again (zs_repl_t *self)
+{
+    zs_vm_compile_again (self->vm);
 }
 
 
@@ -314,7 +352,7 @@ check_if_completed (zs_repl_t *self)
 static void
 compile_commit_shell (zs_repl_t *self)
 {
-    zs_vm_compile_commit (self->vm);
+    zs_vm_commit (self->vm);
 }
 
 
@@ -336,7 +374,7 @@ run_virtual_machine (zs_repl_t *self)
 static void
 rollback_the_function (zs_repl_t *self)
 {
-    zs_vm_compile_rollback (self->vm);
+    zs_vm_rollback (self->vm);
     self->scope = 0;
 }
 
