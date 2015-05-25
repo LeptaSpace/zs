@@ -126,9 +126,11 @@ int main (int argc, char *argv [])
                 puts ("Syntax error");
             }
             else
-            if (zs_repl_completed (repl))
-                puts (zs_repl_results (repl));
-
+            if (zs_repl_completed (repl)) {
+                const char *results = zs_repl_results (repl);
+                if (*results)
+                    puts (results);
+            }
             free (input);
         }
     }
