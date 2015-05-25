@@ -40,8 +40,10 @@
     <event name = "comma">
         <action name = "have phrase token" />
     </event>
-    <event name = "period">
-        <action name = "have sentence token" />
+    <event name = "period" next = "after period">
+        <action name = "start new token" />
+        <action name = "store the character" />
+        <action name = "parse next character" />
     </event>
     <event name = "finished">
         <action name = "have null token" />
@@ -136,6 +138,17 @@
     <event name = "percent" next = "expecting token">
         <action name = "store the character" />
         <action name = "have number token" />
+    </event>
+</state>
+
+<state name = "after period">
+    <event name = "digit" next = "reading number">
+        <action name = "store the character" />
+        <action name = "parse next character" />
+    </event>
+    <event name = "*" next = "expecting token">
+        <action name = "have sentence token" />
+        <action name = "push back to previous" />
     </event>
 </state>
 

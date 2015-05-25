@@ -23,12 +23,13 @@ typedef enum {
     after_function_state = 3,
     after_function_colon_state = 4,
     after_unary_sign_state = 5,
-    reading_number_state = 6,
-    after_number_comma_state = 7,
-    after_number_period_state = 8,
-    reading_string_state = 9,
-    reading_comment_state = 10,
-    defaults_state = 11
+    after_period_state = 6,
+    reading_number_state = 7,
+    after_number_comma_state = 8,
+    after_number_period_state = 9,
+    reading_string_state = 10,
+    reading_comment_state = 11,
+    defaults_state = 12
 } state_t;
 
 typedef enum {
@@ -62,6 +63,7 @@ s_state_name [] = {
     "after_function",
     "after_function_colon",
     "after_unary_sign",
+    "after_period",
     "reading_number",
     "after_number_comma",
     "after_number_period",
@@ -99,13 +101,13 @@ static void store_the_character (zs_lex_t *self);
 static void parse_next_character (zs_lex_t *self);
 static void have_close_list_token (zs_lex_t *self);
 static void have_phrase_token (zs_lex_t *self);
-static void have_sentence_token (zs_lex_t *self);
 static void have_null_token (zs_lex_t *self);
 static void have_fn_nested_token (zs_lex_t *self);
 static void have_fn_inline_token (zs_lex_t *self);
 static void push_back_to_previous (zs_lex_t *self);
 static void have_fn_define_token (zs_lex_t *self);
 static void have_number_token (zs_lex_t *self);
+static void have_sentence_token (zs_lex_t *self);
 static void store_comma_character (zs_lex_t *self);
 static void store_period_character (zs_lex_t *self);
 static void have_string_token (zs_lex_t *self);
@@ -358,11 +360,25 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == period_event) {
                 if (!self->exception) {
-                    //  have_sentence_token
+                    //  start_new_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_sentence_token");
-                    have_sentence_token (self->parent);
+                        zsys_debug ("zs_lex:                $ start_new_token");
+                    start_new_token (self->parent);
                 }
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = after_period_state;
             }
             else
             if (self->event == finished_event) {
@@ -978,6 +994,42 @@ fsm_execute (fsm_t *self)
                     if (self->animate)
                         zsys_debug ("zs_lex:                $ have_invalid_token");
                     have_invalid_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+        }
+        else
+        if (self->state == after_period_state) {
+            if (self->event == digit_event) {
+                if (!self->exception) {
+                    //  store_the_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ store_the_character");
+                    store_the_character (self->parent);
+                }
+                if (!self->exception) {
+                    //  parse_next_character
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ parse_next_character");
+                    parse_next_character (self->parent);
+                }
+                if (!self->exception)
+                    self->state = reading_number_state;
+            }
+            else {
+                //  Handle all other events
+                if (!self->exception) {
+                    //  have_sentence_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_sentence_token");
+                    have_sentence_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
                 }
                 if (!self->exception)
                     self->state = expecting_token_state;
