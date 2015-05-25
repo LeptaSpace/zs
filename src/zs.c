@@ -125,6 +125,10 @@ int main (int argc, char *argv [])
                 printf ("  %*c\n", zs_repl_offset (repl), '^');
                 puts ("Syntax error");
             }
+            else
+            if (zs_repl_completed (repl))
+                puts (zs_repl_results (repl));
+
             free (input);
         }
     }

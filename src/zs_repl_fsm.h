@@ -28,10 +28,10 @@ typedef enum {
     NULL_event = 0,
     number_event = 1,
     string_event = 2,
-    inline_fn_event = 3,
-    nested_fn_event = 4,
-    define_fn_event = 5,
-    close_list_event = 6,
+    fn_inline_event = 3,
+    fn_nested_event = 4,
+    fn_define_event = 5,
+    fn_close_event = 6,
     completed_event = 7,
     committed_event = 8,
     phrase_event = 9,
@@ -55,10 +55,10 @@ s_event_name [] = {
     "(NONE)",
     "number",
     "string",
-    "inline_fn",
-    "nested_fn",
-    "define_fn",
-    "close_list",
+    "fn_inline",
+    "fn_nested",
+    "fn_define",
+    "fn_close",
     "completed",
     "committed",
     "phrase",
@@ -225,7 +225,7 @@ fsm_execute (fsm_t *self)
                     self->state = building_shell_state;
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  compile_define_shell
                     if (self->animate)
@@ -248,7 +248,7 @@ fsm_execute (fsm_t *self)
                     self->state = building_shell_state;
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  compile_define_shell
                     if (self->animate)
@@ -271,7 +271,7 @@ fsm_execute (fsm_t *self)
                     self->state = building_shell_state;
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  compile_define
                     if (self->animate)
@@ -339,7 +339,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == close_list_event) {
+            if (self->event == fn_close_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -381,7 +381,7 @@ fsm_execute (fsm_t *self)
         }
         else
         if (self->state == building_shell_state) {
-            if (self->event == close_list_event) {
+            if (self->event == fn_close_event) {
                 if (!self->exception) {
                     //  compile_unnest
                     if (self->animate)
@@ -455,7 +455,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  compile_inline_call
                     if (self->animate)
@@ -470,7 +470,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  compile_nested_call
                     if (self->animate)
@@ -535,7 +535,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -607,7 +607,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  compile_inline_call
                     if (self->animate)
@@ -622,7 +622,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  compile_nested_call
                     if (self->animate)
@@ -637,7 +637,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == close_list_event) {
+            if (self->event == fn_close_event) {
                 if (!self->exception) {
                     //  compile_unnest_or_commit
                     if (self->animate)
@@ -710,7 +710,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -803,7 +803,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -820,7 +820,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -837,7 +837,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -888,7 +888,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == close_list_event) {
+            if (self->event == fn_close_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)

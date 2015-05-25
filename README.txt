@@ -423,6 +423,7 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * http://en.wikipedia.org/wiki/Metric_prefix
 * http://en.wikipedia.org/wiki/Arity
 * http://en.wikipedia.org/wiki/Concatenative_programming_language
+* https://wiki.haskell.org/Functional_programming
 
 ## Technicalities
 

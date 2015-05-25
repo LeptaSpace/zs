@@ -75,44 +75,44 @@
         <action name = "parse next character" />
     </event>
     <event name = "open list" next = "expecting token">
-        <action name = "have nested fn token" />
+        <action name = "have fn nested token" />
     </event>
     <event name = "close list" next = "expecting token">
-        <action name = "have inline fn token" />
+        <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
     <event name = "comma" next = "expecting token">
-        <action name = "have inline fn token" />
+        <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
     <event name = "period" next = "expecting token">
-        <action name = "have inline fn token" />
+        <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
     <event name = "finished" next = "expecting token">
-        <action name = "have inline fn token" />
+        <action name = "have fn inline token" />
     </event>
 </state>
 
 <state name = "after function">
     <event name = "finished" next = "expecting token">
-        <action name = "have inline fn token" />
+        <action name = "have fn inline token" />
     </event>
     <event name = "open list" next = "expecting token">
-        <action name = "have nested fn token" />
+        <action name = "have fn nested token" />
     </event>
     <event name = "colon" next = "after function colon">
         <action name = "parse next character" />
     </event>
     <event name = "*" next = "expecting token">
-        <action name = "have inline fn token" />
+        <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
 </state>
 
 <state name = "after function colon" inherit = "defaults">
     <event name = "open list" next = "expecting token">
-        <action name = "have define fn token" />
+        <action name = "have fn define token" />
     </event>
 </state>
 

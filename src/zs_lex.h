@@ -22,10 +22,10 @@ typedef struct _zs_lex_t zs_lex_t;
 #endif
 
 typedef enum {
-    zs_lex_inline_fn,       //  function
-    zs_lex_nested_fn,       //  function (
-    zs_lex_define_fn,       //  function: (
-    zs_lex_close_list,      //  ) close list
+    zs_lex_fn_inline,       //  function
+    zs_lex_fn_nested,       //  function (
+    zs_lex_fn_define,       //  function: (
+    zs_lex_fn_close,        //  ) close function
     zs_lex_string,          //  <string>
     zs_lex_number,          //  number expression
     zs_lex_phrase,          //  , phrase connector

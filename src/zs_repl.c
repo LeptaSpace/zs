@@ -63,14 +63,14 @@ zs_repl_new (void)
         s_register_zs_units_misc (self->vm);
 
         //  Set token type to event map
-        self->events [zs_lex_inline_fn] = inline_fn_event;
-        self->events [zs_lex_nested_fn] = nested_fn_event;
-        self->events [zs_lex_define_fn] = define_fn_event;
+        self->events [zs_lex_fn_inline] = fn_inline_event;
+        self->events [zs_lex_fn_nested] = fn_nested_event;
+        self->events [zs_lex_fn_define] = fn_define_event;
+        self->events [zs_lex_fn_close] = fn_close_event;
         self->events [zs_lex_string] = string_event;
         self->events [zs_lex_number] = number_event;
         self->events [zs_lex_phrase] = phrase_event;
         self->events [zs_lex_sentence] = sentence_event;
-        self->events [zs_lex_close_list] = close_list_event;
         self->events [zs_lex_invalid] = invalid_event;
         self->events [zs_lex_null] = finished_event;
     }
@@ -408,13 +408,13 @@ zs_repl_offset (zs_repl_t *self)
 
 
 static void
-s_repl_assert (zs_repl_t *self, const char *input, const char *output)
+s_repl_assert (zs_repl_t *self, const char *input, const char *expected)
 {
     int rc = zs_repl_execute (self, input);
     assert (rc == 0);
-    if (strneq (zs_repl_results (self), output)) {
-        printf ("input='%s' results='%s' expected='%s'\n",
-                input, zs_repl_results (self), output);
+    const char *results = zs_repl_results (self);
+    if (strneq (results, expected)) {
+        printf ("input='%s' results='%s' expected='%s'\n", input, results, expected);
         exit (-1);
     }
 }

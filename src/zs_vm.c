@@ -128,7 +128,7 @@ struct _zs_vm_t {
     zs_pipe_t *output_stack [256];  //  Output stack, arbitrary size
     size_t output_stack_ptr;        //  Size of output stack
     zs_pipe_t *input;               //  Input to next function
-    zs_pipe_t *output;              //  Current output sentence
+    zs_pipe_t *output;              //  Current phrase output
     char *results;                  //  Sentence results, if any
 
     size_t call_stack [256];        //  Function call stack
@@ -610,6 +610,7 @@ zs_vm_run (zs_vm_t *self)
     size_t needle = s_function_body (self, self->code_head);
     self->call_stack [0] = 0;
     self->call_stack_ptr = 1;
+
     if (self->verbose)
         printf ("D [%04zd]: run '%s'\n", needle, s_function_name (self, self->code_head));
 
@@ -708,7 +709,7 @@ zs_vm_run (zs_vm_t *self)
             if (self->verbose)
                 printf ("D [%04zd]: sentence\n", needle);
             //  TODO: send results to console/actor pipe
-            puts (zs_vm_results (self));
+            //  For now zs_repl grabs results via the zs_vm_results call
         }
         else
         if (opcode == VM_GUARD) {
@@ -731,6 +732,7 @@ zs_vm_run (zs_vm_t *self)
 //  ---------------------------------------------------------------------------
 //  Return results as string, after successful execution. Caller must not
 //  modify returned value.
+//  TODO: deprected, to be replaced by sending to pipe on sentence
 
 const char *
 zs_vm_results (zs_vm_t *self)

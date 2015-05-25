@@ -1,25 +1,103 @@
 TODO
 
-Problem: how to compile & run a paper script
+Problem: need loops and conditionals
 
+    gearing { sentence }
+
+    gearing:
+        0 or 1 times maybe (match)
+            <string> { sentence }
+            -- if pattern matches previous value execute sentence
+            -- else eat pattern and value
+            -- need atomic to duplicate value: "default"
+                -- eat all input and issue 1
+
+            ? <string> { sentence }
+            ? <string> { sentence }
+              default { sentence }
+              -- this should be a choice, events in a state
+                 or case in a switch... not logical flow...
+              -- how do we mark start and end of this?
+
+            ** let's just start with simple conditional **
+
+        N times constant
+            number { sentence }
+            -- repeat sentence number times
+
+        V times variable
+            function { sentence }
+            -- function produces true/false
+            -- execute or skip sentence accordingly
+
+        tokens:
+            string {        gear-match
+            number {        gear-spin
+            function {      gear-repeat
+            }               gear-close
+
+
+
+More like a grammar...
+
+    [ fubar snafu ]
+    *1( fubar snafu )
+    0*1 ( fubar snafu )
+
+Conditional: pattern matching
+
+    - take value on pipe
+    - match against pattern
+    - when, do...
+
+
+    pattern matching?
+
+
+
+    forever: { 1 }
+
+
+    phrase { phrase... }
+
+    100 { <*> }
+
+    forever { sleep (1) <yawn> }
+
+    until (12 PM) { sleep (1) temperature }
+
+
+
+0, 1 many - conditionals and loops are the same; we repeat a phrase N times
+
+    compute { execute }
+    5 { <*> <*> <*> }
+
+    forever { sleep (1) temperature }
+    until (12 PM) { sleep (1) temperature }
+
+    Event driven:
+        above (30 C) { cooling (on) }
+        below (15 C) { heating (on) }
+
+
+Problem: how to compile & run a paper script
 Problem: define test case for each atomic, in ZS
 
-Problem: "f:() f()" causes assertion failure in src/zs_vm.c:386
 
 
-Problem: "K: (1000 *) K (1 2 3)" does not compile
+atomic contracts:
+    hint
+    status (draft, stable, legacy)
+    testcase (text)
 
-Problem: zs shell does not allow editing
-Solution: use GNU readline when available
+selftests run through all atomic tests
+    then for functions:
+        hint (<something>)
+        selftest (<something>)
+        status (stable|draft|legacy)
 
 
-Problem: $shell$ does not allow definitions
-This means we can't define a function and use it on the same line
-Solution: remove need to define a $shell$ function
-
-
-
----------------------------
 
 - rewrite shell as repl primitive
     - read line of input, put onto pipe
@@ -43,13 +121,9 @@ Solution: remove need to define a $shell$ function
 
 - pipes can probably be built as single tree structure?
 
-- selftests for atomics
-
 - make zs_repl into an actor
     - accept input on pipe
     - return output to pipe (end of sentence)
-
-- user functions take type of first function
 
 - profile every function, simple counter, 'n top' atomic sorts & prints top n
 
@@ -63,8 +137,6 @@ help on function
     now (function) now -
     now (function (args)) now -
 
-
-
 help (xyz)
     get hint on xyz if it's an atomic
     else show code for xyz if it's a function
@@ -72,21 +144,6 @@ help (xyz)
     -> how do we know to pass a function rather than execute it?
     1. @ before function name
     2. atomic can force this
-
-mark atomics as draft, stable, legacy
-contract for every function/atomic
-
-0, 1 many - conditionals and loops are the same; we repeat a phrase N times
-
-    compute { execute }
-    5 { <*> <*> <*>}
-
-    forever { sleep (1) temperature }
-    until (12 PM) { sleep (1) temperature }
-
-    Event driven:
-        above (30 C) { cooling (on) }
-        below (15 C) { heating (on) }
 
 
 
