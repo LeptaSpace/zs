@@ -24,4 +24,22 @@
         <alias name = "msec" />
         seconds per 1/1000
     </atomic>
+    <atomic name = "/minute" value = "60LL" scale = "down">
+        minutes per seconds
+    </atomic>
+    <atomic name = "/hour" value = "60LL * 60LL" scale = "down">
+        hours per second
+    </atomic>
+    <atomic name = "/day" value = "60LL * 60LL * 24LL" scale = "down">
+        days per second
+    </atomic>
+    <atomic name = "/week" value = "60LL * 60LL * 24LL * 7LL" scale = "down">
+        weeks per second
+    </atomic>
+    <atomic name = "/year" value = "60LL * 60LL * 24LL * 365LL" scale = "down">
+        non-leap years per second
+    </atomic>
+    <atomic name = "/msec" value = "0.001" type = "real" scale = "down">
+        msecs per seconds
+    </atomic>
 </class>
