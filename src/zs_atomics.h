@@ -180,6 +180,15 @@ s_assert (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
         zs_vm_register (self, "assert", zs_type_greedy, "Assert first two values are the same");
+    else
+    if (zs_pipe_has_real (input)) {
+        double first = zs_pipe_recv_real (input);
+        double second = zs_pipe_recv_real (input);
+        if (first != second) {
+            printf ("E: assertion failed, %g != %g\n", first, second);
+            return -1;          //  Destroy the thread
+        }
+    }
     else {
         int64_t first = zs_pipe_recv_whole (input);
         int64_t second = zs_pipe_recv_whole (input);
