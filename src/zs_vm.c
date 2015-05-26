@@ -63,13 +63,12 @@
 //  Lol. \o/  Put these in order of frequency.
 #define VM_CALL         254     //  Call a user function
 #define VM_RETURN       253     //  Return to previous needle
-#define VM_WHOLE        252     //  Issue a whole number constant
-#define VM_REAL         251     //  Issue a real number constant
-#define VM_STRING       250     //  Issue a string constant
-#define VM_PIPE         249     //  Execute pipe operation
-#define VM_SENTENCE     248     //  End sentence
-#define VM_REPEAT       247     //  Start repeated section
-#define VM_AGAIN        246     //  End repeated section
+#define VM_IF           252     //  Conditional branch
+#define VM_WHOLE        251     //  Issue a whole number constant
+#define VM_REAL         250     //  Issue a real number constant
+#define VM_STRING       249     //  Issue a string constant
+#define VM_PIPE         248     //  Execute pipe operation
+#define VM_SENTENCE     247     //  End sentence
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
 
@@ -517,6 +516,40 @@ zs_vm_compile_unnest (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  Compile a conditional branch
+
+void
+zs_vm_compile_if (zs_vm_t *self)
+{
+    self->code [self->code_size++] = VM_IF;
+    //  Stack address of jump address
+    self->scope_stack [self->scope_stack_ptr++] = self->code_size;
+    //  Leave 24 bits for the jump address, fill with magic
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Close a conditional branch
+
+void
+zs_vm_compile_if_end (zs_vm_t *self)
+{
+    //  Pop location of jump address
+    size_t address = self->scope_stack [--self->scope_stack_ptr];
+    assert (self->code [address + 0] == 0xA5);
+    assert (self->code [address + 1] == 0xA5);
+    assert (self->code [address + 2] == 0xA5);
+    //  Store current code_size into jump address
+    self->code [address++] = (byte) (self->code_size >> 16);
+    self->code [address++] = (byte) (self->code_size >> 8);
+    self->code [address++] = (byte) (self->code_size);
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Compile end of phrase. This appends the phrase output to the current
 //  sentence output, and starts a new phrase.
 
@@ -536,26 +569,6 @@ void
 zs_vm_compile_sentence (zs_vm_t *self)
 {
     self->code [self->code_size++] = VM_SENTENCE;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Compile a repeat operation -- TODO
-
-void
-zs_vm_compile_repeat (zs_vm_t *self)
-{
-    self->code [self->code_size++] = VM_REPEAT;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Compile an again operation -- TODO
-
-void
-zs_vm_compile_again (zs_vm_t *self)
-{
-    self->code [self->code_size++] = VM_AGAIN;
 }
 
 
@@ -685,6 +698,17 @@ zs_vm_run (zs_vm_t *self)
             needle = self->call_stack [--self->call_stack_ptr];
         }
         else
+        if (opcode == VM_IF) {
+            size_t address = (size_t) (self->code [needle + 0] << 16)
+                           + (size_t) (self->code [needle + 1] << 8)
+                           + (size_t) (self->code [needle + 2]);
+            int64_t value = zs_pipe_pull_single (self->output)?
+                            zs_pipe_whole (self->output): 0;
+            if (self->verbose)
+                printf ("D [%04zd]: if value=%" PRId64 "\n", needle, value);
+            needle = value? needle + 3: address;
+        }
+        else
         if (opcode == VM_WHOLE) {
             int64_t whole;
             memcpy (&whole, self->code + needle, sizeof (whole));
@@ -751,12 +775,6 @@ zs_vm_run (zs_vm_t *self)
                 printf ("D [%04zd]: sentence\n", needle);
             //  TODO: send results to console/actor pipe
             //  For now zs_repl grabs results via the zs_vm_results call
-        }
-        else
-        if (opcode == VM_REPEAT) {
-        }
-        else
-        if (opcode == VM_AGAIN) {
         }
         else
         if (opcode == VM_GUARD) {
@@ -888,6 +906,7 @@ zs_vm_test (bool verbose)
     //      sum (123 count (1 2 3)) 126 assert,
     //      year year count 2 assert
     //  )
+
     zs_vm_compile_define (vm, "main");
 
     zs_vm_compile_whole  (vm, 123);
@@ -932,25 +951,29 @@ zs_vm_test (bool verbose)
 
     zs_vm_commit (vm);
 
-//     //  --------------------------------------------------------------------
-//     //  loop: (100 { 1 } count 100 assert)
-//
-//     zs_vm_compile_define (vm, "loop");
-//     zs_vm_compile_whole  (vm, 100);
-//     zs_vm_compile_repeat (vm);
-//     zs_vm_compile_whole  (vm, 1);
-//     zs_vm_compile_again  (vm);
-//     zs_vm_compile_inline (vm, "count");
-//     zs_vm_compile_whole  (vm, 100);
-//     zs_vm_compile_inline (vm, "assert");
-//     zs_vm_commit (vm);
+    //  --------------------------------------------------------------------
+    //  maybe: (1 { <hello> } 0 { <world> } count 1 assert)
+
+    zs_vm_compile_define (vm, "maybe");
+    zs_vm_compile_whole  (vm, 1);
+    zs_vm_compile_if     (vm);
+    zs_vm_compile_string (vm, "hello");
+    zs_vm_compile_if_end (vm);
+    zs_vm_compile_whole  (vm, 0);
+    zs_vm_compile_if     (vm);
+    zs_vm_compile_string (vm, "world");
+    zs_vm_compile_if_end (vm);
+    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_whole  (vm, 1);
+    zs_vm_compile_inline (vm, "assert");
+    zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
-    //  sub main loop
+    //  go: (sub main loop)
     zs_vm_compile_define (vm, "go");
     zs_vm_compile_inline (vm, "sub");
     zs_vm_compile_inline (vm, "main");
-//     zs_vm_compile_inline (vm, "loop");
+    zs_vm_compile_inline (vm, "loop");
     zs_vm_commit (vm);
     if (verbose)
         zs_vm_dump (vm);
@@ -963,7 +986,7 @@ zs_vm_test (bool verbose)
             break;
         nbr_functions++;
     }
-    assert (nbr_functions == 3);
+    assert (nbr_functions == 4);
 
     zs_vm_destroy (&vm);
     //  @end

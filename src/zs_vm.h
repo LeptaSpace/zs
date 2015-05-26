@@ -125,6 +125,14 @@ int
 void
     zs_vm_compile_unnest (zs_vm_t *self);
 
+//  Compile a conditional branch
+void
+    zs_vm_compile_if (zs_vm_t *self);
+
+//  Close a conditional branch
+void
+    zs_vm_compile_if_end (zs_vm_t *self);
+
 //  Compile end of phrase. This appends the phrase output to the current
 //  sentence output, and starts a new phrase.
 void
@@ -134,14 +142,6 @@ void
 //  new sentence.
 void
     zs_vm_compile_sentence (zs_vm_t *self);
-
-//  Compile a repeat operation -- TODO
-void
-    zs_vm_compile_repeat (zs_vm_t *self);
-
-//  Compile an again operation -- TODO
-void
-    zs_vm_compile_again (zs_vm_t *self);
 
 //  Dump VM contents (state and code)
 void

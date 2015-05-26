@@ -286,15 +286,15 @@ compile_unnest_or_commit (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  compile_repeat
+//  compile_if
 //
 
 static void
-compile_repeat (zs_repl_t *self)
+compile_if (zs_repl_t *self)
 {
     assert (self->scope < SCOPE_MAX);
-    self->scope_stack [self->scope++] = zs_lex_again;
-    zs_vm_compile_repeat (self->vm);
+    self->scope_stack [self->scope++] = zs_lex_continue;
+    zs_vm_compile_if (self->vm);
 }
 
 
@@ -303,9 +303,9 @@ compile_repeat (zs_repl_t *self)
 //
 
 static void
-compile_again (zs_repl_t *self)
+compile_if_end (zs_repl_t *self)
 {
-    zs_vm_compile_again (self->vm);
+    zs_vm_compile_if_end (self->vm);
 }
 
 

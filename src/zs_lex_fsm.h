@@ -104,8 +104,8 @@ static void start_new_token (zs_lex_t *self);
 static void store_the_character (zs_lex_t *self);
 static void parse_next_character (zs_lex_t *self);
 static void have_close_list_token (zs_lex_t *self);
-static void have_repeat_token (zs_lex_t *self);
-static void have_again_token (zs_lex_t *self);
+static void have_maybe_token (zs_lex_t *self);
+static void have_continue_token (zs_lex_t *self);
 static void have_phrase_token (zs_lex_t *self);
 static void have_null_token (zs_lex_t *self);
 static void have_fn_nested_token (zs_lex_t *self);
@@ -357,19 +357,19 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == open_brace_event) {
                 if (!self->exception) {
-                    //  have_repeat_token
+                    //  have_maybe_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_repeat_token");
-                    have_repeat_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_maybe_token");
+                    have_maybe_token (self->parent);
                 }
             }
             else
             if (self->event == close_brace_event) {
                 if (!self->exception) {
-                    //  have_again_token
+                    //  have_continue_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_again_token");
-                    have_again_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_continue_token");
+                    have_continue_token (self->parent);
                 }
             }
             else

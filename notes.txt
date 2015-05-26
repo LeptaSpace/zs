@@ -1,13 +1,55 @@
 TODO
 
+- internal assertion failure: hard, so we get stack dump
+
 Problem: need loops and conditionals
+
+
+    VM_IF nnnn
+        jump to nnnn if last value is zero
+
+    need to compile start & end
+
+        zs_vm_compile_if
+        zs_vm_compile_endif
+
 
 
     compile start of cycle
 
-        VM_START
-            [nnnn]
+        compile "VM_WHEN nnnn"
+        stack VM_WHEN address
 
+    compile end of cycle
+
+        compile "VM_AGAIN nnnn"
+            nnnn = address of VM_WHEN
+            pop nnnn address
+            set nnnn to code_size + sizeof (address)
+        ... next
+
+                VM_WHEN nnnn  <--.
+              no    yes          |
+             /  next opcode      |
+            /        ..          |
+           /         ..          |
+          /          ..          |
+         |      VM_AGAIN nnnn ---'
+         \
+          `-->  next opcode
+
+    execution
+
+        execute VM_WHEN
+            take test value (from where?)
+            if false then jump to address
+            else fall through to code
+
+        execute VM_AGAIN
+            jump to address
+
+
+    { some code and some more final test }
 
 
 

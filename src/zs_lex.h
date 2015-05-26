@@ -30,8 +30,8 @@ typedef enum {
     zs_lex_number,          //  number expression
     zs_lex_phrase,          //  , phrase connector
     zs_lex_sentence,        //  . sentence connector
-    zs_lex_repeat,          //  { open optional/repeat
-    zs_lex_again,           //  } close optional/repeat
+    zs_lex_maybe,           //  { open conditional
+    zs_lex_continue,        //  } close conditional
     zs_lex_invalid,         //  Syntax error
     zs_lex_null,            //  Nothing to return
     zs_lex_tokens           //  Size of this set

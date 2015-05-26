@@ -334,24 +334,24 @@ have_close_list_token (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  have_repeat_token
+//  have_maybe_token
 //
 
 static void
-have_repeat_token (zs_lex_t *self)
+have_maybe_token (zs_lex_t *self)
 {
-    self->type = zs_lex_repeat;
+    self->type = zs_lex_maybe;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  have_again_token
+//  have_continue_token
 //
 
 static void
-have_again_token (zs_lex_t *self)
+have_continue_token (zs_lex_t *self)
 {
-    self->type = zs_lex_again;
+    self->type = zs_lex_continue;
 }
 
 
@@ -518,9 +518,9 @@ zs_lex_test (bool verbose)
 
     //  Repetition braces
     assert (zs_lex_first (lex, "5 {<hello>}") == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_repeat);
+    assert (zs_lex_next (lex) == zs_lex_maybe);
     assert (zs_lex_next (lex) == zs_lex_string);
-    assert (zs_lex_next (lex) == zs_lex_again);
+    assert (zs_lex_next (lex) == zs_lex_continue);
     assert (zs_lex_next (lex) == zs_lex_null);
 
     //  Test various invalid tokens

@@ -34,12 +34,8 @@
         <action name = "compile define" />
         <action name = "get next token" />
     </event>
-    <event name = "repeat" next = "building shell">
-        <action name = "compile repeat" />
-        <action name = "get next token" />
-    </event>
-    <event name = "again" next = "building shell">
-        <action name = "compile again" />
+    <event name = "maybe" next = "building shell">
+        <action name = "compile if" />
         <action name = "get next token" />
     </event>
 </state>
@@ -91,13 +87,13 @@
         <action name = "compile end of sentence" />
         <action name = "get next token" />
     </event>
-    <event name = "repeat">
-        <action name = "compile repeat" />
+    <event name = "maybe">
+        <action name = "compile if" />
         <action name = "get next token" />
     </event>
-    <event name = "again">
+    <event name = "continue">
         <action name = "pop and check scope" />
-        <action name = "compile again" />
+        <action name = "compile if end" />
         <action name = "get next token" />
     </event>
 </state>
@@ -136,11 +132,11 @@
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "repeat" next = "starting">
+    <event name = "maybe" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "again" next = "starting">
+    <event name = "continue" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>

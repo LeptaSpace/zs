@@ -123,6 +123,12 @@ char *
 void
     zs_pipe_mark (zs_pipe_t *self);
 
+//  Pulls a single value from the pipe into the register. Any  previous value
+//  in the register is lost. Returns true if value was successfully received.
+//  If no values were received, returns false.
+bool
+    zs_pipe_pull_single (zs_pipe_t *self);
+
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "modest" pull: in a phrase, pulls the last single value. After a
 //  phrase, pulls the preceding phrase.

@@ -32,6 +32,16 @@ int
 bool
     zs_repl_completed (zs_repl_t *self);
 
+//  Return latest function by name; use with first to iterate through
+//  functions. Returns function name or NULL if there are none defined.
+const char *
+    zs_repl_first (zs_repl_t *self);
+
+//  Return previous function by name; use after first to iterate through
+//  functions. Returns function name or NULL if there are no more.
+const char *
+    zs_repl_next (zs_repl_t *self);
+
 //  Return pipe results as string, after successful execution. Caller must
 //  not modify returned value.
 const char *
@@ -59,19 +69,26 @@ EXAMPLE
 ----
 zs_repl_t *repl = zs_repl_new ();
 zs_repl_verbose (repl, verbose);
-s_repl_assert (repl, "1 2 3 add", "6");
+s_repl_assert (repl, "1 2 3 sum", "6");
 s_repl_assert (repl, "1 2, k", "1000 2000");
-s_repl_assert (repl, "1 2 3, add", "6");
-s_repl_assert (repl, "1 2 3, 4 5 6 add", "1 2 3 15");
-s_repl_assert (repl, "1 2 3, 4 5 6, add", "21");
-s_repl_assert (repl, "1 2 3 count, 1 1 add, subtract", "1");
-s_repl_assert (repl, "add (1 2 3)", "6");
-s_repl_assert (repl, "add (add (1 2 3) count (4 5 6))", "9");
-s_repl_assert (repl, "add (1 2 3", "");
+s_repl_assert (repl, "1 2 3, sum", "6");
+s_repl_assert (repl, "1 2 3, 4 5 6 sum", "1 2 3 15");
+s_repl_assert (repl, "1 2 3, 4 5 6, sum", "21");
+s_repl_assert (repl, "1 2 3 count, 1 1 sum, min", "2");
+s_repl_assert (repl, "sum (1 2 3)", "6");
+s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
+s_repl_assert (repl, "sum (1 2 3", "");
 s_repl_assert (repl, ")", "6");
 s_repl_assert (repl, "sub: (<hello>)", "");
 s_repl_assert (repl, "sub", "hello");
-s_repl_assert (repl, "add (k (1 2 3) M (2))", "2006000");
+s_repl_assert (repl, "sum (k (1 2 3) M (2))", "2006000");
 s_repl_assert (repl, "k", "1000");
+s_repl_assert (repl, "fn: (sum)", "");
+s_repl_assert (repl, "1 2 3 fn", "6");
+s_repl_assert (repl, "1 2 3, fn", "6");
+s_repl_assert (repl, "fn (1 2 3)", "6");
+s_repl_assert (repl, "K: (1000 *)", "");
+s_repl_assert (repl, "K (1 2 3)", "1000 2000 3000");
+s_repl_assert (repl, "12.0 .1 +", "12.1");
 zs_repl_destroy (&repl);
 ----

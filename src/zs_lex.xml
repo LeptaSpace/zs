@@ -38,10 +38,10 @@
         <action name = "have close list token" />
     </event>
     <event name = "open brace">
-        <action name = "have repeat token" />
+        <action name = "have maybe token" />
     </event>
     <event name = "close brace">
-        <action name = "have again token" />
+        <action name = "have continue token" />
     </event>
     <event name = "comma">
         <action name = "have phrase token" />
