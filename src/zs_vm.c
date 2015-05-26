@@ -40,8 +40,19 @@
         - assumed to change externally
         - designed to be added dynamically
         - decoding costs are insignificant
+
+    Current limitations:
+        - max VM code size is 2^24 (3-byte addresses)
+        - max size of a single function is 64k (2-byte offsets)
+        - max nesting depth is 256 (asserted)
+        - max output stack nesting is 256 (asserted)
+        - max function call depth is 256 (asserted)
 @end
 */
+
+#define MAX_SCOPE   256     //  Nesting limit at compile time
+#define MAX_OUTPUT  256     //  Maximum () nesting limit
+#define MAX_CALLS   256     //  Maximum function call depth
 
 //  Bytecodes
 //  - up to 240 class 0 dictionary
@@ -52,11 +63,12 @@
 //  Lol. \o/  Put these in order of frequency.
 #define VM_CALL         254     //  Call a user function
 #define VM_RETURN       253     //  Return to previous needle
-#define VM_WHOLE        252     //  Issue a whole number constant
-#define VM_REAL         251     //  Issue a real number constant
-#define VM_STRING       250     //  Issue a string constant
-#define VM_PIPE         249     //  Execute pipe operation
-#define VM_SENTENCE     248     //  End sentence
+#define VM_IF           252     //  Conditional branch
+#define VM_WHOLE        251     //  Issue a whole number constant
+#define VM_REAL         250     //  Issue a real number constant
+#define VM_STRING       249     //  Issue a string constant
+#define VM_PIPE         248     //  Execute pipe operation
+#define VM_SENTENCE     247     //  End sentence
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
 
@@ -122,28 +134,30 @@ struct _zs_vm_t {
     size_t code_head;               //  Last defined function
     size_t checkpoint;              //  When defining a function
 
-    char *scope_stack [256];        //  Scope stack, arbitrary size
+    size_t scope_stack [MAX_SCOPE]; //  Scope stack, arbitrary size
     size_t scope_stack_ptr;         //  Size of scope stack
 
-    zs_pipe_t *output_stack [256];  //  Output stack, arbitrary size
+    zs_pipe_t *
+        output_stack [MAX_OUTPUT];  //  Output stack, arbitrary size
     size_t output_stack_ptr;        //  Size of output stack
     zs_pipe_t *input;               //  Input to next function
-    zs_pipe_t *output;              //  Current output sentence
+    zs_pipe_t *output;              //  Current phrase output
     char *results;                  //  Sentence results, if any
 
-    size_t call_stack [256];        //  Function call stack
+    size_t call_stack [MAX_CALLS];  //  Function call stack
     size_t call_stack_ptr;          //  Size of call stack
 
     bool verbose;                   //  Trace execution progress
-    size_t iterator;                //  For listing function names
+    size_t iterator;                //  For listing functions & atomics
+    bool userspace;                 //  True when iterating functions
 };
 
-//  Map function guard to code body
+//  Map function address to code body
 static size_t
-s_function_body (zs_vm_t *self, size_t guard)
+s_function_body (zs_vm_t *self, size_t address)
 {
-    if (guard) {
-        size_t body = guard + 3;
+    if (address) {
+        size_t body = address + 3;
         body += strlen ((char *) self->code + body) + 1;
         return body;
     }
@@ -151,74 +165,85 @@ s_function_body (zs_vm_t *self, size_t guard)
         return 0;
 }
 
-//  Map function guard to printable name
+//  Map function address to printable name
 static const char *
-s_function_name (zs_vm_t *self, size_t guard)
+s_function_name (zs_vm_t *self, size_t address)
 {
-    if (guard)
-        return (const char *) self->code + guard + 3;
+    if (address)
+        return (const char *) self->code + address + 3;
     else
         return "";
 }
 
-//  Return builtin opcode for name, or -1 if not known
-static int
-s_try_builtin (zs_vm_t *self, const char *name)
+//  Resolve function name to address, which is:
+//  1-253           - built in atomic, compiled as one byte
+//  254 + 3 bytes   - VM_CALL + 24-bit function address
+//  255 + 3 bytes   - extended atomic address (TBD)
+//
+//  Resolves to most recent instance of any given function name.
+//  Returns 0 if the function name is not defined (0 is not a valid address).
+
+static size_t
+s_resolve (zs_vm_t *self, const char *name)
 {
+    //  Look for a user-defined function from newest to oldest
+    size_t address = self->code_head;
+    while (address) {
+        assert (self->code [address] == VM_GUARD);
+        if (streq (name, s_function_name (self, address)))
+            return (VM_CALL << 24) + address;
+        size_t offset = (self->code [address + 1] << 8) + self->code [address + 2];
+        assert (address >= offset);
+        address -= offset;
+    }
+    //  Look for a class zero atomic
+    for (address = 0; address < self->nbr_atomics; address++)
+        if (streq ((self->atomics [address])->name, name))
+            return address;
+
+    //  Look for a built-in
     if (streq (name, "stop"))
         return VM_STOP;
-    return -1;
+
+    return 0;
 }
 
-//  Return atomic opcode for name, or -1 if not known
-static int
-s_try_atomic (zs_vm_t *self, const char *name)
-{
-    size_t index;
-    for (index = 0; index < self->nbr_atomics; index++)
-        if (streq ((self->atomics [index])->name, name))
-            return index;
-    return -1;
-}
 
-//  Return function guard for name, or -1 if not known
-static int
-s_try_function (zs_vm_t *self, const char *name)
-{
-    size_t guard = self->code_head;
-    while (guard) {
-        assert (self->code [guard] == VM_GUARD);
-        if (streq (name, s_function_name (self, guard)))
-            return guard;
-        size_t offset = (self->code [guard + 1] << 8) + self->code [guard + 2];
-        assert (guard >= offset);
-        guard -= offset;
-    }
-    return -1;
-}
+//  Compile call to function, atomic, or built-in
 
-//  Compile call to function, atomic, or builtin (in that order)
 static void
-s_compile_call (zs_vm_t *self, byte pipe_op, const char *name)
+s_compile_call (zs_vm_t *self, size_t address, byte pipe_op)
 {
     //  A non-zero pipe_op means we muck with the plumbing
     if (pipe_op) {
         self->code [self->code_size++] = VM_PIPE;
         self->code [self->code_size++] = pipe_op;
     }
-    int found;
-    if ((found = s_try_function (self, name)) != -1) {
-        self->code [self->code_size++] = VM_CALL;
-        self->code [self->code_size++] = (byte) (found >> 8);
-        self->code [self->code_size++] = (byte) (found & 0xFF);
+    if (address < 256)
+        self->code [self->code_size++] = (byte) address;
+    else {
+        //  Store 4 bytes from high to low
+        self->code [self->code_size++] = (byte) (address >> 24);
+        self->code [self->code_size++] = (byte) (address >> 16);
+        self->code [self->code_size++] = (byte) (address >> 8);
+        self->code [self->code_size++] = (byte) (address);
+        assert (self->code [self->code_size - 4] == VM_CALL);
     }
-    else
-    if ((found = s_try_atomic (self, name)) != -1
-    ||  (found = s_try_builtin (self, name)) != -1)
-        self->code [self->code_size++] = (byte) found;
-    else
-        //  Cannot come here
-        assert (false);
+}
+
+//  Registered as atomic zero, so if we ever try to execute an opcode zero, we
+//  come here and kill the machine.
+
+static int
+s_halt_error (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "$halt$", zs_type_nullary, "Halt on error");
+    else {
+        printf ("E: tried to execute zero opcode, halting\n");
+        return -1;
+    }
+    return 0;
 }
 
 
@@ -236,6 +261,7 @@ zs_vm_new (void)
         self->code_max = 32000;         //  Arbitrary; TODO: extensible
         self->code = (byte *) malloc (self->code_max);
         self->code [self->code_size++] = VM_STOP;
+        zs_vm_probe (self, s_halt_error);
     }
     return self;
 }
@@ -379,7 +405,7 @@ zs_vm_compile_define (zs_vm_t *self, const char *name)
 //  Close the current function definition.
 
 void
-zs_vm_compile_commit (zs_vm_t *self)
+zs_vm_commit (zs_vm_t *self)
 {
     //  We must have an open function definition
     assert (self->checkpoint);
@@ -399,7 +425,7 @@ zs_vm_compile_commit (zs_vm_t *self)
 //  is then empty).
 
 int
-zs_vm_compile_rollback (zs_vm_t *self)
+zs_vm_rollback (zs_vm_t *self)
 {
     int rc = 0;
     if (self->checkpoint) {
@@ -408,12 +434,12 @@ zs_vm_compile_rollback (zs_vm_t *self)
     }
     else
     if (self->code_head > 0) {
-        size_t guard = self->code_head;
-        assert (self->code [guard] == VM_GUARD);
-        size_t offset = (self->code [guard + 1] << 8) + self->code [guard + 2];
-        assert (guard >= offset);
-        self->code_head = guard - offset;
-        self->code_size = guard;
+        size_t address = self->code_head;
+        assert (self->code [address] == VM_GUARD);
+        size_t offset = (self->code [address + 1] << 8) + self->code [address + 2];
+        assert (address >= offset);
+        self->code_head = address - offset;
+        self->code_size = address;
     }
     else
         rc = -1;
@@ -432,37 +458,25 @@ zs_vm_compile_inline (zs_vm_t *self, const char *name)
 {
     //  User-defined functions do not touch the pipes; they're effectively
     //  macros that inline their contents where they are invoked
-    int found;
-    if (s_try_function (self, name) != -1)
-        s_compile_call (self, 0, name);
-    else
-    //  Atomics are the ones that need the extra work
-    if ((found = s_try_atomic (self, name)) != -1) {
-        switch (self->atomics [found]->type) {
-            case zs_type_nullary:
-                s_compile_call (self, 0, name);
-                break;
-            case zs_type_modest:
-                s_compile_call (self, VM_PIPE_MODEST, name);
-                break;
-            case zs_type_greedy:
-                s_compile_call (self, VM_PIPE_GREEDY, name);
-                break;
-            case zs_type_array:
-                s_compile_call (self, VM_PIPE_ARRAY, name);
-                break;
-            case zs_type_unknown:
-                assert (false);
-                break;
+    size_t address = s_resolve (self, name);
+    if (address) {
+        byte pipe_op = 0;
+        if (address < 256) {
+            //  Atomics can need extra work to prepare an input pipe
+            if (self->atomics [address]->type == zs_type_modest)
+                pipe_op = VM_PIPE_MODEST;
+            else
+            if (self->atomics [address]->type == zs_type_greedy)
+                pipe_op = VM_PIPE_GREEDY;
+            else
+            if (self->atomics [address]->type == zs_type_array)
+                pipe_op = VM_PIPE_ARRAY;
         }
+        s_compile_call (self, address, pipe_op);
+        return 0;
     }
     else
-    if (s_try_builtin (self, name) != -1)
-        s_compile_call (self, 0, name);
-    else
-        return -1;
-
-    return 0;
+        return -1;              //  Undefined function, forget it
 }
 
 
@@ -475,19 +489,18 @@ zs_vm_compile_inline (zs_vm_t *self, const char *name)
 int
 zs_vm_compile_nested (zs_vm_t *self, const char *name)
 {
-    if (s_try_function (self, name) != -1
-    ||  s_try_atomic (self, name) != -1
-    ||  s_try_builtin (self, name) != -1) {
-        //  We use a scope stack during compilation so it's less work for the
-        //  caller, who has the function name now, rather than at closing time.
+    size_t address = s_resolve (self, name);
+    if (address) {
         self->code [self->code_size++] = VM_PIPE;
         self->code [self->code_size++] = VM_PIPE_NEST;
-        self->scope_stack [self->scope_stack_ptr++] = strdup (name);
+        assert (self->scope_stack_ptr < MAX_SCOPE);
+        self->scope_stack [self->scope_stack_ptr++] = address;
         return 0;
     }
     else
         return -1;              //  Not a defined function
 }
+
 
 //  ---------------------------------------------------------------------------
 //  Compile an unnest operation; this executes the nested function on the
@@ -497,9 +510,42 @@ void
 zs_vm_compile_unnest (zs_vm_t *self)
 {
     assert (self->scope_stack_ptr);
-    char *name = self->scope_stack [--self->scope_stack_ptr];
-    s_compile_call (self, VM_PIPE_UNNEST, name);
-    free (name);
+    size_t address = self->scope_stack [--self->scope_stack_ptr];
+    s_compile_call (self, address, VM_PIPE_UNNEST);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Compile a conditional branch
+
+void
+zs_vm_compile_if (zs_vm_t *self)
+{
+    self->code [self->code_size++] = VM_IF;
+    //  Stack address of jump address
+    self->scope_stack [self->scope_stack_ptr++] = self->code_size;
+    //  Leave 24 bits for the jump address, fill with magic
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Close a conditional branch
+
+void
+zs_vm_compile_if_end (zs_vm_t *self)
+{
+    //  Pop location of jump address
+    size_t address = self->scope_stack [--self->scope_stack_ptr];
+    assert (self->code [address + 0] == 0xA5);
+    assert (self->code [address + 1] == 0xA5);
+    assert (self->code [address + 2] == 0xA5);
+    //  Store current code_size into jump address
+    self->code [address++] = (byte) (self->code_size >> 16);
+    self->code [address++] = (byte) (self->code_size >> 8);
+    self->code [address++] = (byte) (self->code_size);
 }
 
 
@@ -541,64 +587,49 @@ zs_vm_dump (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Return latest function by name; use with _prev to iterate through
+//  Return latest function by name; use with next to iterate through
 //  functions. Returns function name or NULL if there are none defined.
+//  TODO: hide/mask functions that get redefined.
 
 const char *
 zs_vm_function_first (zs_vm_t *self)
 {
     self->iterator = self->code_head;
+    self->userspace = true;
     return zs_vm_function_next (self);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Return previous function by name; use after a _last to iterate through
+//  Return previous function by name; use after first to iterate through
 //  functions. Returns function name or NULL if there are no more.
 
 const char *
 zs_vm_function_next (zs_vm_t *self)
 {
-    if (self->iterator) {
-        assert (self->code [self->iterator] == VM_GUARD);
-        const char *name = s_function_name (self, self->iterator);
-        size_t offset = (self->code [self->iterator + 1] << 8)
-                      +  self->code [self->iterator + 2];
-        assert (self->iterator >= offset);
-        self->iterator -= offset;
-        return name;
+    if (self->userspace) {
+        if (self->iterator) {
+            assert (self->code [self->iterator] == VM_GUARD);
+            const char *name = s_function_name (self, self->iterator);
+            size_t offset = (self->code [self->iterator + 1] << 8)
+                           + self->code [self->iterator + 2];
+            assert (self->iterator >= offset);
+            self->iterator -= offset;
+            return name;
+        }
+        else
+            self->userspace = false;
     }
-    else
-        return NULL;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Return first atomic by name; use with _next to iterate through atomics.
-//  Returns atomic name or NULL if there are none defined.
-
-const char *
-zs_vm_atomic_first (zs_vm_t *self)
-{
-    self->iterator = 0;
-    return zs_vm_atomic_next (self);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Return next atomic by name; use with _first to iterate through atomics.
-//  Returns atomic name or NULL if there are no more defined.
-
-const char *
-zs_vm_atomic_next (zs_vm_t *self)
-{
     if (self->iterator < self->nbr_atomics) {
         const char *name = self->atomics [self->iterator]->name;
         self->iterator++;
-        return name;
+        //  Don't report system functions starting with $
+        if (name [0] == '$')
+            return zs_vm_function_next (self);
+        else
+            return name;
     }
-    else
-        return NULL;
+    return NULL;
 }
 
 
@@ -628,6 +659,7 @@ zs_vm_run (zs_vm_t *self)
     size_t needle = s_function_body (self, self->code_head);
     self->call_stack [0] = 0;
     self->call_stack_ptr = 1;
+
     if (self->verbose)
         printf ("D [%04zd]: run '%s'\n", needle, s_function_name (self, self->code_head));
 
@@ -646,19 +678,35 @@ zs_vm_run (zs_vm_t *self)
         }
         else
         if (opcode == VM_CALL) {
-            self->call_stack [self->call_stack_ptr++] = needle + 2;
-            size_t guard = (self->code [needle] << 8) + self->code [needle + 1];
-            assert (self->code [guard] == VM_GUARD);
+            //  Address is in next 3 bytes
+            size_t address = (size_t) (self->code [needle + 0] << 16)
+                           + (size_t) (self->code [needle + 1] << 8)
+                           + (size_t) (self->code [needle + 2]);
+            needle += 3;
+            assert (self->code [address] == VM_GUARD);
             if (self->verbose)
                 printf ("D [%04zd]: call function=%s stack=%zd\n", needle,
-                        s_function_name (self, guard), self->call_stack_ptr);
-            needle = s_function_body (self, guard);
+                        s_function_name (self, address), self->call_stack_ptr);
+            assert (self->call_stack_ptr < MAX_CALLS);
+            self->call_stack [self->call_stack_ptr++] = needle;
+            needle = s_function_body (self, address);
         }
         else
         if (opcode == VM_RETURN) {
             if (self->verbose)
                 printf ("D [%04zd]: return stack=%zd\n", needle, self->call_stack_ptr);
             needle = self->call_stack [--self->call_stack_ptr];
+        }
+        else
+        if (opcode == VM_IF) {
+            size_t address = (size_t) (self->code [needle + 0] << 16)
+                           + (size_t) (self->code [needle + 1] << 8)
+                           + (size_t) (self->code [needle + 2]);
+            int64_t value = zs_pipe_pull_single (self->output)?
+                            zs_pipe_whole (self->output): 0;
+            if (self->verbose)
+                printf ("D [%04zd]: if value=%" PRId64 "\n", needle, value);
+            needle = value? needle + 3: address;
         }
         else
         if (opcode == VM_WHOLE) {
@@ -689,15 +737,15 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_PIPE) {
             //  Later we'll rewrite the pipe API to use fixed allocations inside
-            //  the VM. The separate class makes it easy to develop the language.
+            //  the VM. The current design makes it easy to develop the language.
             byte pipe_op = self->code [needle++];
             if (self->verbose)
                 printf ("D [%04zd]: pipe op=%s\n", needle, pipe_op_name [pipe_op]);
 
             switch (pipe_op) {
                 case VM_PIPE_NEST:
-                    self->output_stack [self->output_stack_ptr] = self->output;
-                    self->output_stack_ptr++;
+                    assert (self->output_stack_ptr < MAX_OUTPUT);
+                    self->output_stack [self->output_stack_ptr++] = self->output;
                     self->output = zs_pipe_new ();
                     break;
                 case VM_PIPE_UNNEST:
@@ -726,7 +774,7 @@ zs_vm_run (zs_vm_t *self)
             if (self->verbose)
                 printf ("D [%04zd]: sentence\n", needle);
             //  TODO: send results to console/actor pipe
-            puts (zs_vm_results (self));
+            //  For now zs_repl grabs results via the zs_vm_results call
         }
         else
         if (opcode == VM_GUARD) {
@@ -741,6 +789,10 @@ zs_vm_run (zs_vm_t *self)
                 printf ("D [%04zd]: stop\n", needle);
             break;
         }
+        else {
+            printf ("E [%04zd]: error opcode=%d\n", needle, opcode);
+            break;
+        }
     }
     return 0;
 }
@@ -749,6 +801,7 @@ zs_vm_run (zs_vm_t *self)
 //  ---------------------------------------------------------------------------
 //  Return results as string, after successful execution. Caller must not
 //  modify returned value.
+//  TODO: deprected, to be replaced by sending to pipe on sentence
 
 const char *
 zs_vm_results (zs_vm_t *self)
@@ -826,7 +879,6 @@ zs_vm_test (bool verbose)
         printf ("\n");
 
     //  @selftest
-    int rc;
     zs_vm_t *vm = zs_vm_new ();
     zs_vm_set_verbose (vm, verbose);
 
@@ -844,7 +896,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_inline (vm, "count");
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_inline (vm, "assert");
-    zs_vm_compile_commit (vm);
+    zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
     //  main: (
@@ -854,6 +906,7 @@ zs_vm_test (bool verbose)
     //      sum (123 count (1 2 3)) 126 assert,
     //      year year count 2 assert
     //  )
+
     zs_vm_compile_define (vm, "main");
 
     zs_vm_compile_whole  (vm, 123);
@@ -896,35 +949,44 @@ zs_vm_test (bool verbose)
     zs_vm_compile_whole   (vm, 2);
     zs_vm_compile_inline  (vm, "assert");
 
-    zs_vm_compile_commit (vm);
+    zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
-    //  sub sub main
+    //  maybe: (1 { <hello> } 0 { <world> } count 1 assert)
+
+    zs_vm_compile_define (vm, "maybe");
+    zs_vm_compile_whole  (vm, 1);
+    zs_vm_compile_if     (vm);
+    zs_vm_compile_string (vm, "hello");
+    zs_vm_compile_if_end (vm);
+    zs_vm_compile_whole  (vm, 0);
+    zs_vm_compile_if     (vm);
+    zs_vm_compile_string (vm, "world");
+    zs_vm_compile_if_end (vm);
+    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_whole  (vm, 1);
+    zs_vm_compile_inline (vm, "assert");
+    zs_vm_commit (vm);
+
+    //  --------------------------------------------------------------------
+    //  go: (sub main loop)
     zs_vm_compile_define (vm, "go");
     zs_vm_compile_inline (vm, "sub");
-    zs_vm_compile_inline (vm, "sub");
     zs_vm_compile_inline (vm, "main");
-    zs_vm_compile_commit (vm);
+    zs_vm_compile_inline (vm, "loop");
+    zs_vm_commit (vm);
     if (verbose)
         zs_vm_dump (vm);
 
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == 0);
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == 0);
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == 0);
-    zs_vm_run (vm);
-
-    rc = zs_vm_compile_rollback (vm);
-    assert (rc == -1);
-    zs_vm_run (vm);
+    //  Unwind the VM, to check that it's sane (don't do this at home)
+    size_t nbr_functions = 0;
+    while (true) {
+        zs_vm_run (vm);
+        if (zs_vm_rollback (vm))
+            break;
+        nbr_functions++;
+    }
+    assert (nbr_functions == 4);
 
     zs_vm_destroy (&vm);
     //  @end

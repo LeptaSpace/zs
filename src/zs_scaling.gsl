@@ -42,12 +42,19 @@ s_scale_up (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
 #endif
 
 .for class.atomic
-.   atomic.type ?= "whole"
+.   atomic.scale ?= "up"
+.   if atomic.scale = "up"
+.       atomic.type ?= "whole"
+.       atomic.op = "*"
+.   else
+.       atomic.type = "real"
+.       atomic.op = "/"
+.   endif
 static int
-s_$(name:)_up (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_$(name:c,no) (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self)) {
-        zs_vm_register (self, "$(atomic.name:)", zs_type_modest, "Scale up by $(string.trim (atomic.?''):left)");
+        zs_vm_register (self, "$(atomic.name:)", zs_type_modest, "Scale by $(string.trim (atomic.?''):left)");
 .   for alias
         zs_vm_register (self, "$(alias.name:)", zs_type_modest, NULL);
 .   endfor
@@ -57,7 +64,7 @@ s_$(name:)_up (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         while (zs_pipe_recv (input)) {
 .   if type = "real"
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * $(value:));
+            zs_pipe_set_real (output, zs_pipe_real (input) $(op) ($(value:)));
 .   else
             s_scale_up (input, output, (int64_t) ($(value:)));
 .   endif
@@ -67,30 +74,12 @@ s_$(name:)_up (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     return 0;
 }
 
-static int
-s_$(name:)_down (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
-{
-    if (zs_vm_probing (self)) {
-        zs_vm_register (self, "/$(atomic.name:)", zs_type_modest, "Scale down by $(string.trim (atomic.?''):left)");
-.   for alias
-        zs_vm_register (self, "/$(alias.name:)", zs_type_modest, NULL);
-.   endfor
-    }
-    else {
-        //  Process all values on input pipe, always coerce to real
-        while (zs_pipe_recv (input))
-            zs_pipe_send_real (output, zs_pipe_real (input) / (double) ($(value:)));
-    }
-    return 0;
-}
-
 .endfor
 static void
 s_register_$(class.name) (zs_vm_t *self)
 {
 .for class.atomic
-    zs_vm_probe (self, s_$(name:)_up);
-    zs_vm_probe (self, s_$(name:)_down);
+    zs_vm_probe (self, s_$(name:c,no));
 .endfor
 }
 #endif

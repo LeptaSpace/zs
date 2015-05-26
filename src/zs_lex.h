@@ -22,14 +22,16 @@ typedef struct _zs_lex_t zs_lex_t;
 #endif
 
 typedef enum {
-    zs_lex_inline_fn,       //  function
-    zs_lex_nested_fn,       //  function (
-    zs_lex_define_fn,       //  function: (
-    zs_lex_close_list,      //  ) close list
+    zs_lex_fn_inline,       //  function
+    zs_lex_fn_nested,       //  function (
+    zs_lex_fn_define,       //  function: (
+    zs_lex_fn_close,        //  ) close function
     zs_lex_string,          //  <string>
     zs_lex_number,          //  number expression
     zs_lex_phrase,          //  , phrase connector
     zs_lex_sentence,        //  . sentence connector
+    zs_lex_maybe,           //  { open conditional
+    zs_lex_continue,        //  } close conditional
     zs_lex_invalid,         //  Syntax error
     zs_lex_null,            //  Nothing to return
     zs_lex_tokens           //  Size of this set
@@ -59,7 +61,7 @@ zs_lex_token_t
 
 //  Return actual token value, if any
 const char *
-    zs_lex_token (zs_lex_t *self);
+    zs_lex_value (zs_lex_t *self);
 
 //  Return position of last processed character in text
 uint

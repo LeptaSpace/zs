@@ -128,6 +128,49 @@ if test "x$was_czmq_check_lib_detected" = "xno"; then
 fi
 
 
+was_editline_check_lib_detected=no
+
+PKG_CHECK_MODULES([editline], [libeditline],,
+    [
+        AC_ARG_WITH([libeditline],
+            [
+                AS_HELP_STRING([--with-libeditline],
+                [Specify libeditline prefix])
+            ],
+            [search_libeditline="yes"],
+            [])
+
+        editline_synthetic_cflags=""
+        editline_synthetic_libs="-leditline"
+
+        if test "x$search_libeditline" = "xyes"; then
+            if test -r "${with_libeditline}/include/editline.h"; then
+                editline_synthetic_cflags="-I${with_libeditline}/include"
+                editline_synthetic_libs="-L${with_libeditline}/lib -leditline"
+            else
+                AC_MSG_ERROR([${with_libeditline}/include/editline.h not found. Please check libeditline prefix])
+            fi
+        fi
+
+        CFLAGS="${editline_synthetic_cflags} ${CFLAGS}"
+        LDFLAGS="${editline_synthetic_libs} ${LDFLAGS}"
+        LIBS="${editline_synthetic_libs} ${LIBS}"
+
+        AC_CHECK_LIB([editline], [readline],
+            [
+                AC_SUBST([editline_CFLAGS],[${editline_synthetic_cflags}])
+                AC_SUBST([editline_LIBS],[${editline_synthetic_libs}])
+                was_editline_check_lib_detected=yes
+            ],
+            [AC_MSG_ERROR([cannot link with -leditline, install libeditline.])])
+    ])
+
+if test "x$was_editline_check_lib_detected" = "xno"; then
+    CFLAGS="${editline_CFLAGS} ${CFLAGS}"
+    LIBS="${editline_LIBS} ${LIBS}"
+fi
+
+
 CFLAGS="${PREVIOUS_CFLAGS}"
 LIBS="${PREVIOUS_LIBS}"
 

@@ -28,15 +28,18 @@ typedef enum {
     NULL_event = 0,
     number_event = 1,
     string_event = 2,
-    inline_fn_event = 3,
-    nested_fn_event = 4,
-    define_fn_event = 5,
-    completed_event = 6,
-    close_list_event = 7,
-    phrase_event = 8,
-    sentence_event = 9,
-    finished_event = 10,
-    invalid_event = 11
+    fn_inline_event = 3,
+    fn_nested_event = 4,
+    fn_define_event = 5,
+    maybe_event = 6,
+    fn_close_event = 7,
+    completed_event = 8,
+    committed_event = 9,
+    phrase_event = 10,
+    sentence_event = 11,
+    continue_event = 12,
+    finished_event = 13,
+    invalid_event = 14
 } event_t;
 
 //  Names for state machine logging and error reporting
@@ -54,13 +57,16 @@ s_event_name [] = {
     "(NONE)",
     "number",
     "string",
-    "inline_fn",
-    "nested_fn",
-    "define_fn",
+    "fn_inline",
+    "fn_nested",
+    "fn_define",
+    "maybe",
+    "fn_close",
     "completed",
-    "close_list",
+    "committed",
     "phrase",
     "sentence",
+    "continue",
     "finished",
     "invalid"
 };
@@ -73,14 +79,16 @@ static void compile_string (zs_repl_t *self);
 static void compile_inline_call (zs_repl_t *self);
 static void compile_nested_call (zs_repl_t *self);
 static void compile_define (zs_repl_t *self);
-static void signal_completed (zs_repl_t *self);
+static void compile_if (zs_repl_t *self);
+static void pop_and_check_scope (zs_repl_t *self);
 static void compile_unnest (zs_repl_t *self);
+static void compile_end_of_sentence (zs_repl_t *self);
 static void compile_commit_shell (zs_repl_t *self);
 static void run_virtual_machine (zs_repl_t *self);
 static void rollback_the_function (zs_repl_t *self);
 static void compile_unnest_or_commit (zs_repl_t *self);
 static void compile_end_of_phrase (zs_repl_t *self);
-static void compile_end_of_sentence (zs_repl_t *self);
+static void compile_if_end (zs_repl_t *self);
 static void check_if_completed (zs_repl_t *self);
 static void signal_syntax_error (zs_repl_t *self);
 
@@ -224,7 +232,7 @@ fsm_execute (fsm_t *self)
                     self->state = building_shell_state;
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  compile_define_shell
                     if (self->animate)
@@ -247,7 +255,7 @@ fsm_execute (fsm_t *self)
                     self->state = building_shell_state;
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  compile_define_shell
                     if (self->animate)
@@ -270,7 +278,7 @@ fsm_execute (fsm_t *self)
                     self->state = building_shell_state;
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  compile_define
                     if (self->animate)
@@ -287,13 +295,21 @@ fsm_execute (fsm_t *self)
                     self->state = building_function_state;
             }
             else
-            if (self->event == completed_event) {
+            if (self->event == maybe_event) {
                 if (!self->exception) {
-                    //  signal_completed
+                    //  compile_if
                     if (self->animate)
-                        zsys_debug ("zs_repl:               $ signal_completed");
-                    signal_completed (self->parent);
+                        zsys_debug ("zs_repl:               $ compile_if");
+                    compile_if (self->parent);
                 }
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = building_shell_state;
             }
             else
             if (self->event == finished_event) {
@@ -303,6 +319,14 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_repl:               $ check_if_completed");
                     check_if_completed (self->parent);
                 }
+            }
+            else
+            if (self->event == completed_event) {
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("zs_repl:               $ completed");
+                if (!self->exception)
+                    self->state = starting_state;
             }
             else
             if (self->event == phrase_event) {
@@ -339,7 +363,24 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == close_list_event) {
+            if (self->event == continue_event) {
+                if (!self->exception) {
+                    //  rollback_the_function
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ rollback_the_function");
+                    rollback_the_function (self->parent);
+                }
+                if (!self->exception) {
+                    //  signal_syntax_error
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ signal_syntax_error");
+                    signal_syntax_error (self->parent);
+                }
+                if (!self->exception)
+                    self->state = starting_state;
+            }
+            else
+            if (self->event == fn_close_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -381,7 +422,13 @@ fsm_execute (fsm_t *self)
         }
         else
         if (self->state == building_shell_state) {
-            if (self->event == close_list_event) {
+            if (self->event == fn_close_event) {
+                if (!self->exception) {
+                    //  pop_and_check_scope
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ pop_and_check_scope");
+                    pop_and_check_scope (self->parent);
+                }
                 if (!self->exception) {
                     //  compile_unnest
                     if (self->animate)
@@ -397,6 +444,12 @@ fsm_execute (fsm_t *self)
             }
             else
             if (self->event == completed_event) {
+                if (!self->exception) {
+                    //  compile_end_of_sentence
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ compile_end_of_sentence");
+                    compile_end_of_sentence (self->parent);
+                }
                 if (!self->exception) {
                     //  compile_commit_shell
                     if (self->animate)
@@ -414,12 +467,6 @@ fsm_execute (fsm_t *self)
                     if (self->animate)
                         zsys_debug ("zs_repl:               $ rollback_the_function");
                     rollback_the_function (self->parent);
-                }
-                if (!self->exception) {
-                    //  signal_completed
-                    if (self->animate)
-                        zsys_debug ("zs_repl:               $ signal_completed");
-                    signal_completed (self->parent);
                 }
                 if (!self->exception)
                     self->state = starting_state;
@@ -455,7 +502,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  compile_inline_call
                     if (self->animate)
@@ -470,7 +517,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  compile_nested_call
                     if (self->animate)
@@ -483,6 +530,17 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_repl:               $ get_next_token");
                     get_next_token (self->parent);
                 }
+            }
+            else
+            if (self->event == committed_event) {
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = starting_state;
             }
             else
             if (self->event == phrase_event) {
@@ -515,6 +573,42 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
+            if (self->event == maybe_event) {
+                if (!self->exception) {
+                    //  compile_if
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ compile_if");
+                    compile_if (self->parent);
+                }
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+            }
+            else
+            if (self->event == continue_event) {
+                if (!self->exception) {
+                    //  pop_and_check_scope
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ pop_and_check_scope");
+                    pop_and_check_scope (self->parent);
+                }
+                if (!self->exception) {
+                    //  compile_if_end
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ compile_if_end");
+                    compile_if_end (self->parent);
+                }
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+            }
+            else
             if (self->event == finished_event) {
                 if (!self->exception) {
                     //  check_if_completed
@@ -524,7 +618,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -596,7 +690,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  compile_inline_call
                     if (self->animate)
@@ -611,7 +705,7 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  compile_nested_call
                     if (self->animate)
@@ -626,7 +720,13 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == close_list_event) {
+            if (self->event == fn_close_event) {
+                if (!self->exception) {
+                    //  pop_and_check_scope
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ pop_and_check_scope");
+                    pop_and_check_scope (self->parent);
+                }
                 if (!self->exception) {
                     //  compile_unnest_or_commit
                     if (self->animate)
@@ -639,6 +739,17 @@ fsm_execute (fsm_t *self)
                         zsys_debug ("zs_repl:               $ get_next_token");
                     get_next_token (self->parent);
                 }
+            }
+            else
+            if (self->event == committed_event) {
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+                if (!self->exception)
+                    self->state = starting_state;
             }
             else
             if (self->event == phrase_event) {
@@ -671,12 +782,40 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == completed_event) {
-                //  No action - just logging
-                if (self->animate)
-                    zsys_debug ("zs_repl:               $ completed");
-                if (!self->exception)
-                    self->state = starting_state;
+            if (self->event == maybe_event) {
+                if (!self->exception) {
+                    //  compile_if
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ compile_if");
+                    compile_if (self->parent);
+                }
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
+            }
+            else
+            if (self->event == continue_event) {
+                if (!self->exception) {
+                    //  pop_and_check_scope
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ pop_and_check_scope");
+                    pop_and_check_scope (self->parent);
+                }
+                if (!self->exception) {
+                    //  compile_if_end
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ compile_if_end");
+                    compile_if_end (self->parent);
+                }
+                if (!self->exception) {
+                    //  get_next_token
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ get_next_token");
+                    get_next_token (self->parent);
+                }
             }
             else
             if (self->event == finished_event) {
@@ -688,7 +827,15 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == completed_event) {
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("zs_repl:               $ completed");
+                if (!self->exception)
+                    self->state = starting_state;
+            }
+            else
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -739,6 +886,14 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
+            if (self->event == completed_event) {
+                //  No action - just logging
+                if (self->animate)
+                    zsys_debug ("zs_repl:               $ completed");
+                if (!self->exception)
+                    self->state = starting_state;
+            }
+            else
             if (self->event == number_event) {
                 if (!self->exception) {
                     //  rollback_the_function
@@ -773,7 +928,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == inline_fn_event) {
+            if (self->event == fn_inline_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -790,7 +945,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == nested_fn_event) {
+            if (self->event == fn_nested_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -807,7 +962,7 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == define_fn_event) {
+            if (self->event == fn_define_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)
@@ -858,7 +1013,41 @@ fsm_execute (fsm_t *self)
                     self->state = starting_state;
             }
             else
-            if (self->event == close_list_event) {
+            if (self->event == maybe_event) {
+                if (!self->exception) {
+                    //  rollback_the_function
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ rollback_the_function");
+                    rollback_the_function (self->parent);
+                }
+                if (!self->exception) {
+                    //  signal_syntax_error
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ signal_syntax_error");
+                    signal_syntax_error (self->parent);
+                }
+                if (!self->exception)
+                    self->state = starting_state;
+            }
+            else
+            if (self->event == continue_event) {
+                if (!self->exception) {
+                    //  rollback_the_function
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ rollback_the_function");
+                    rollback_the_function (self->parent);
+                }
+                if (!self->exception) {
+                    //  signal_syntax_error
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ signal_syntax_error");
+                    signal_syntax_error (self->parent);
+                }
+                if (!self->exception)
+                    self->state = starting_state;
+            }
+            else
+            if (self->event == fn_close_event) {
                 if (!self->exception) {
                     //  rollback_the_function
                     if (self->animate)

@@ -1,18 +1,171 @@
 TODO
 
+- internal assertion failure: hard, so we get stack dump
 
-Problem: REPL shows continuation after fn definition
+Problem: need loops and conditionals
+
+
+    VM_IF nnnn
+        jump to nnnn if last value is zero
+
+    need to compile start & end
+
+        zs_vm_compile_if
+        zs_vm_compile_endif
+
+
+
+    compile start of cycle
+
+        compile "VM_WHEN nnnn"
+        stack VM_WHEN address
+
+    compile end of cycle
+
+        compile "VM_AGAIN nnnn"
+            nnnn = address of VM_WHEN
+            pop nnnn address
+            set nnnn to code_size + sizeof (address)
+        ... next
+
+                VM_WHEN nnnn  <--.
+              no    yes          |
+             /  next opcode      |
+            /        ..          |
+           /         ..          |
+          /          ..          |
+         |      VM_AGAIN nnnn ---'
+         \
+          `-->  next opcode
+
+    execution
+
+        execute VM_WHEN
+            take test value (from where?)
+            if false then jump to address
+            else fall through to code
+
+        execute VM_AGAIN
+            jump to address
+
+
+    { some code and some more final test }
+
+
+
+    I'd like the VM to invoke a function that emits yes/no to whether to do the block.
+    Question is how this function holds its state
+
+        fn (args) { phrase }
+        args fn { phrase }
+        number { phrase }
+
+    for numbers
+        - push constant to output
+            - yes/no indicator
+            - eat one output
+            - execute optional cycle
+            - or skip to end
+            REPEAT:
+                - push repeat address to vm
+            { store all code }
+            AGAIN:
+                - store exit address
+
+            VM_REPEAT
+            [0000]  - skip address
+            code code code
+
+
+
+
+    for functions
+        - invoke function as usual
+        - function provides output
+            - yes/no indicator
+            - further state if any
+            - eat one output, push rest
+            - execute optional cycle
+            - pop output -> input
+            - invoke function on new output
+
+    for strings
+        - unknown
+
+    args are provide to fn on first invocation, then fn output is passed back to fn
+    at each other invocation. FN outputs yes/no plus own state.
+
+    lets model simple N times loop
+
+        times (10) { <hello> }
+
+        10 times { <hello> }
+        { 10 times <hello> }
+        { temperature if <hello> }
+
+
+    call times nested
+        send 10 to output
+        unnest, pull 10 to input
+        call times
+
+            times: ( 1/0 1 - )
+
+        sends 9 to output
+
+            nest output
+            invoke phrase
+            unnes output -> input 9
+        call times
+        sends 8 to output
+
+
+
+
+    5 { ... }
+    function { ... }
+
+    where function produces 0..1..N times
+        call function again each time?
+        or call just once?
+
+    if () { }           1/0 one time
+    when ( ) { }        1/0 one time
+    else { }            ... mystical
+    repeat ( ) { }      ... N one time
+    until ( ) { }       ... mystical
+    maybe ( ) { }       ... mystical
+
+
+
+
 
 Problem: how to compile & run a paper script
-
 Problem: define test case for each atomic, in ZS
 
-Problem: period doesn't work for <fn: (sum). fn (1 2 3)>
-
-Problem: "K: (1000 *), K (1 2 3)" does not compile
 
 
----------------------------
+atomic contracts:
+    hint
+    status (draft, stable, legacy)
+    testcase (text)
+
+selftests run through all atomic tests
+    then for functions:
+        hint (<something>)
+        selftest (<something>)
+        status (stable|draft|legacy)
+
+
+
+- rewrite shell as repl primitive
+    - read line of input, put onto pipe
+    - execute input, display results if any
+    - core of zs.c
+
+- then shell is
+    until (break) { repl }
+
 
 - repl primitive takes list of lines, executes
 
@@ -25,22 +178,13 @@ Problem: "K: (1000 *), K (1 2 3)" does not compile
     - how to add hint for function....
     k: <Multiply by 1000> (1000 *)
 
-- if input pipe contains any real, tell function this
+- increase function address space to 32 bits (now 16 bits)
 
-- pipes can probably be built as single tree structure
-
-- make core atomics work with reals
-    - start with whole
-    - if we hit any real, then flip to real loop
-    - strings...? **for later**
-
-- selftests for atomics
+- pipes can probably be built as single tree structure?
 
 - make zs_repl into an actor
     - accept input on pipe
     - return output to pipe (end of sentence)
-
-- user functions take type of first function
 
 - profile every function, simple counter, 'n top' atomic sorts & prints top n
 
@@ -49,8 +193,10 @@ Problem: "K: (1000 *), K (1 2 3)" does not compile
     simple stack-based evaluator in zs_lex
 
 help on function
-    how to put function onto pipe
-    ? xyz
+    how to put function reference onto pipe
+    (function)
+    now (function) now -
+    now (function (args)) now -
 
 help (xyz)
     get hint on xyz if it's an atomic
@@ -59,21 +205,6 @@ help (xyz)
     -> how do we know to pass a function rather than execute it?
     1. @ before function name
     2. atomic can force this
-
-mark atomics as draft, stable, legacy
-contract for every function/atomic
-
-0, 1 many - conditionals and loops are the same; we repeat a phrase N times
-
-    compute { execute }
-    5 { <*> <*> <*>}
-
-    forever { sleep (1) temperature }
-    until (12 PM) { sleep (1) temperature }
-
-    Event driven:
-        above (30 C) { cooling (on) }
-        below (15 C) { heating (on) }
 
 
 

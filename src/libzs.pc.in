@@ -12,7 +12,7 @@ Name: libzs
 Description: ZeroScript experiment
 Version: @VERSION@
 
-Requires:libzmq >= 2.2.0 libczmq
+Requires:libzmq >= 2.2.0 libczmq libeditline
 
 Libs: -L${libdir} -lzs
 Cflags: -I${includedir}

@@ -8,6 +8,7 @@
     <version major = "0" minor = "0" patch = "0" />
 
     <use project = "czmq" />
+    <use project = "editline" />
 
     <main name = "zs" />
     <class name = "zs_pipe" />

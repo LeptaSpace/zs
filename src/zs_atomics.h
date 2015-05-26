@@ -44,11 +44,6 @@ s_help (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
                 printf ("%s ", name);
             name = zs_vm_function_next (self);
         }
-        name = zs_vm_atomic_first (self);
-        while (name) {
-            printf ("%s ", name);
-            name = zs_vm_atomic_next (self);
-        }
     }
     return 0;
 }
@@ -185,6 +180,15 @@ s_assert (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
         zs_vm_register (self, "assert", zs_type_greedy, "Assert first two values are the same");
+    else
+    if (zs_pipe_has_real (input)) {
+        double first = zs_pipe_recv_real (input);
+        double second = zs_pipe_recv_real (input);
+        if (first != second) {
+            printf ("E: assertion failed, %g != %g\n", first, second);
+            return -1;          //  Destroy the thread
+        }
+    }
     else {
         int64_t first = zs_pipe_recv_whole (input);
         int64_t second = zs_pipe_recv_whole (input);
@@ -287,12 +291,8 @@ s_divide (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     else {
         double operand = zs_pipe_recv_real (input);
-        printf ("/ OPERAND: %g\n", operand);
-        while (zs_pipe_recv (input)) {
-            double value = zs_pipe_real (input);
-            printf ("/ INTO: %g\n", value);
+        while (zs_pipe_recv (input))
             zs_pipe_send_real (output, zs_pipe_real (input) / operand);
-        }
     }
     return 0;
 }

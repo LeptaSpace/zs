@@ -22,6 +22,9 @@ git clone https://github.com/zeromq/libzmq $ZMQ_ROOT
 export CZMQ_ROOT="/tmp/czmq"
 git clone https://github.com/zeromq/czmq $CZMQ_ROOT
 
+export EDITLINE_ROOT="/tmp/editline"
+git clone https://github.com/troglobit/editline $EDITLINE_ROOT
+
 source ./build.sh
 
 ################################################################################

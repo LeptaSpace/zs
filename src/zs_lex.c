@@ -26,6 +26,8 @@
 
     Strings are quoted by < and >.
 
+    Clauses start with { and end with }.
+
     Accepts real or whole numbers:
         [sign]integer(.,)fraction(Ee)[sign]exponent (strtod format)
         whole number preceded by + or -
@@ -93,8 +95,10 @@ zs_lex_new (void)
         s_set_events (self, "%", percent_event);
         s_set_events (self, "<", open_quote_event);
         s_set_events (self, ">", close_quote_event);
-        s_set_events (self, "(", open_list_event);
-        s_set_events (self, ")", close_list_event);
+        s_set_events (self, "(", open_paren_event);
+        s_set_events (self, ")", close_paren_event);
+        s_set_events (self, "{", open_brace_event);
+        s_set_events (self, "}", close_brace_event);
         s_set_events (self, "#", comment_event);
         s_set_events (self, " \t", whitespace_event);
         s_set_events (self, "\n", newline_event);
@@ -157,7 +161,7 @@ zs_lex_next (zs_lex_t *self)
 //  Return actual token value, if any
 
 const char *
-zs_lex_token (zs_lex_t *self)
+zs_lex_value (zs_lex_t *self)
 {
     return self->token;
 }
@@ -264,35 +268,35 @@ store_newline_character (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  have_inline_fn_token
+//  have_fn_inline_token
 //
 
 static void
-have_inline_fn_token (zs_lex_t *self)
+have_fn_inline_token (zs_lex_t *self)
 {
-    self->type = zs_lex_inline_fn;
+    self->type = zs_lex_fn_inline;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  have_nested_fn_token
+//  have_fn_nested_token
 //
 
 static void
-have_nested_fn_token (zs_lex_t *self)
+have_fn_nested_token (zs_lex_t *self)
 {
-    self->type = zs_lex_nested_fn;
+    self->type = zs_lex_fn_nested;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  have_define_fn_token
+//  have_fn_define_token
 //
 
 static void
-have_define_fn_token (zs_lex_t *self)
+have_fn_define_token (zs_lex_t *self)
 {
-    self->type = zs_lex_define_fn;
+    self->type = zs_lex_fn_define;
 }
 
 
@@ -325,7 +329,29 @@ have_string_token (zs_lex_t *self)
 static void
 have_close_list_token (zs_lex_t *self)
 {
-    self->type = zs_lex_close_list;
+    self->type = zs_lex_fn_close;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_maybe_token
+//
+
+static void
+have_maybe_token (zs_lex_t *self)
+{
+    self->type = zs_lex_maybe;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_continue_token
+//
+
+static void
+have_continue_token (zs_lex_t *self)
+{
+    self->type = zs_lex_continue;
 }
 
 
@@ -397,6 +423,7 @@ zs_lex_test (bool verbose)
     zs_lex_t *lex = zs_lex_new ();
     zs_lex_verbose (lex, verbose);
 
+    //  Simple numbers and strings
     assert (zs_lex_first (lex, "1234") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
     assert (zs_lex_next (lex) == zs_lex_null);
@@ -416,27 +443,30 @@ zs_lex_test (bool verbose)
     assert (zs_lex_first (lex, " which continues over two lines>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "pi: ( 22.7 )") == zs_lex_define_fn);
+    //  Calling inline functions
+    assert (zs_lex_first (lex, "something(22.7e2)") == zs_lex_fn_nested);
+    assert (streq (zs_lex_value (lex), "something"));
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_close_list);
+    assert (zs_lex_next (lex) == zs_lex_fn_close);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "twopi:( pi 2 times)") == zs_lex_define_fn);
-    assert (streq (zs_lex_token (lex), "twopi"));
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (streq (zs_lex_token (lex), "pi"));
+    //  Defining functions
+    assert (zs_lex_first (lex, "pi: ( 22.7 )") == zs_lex_fn_define);
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (streq (zs_lex_token (lex), "times"));
-    assert (zs_lex_next (lex) == zs_lex_close_list);
+    assert (zs_lex_next (lex) == zs_lex_fn_close);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    assert (zs_lex_first (lex, "something(22.7e2)") == zs_lex_nested_fn);
-    assert (streq (zs_lex_token (lex), "something"));
+    assert (zs_lex_first (lex, "twopi:( pi 2 times)") == zs_lex_fn_define);
+    assert (streq (zs_lex_value (lex), "twopi"));
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (streq (zs_lex_value (lex), "pi"));
     assert (zs_lex_next (lex) == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_close_list);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (streq (zs_lex_value (lex), "times"));
+    assert (zs_lex_next (lex) == zs_lex_fn_close);
     assert (zs_lex_next (lex) == zs_lex_null);
 
+    //  Various numeric forms
     assert (zs_lex_first (lex, "1 +1 -1 0.1") == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_number);
@@ -466,35 +496,43 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_number);
     assert (zs_lex_next (lex) == zs_lex_null);
 
+    //  Inline comments
     assert (zs_lex_first (lex, "# This is a comment") == zs_lex_null);
 
-    //  Test operators
-    assert (zs_lex_first (lex, "+ - * / ^") == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    //  Mathematical operators
+    assert (zs_lex_first (lex, "+ - * / ^") == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
     assert (zs_lex_next (lex) == zs_lex_null);
 
     //  These also work, which may need tightening
-    assert (zs_lex_first (lex, "++ -- ** // ^^ *2") == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
+    assert (zs_lex_first (lex, "++ -- ** // ^^ *2") == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (zs_lex_next (lex) == zs_lex_null);
+
+    //  Repetition braces
+    assert (zs_lex_first (lex, "5 {<hello>}") == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_maybe);
+    assert (zs_lex_next (lex) == zs_lex_string);
+    assert (zs_lex_next (lex) == zs_lex_continue);
     assert (zs_lex_next (lex) == zs_lex_null);
 
     //  Test various invalid tokens
     assert (zs_lex_first (lex, "[Hello, World>") == zs_lex_invalid);
     assert (zs_lex_first (lex, "<Hello,>?<World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_invalid);
-    assert (zs_lex_first (lex, "echo ( some text }") == zs_lex_nested_fn);
-    assert (streq (zs_lex_token (lex), "echo"));
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (streq (zs_lex_token (lex), "some"));
-    assert (zs_lex_next (lex) == zs_lex_inline_fn);
-    assert (streq (zs_lex_token (lex), "text"));
+    assert (zs_lex_first (lex, "echo ( some text >") == zs_lex_fn_nested);
+    assert (streq (zs_lex_value (lex), "echo"));
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (streq (zs_lex_value (lex), "some"));
+    assert (zs_lex_next (lex) == zs_lex_fn_inline);
+    assert (streq (zs_lex_value (lex), "text"));
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_next (lex) == zs_lex_null);
     assert (zs_lex_first (lex, "1?2") == zs_lex_invalid);

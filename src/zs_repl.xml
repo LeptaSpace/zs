@@ -20,35 +20,37 @@
         <action name = "compile string" />
         <action name = "get next token" />
     </event>
-    <event name = "inline fn" next = "building shell">
+    <event name = "fn inline" next = "building shell">
         <action name = "compile define shell" />
         <action name = "compile inline call" />
         <action name = "get next token" />
     </event>
-    <event name = "nested fn" next = "building shell">
+    <event name = "fn nested" next = "building shell">
         <action name = "compile define shell" />
         <action name = "compile nested call" />
         <action name = "get next token" />
     </event>
-    <event name = "define fn" next = "building function">
+    <event name = "fn define" next = "building function">
         <action name = "compile define" />
         <action name = "get next token" />
     </event>
-    <event name = "completed">
-        <action name = "signal completed" />
+    <event name = "maybe" next = "building shell">
+        <action name = "compile if" />
+        <action name = "get next token" />
     </event>
 </state>
 
 <state name = "building shell" inherit = "building function">
-    <event name = "close list">
+    <event name = "fn close">
+        <action name = "pop and check scope" />
         <action name = "compile unnest" />
         <action name = "get next token" />
     </event>
     <event name = "completed" next = "starting">
+        <action name = "compile end of sentence" />
         <action name = "compile commit shell" />
         <action name = "run virtual machine" />
         <action name = "rollback the function" />
-        <action name = "signal completed" />
     </event>
 </state>
 
@@ -61,16 +63,20 @@
         <action name = "compile string" />
         <action name = "get next token" />
     </event>
-    <event name = "inline fn">
+    <event name = "fn inline">
         <action name = "compile inline call" />
         <action name = "get next token" />
     </event>
-    <event name = "nested fn">
+    <event name = "fn nested">
         <action name = "compile nested call" />
         <action name = "get next token" />
     </event>
-    <event name = "close list">
+    <event name = "fn close">
+        <action name = "pop and check scope" />
         <action name = "compile unnest or commit" />
+        <action name = "get next token" />
+    </event>
+    <event name = "committed" next = "starting">
         <action name = "get next token" />
     </event>
     <event name = "phrase">
@@ -81,13 +87,22 @@
         <action name = "compile end of sentence" />
         <action name = "get next token" />
     </event>
-    <event name = "completed" next = "starting">
+    <event name = "maybe">
+        <action name = "compile if" />
+        <action name = "get next token" />
+    </event>
+    <event name = "continue">
+        <action name = "pop and check scope" />
+        <action name = "compile if end" />
+        <action name = "get next token" />
     </event>
 </state>
 
 <state name = "defaults">
     <event name = "finished">
         <action name = "check if completed" />
+    </event>
+    <event name = "completed" next = "starting">
     </event>
     <event name = "number" next = "starting">
         <action name = "rollback the function" />
@@ -97,15 +112,15 @@
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "inline fn" next = "starting">
+    <event name = "fn inline" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "nested fn" next = "starting">
+    <event name = "fn nested" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "define fn" next = "starting">
+    <event name = "fn define" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
@@ -117,7 +132,15 @@
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "close list" next = "starting">
+    <event name = "maybe" next = "starting">
+        <action name = "rollback the function" />
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "continue" next = "starting">
+        <action name = "rollback the function" />
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "fn close" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>

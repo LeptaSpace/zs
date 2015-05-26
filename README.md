@@ -28,21 +28,23 @@
 
 **<a href="#toc3-390">Code Generation</a>**
 
-**<a href="#toc3-398">Arguments and Flamewars</a>**
+**<a href="#toc3-398">The Shell</a>**
 
-**<a href="#toc3-407">Other Goals</a>**
+**<a href="#toc3-403">Arguments and Flamewars</a>**
 
-**<a href="#toc2-422">Design Notes</a>**
+**<a href="#toc3-412">Other Goals</a>**
 
-**<a href="#toc2-430">Bibliography</a>**
+**<a href="#toc2-427">Design Notes</a>**
 
-**<a href="#toc2-438">Technicalities</a>**
+**<a href="#toc2-435">Bibliography</a>**
 
-**<a href="#toc3-441">Ownership and License</a>**
+**<a href="#toc2-443">Technicalities</a>**
 
-**<a href="#toc3-452">Building and Installing</a>**
+**<a href="#toc3-446">Ownership and License</a>**
 
-**<a href="#toc3-483">This Document</a>**
+**<a href="#toc3-457">Building and Installing</a>**
+
+**<a href="#toc3-490">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -318,8 +320,8 @@ Scaling functions let you calculate in natural units. These functions multiply t
 
 The year, month, day, week, msec functions scale up or down to a number of seconds:
 
-    > 150 M /year /msec
-    4756.47
+    > 150 M /year msec
+    0.00475647
 
 Which is a nice simple way of calculating "If I have to handle 150 million requests a year, how many is that per millisecond?"
 
@@ -430,7 +432,12 @@ We use GSL code generation to build the core language pieces. There are two case
 * Generating the scaling atomics. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_units_si.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.xml), which produce the source code in [zs_units_si.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.h).
 * Generating the state machines. See zs_lex.xml and zs_repl.xml.
 
-<A name="toc3-398" title="Arguments and Flamewars" />
+<A name="toc3-398" title="The Shell" />
+### The Shell
+
+The zs shell provides command history, editing, and tab completion. We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
+
+<A name="toc3-403" title="Arguments and Flamewars" />
 ### Arguments and Flamewars
 
 The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -439,7 +446,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
 
-<A name="toc3-407" title="Other Goals" />
+<A name="toc3-412" title="Other Goals" />
 ### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -454,7 +461,7 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-422" title="Design Notes" />
+<A name="toc2-427" title="Design Notes" />
 ## Design Notes
 
 * Any language aspect that takes more than 10 minutes to understand is too complex.
@@ -462,7 +469,7 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
 * Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
 
-<A name="toc2-430" title="Bibliography" />
+<A name="toc2-435" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
@@ -470,10 +477,10 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * http://en.wikipedia.org/wiki/Arity
 * http://en.wikipedia.org/wiki/Concatenative_programming_language
 
-<A name="toc2-438" title="Technicalities" />
+<A name="toc2-443" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-441" title="Ownership and License" />
+<A name="toc3-446" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -484,7 +491,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-452" title="Building and Installing" />
+<A name="toc3-457" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -515,7 +522,9 @@ Here's how to build ZeroScript from GitHub:
 
 You will need the pkg-config, libtool, and autoreconf packages.
 
-<A name="toc3-483" title="This Document" />
+Uses: https://github.com/troglobit/editline.
+
+<A name="toc3-490" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).

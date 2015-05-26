@@ -305,7 +305,7 @@ zs_pipe_string (zs_pipe_t *self)
         else
         if (self->value->type == 'r') {
             snprintf (self->string_value, sizeof (self->string_value),
-                      "%g", self->value->real);
+                      "%.9g", self->value->real);
             return self->string_value;
         }
         else
@@ -394,6 +394,29 @@ s_pull_values (zs_pipe_t *self, zs_pipe_t *source)
         if (!value)
             break;
     }
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Pulls a single value from the pipe into the register. Any  previous value
+//  in the register is lost. Returns true if value was successfully received.
+//  If no values were received, returns false.
+
+bool
+zs_pipe_pull_single (zs_pipe_t *self)
+{
+    while (zlistx_last (self->values)) {
+        s_value_destroy (&self->value);
+        self->value = (value_t *) zlistx_detach_cur (self->values);
+        assert (self->value);
+        //  Skip any marks
+        if (isalpha (self->value->type)) {
+            if (self->value->type == 'r')
+                self->nbr_reals--;
+            return true;
+        }
+    }
+    return false;
 }
 
 

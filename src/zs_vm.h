@@ -97,7 +97,7 @@ void
 
 //  Close the current function definition.
 void
-    zs_vm_compile_commit (zs_vm_t *self);
+    zs_vm_commit (zs_vm_t *self);
 
 //  Cancel the current or last function definition and reset the virtual
 //  machine to the state before the previous _define. You can call this
@@ -105,7 +105,7 @@ void
 //  Returns 0 if OK, -1 if there was no function to rollback (the machine
 //  is then empty).
 int
-    zs_vm_compile_rollback (zs_vm_t *self);
+    zs_vm_rollback (zs_vm_t *self);
 
 //  Compile an inline function call; the actual pipe semantics depend on the
 //  type of the function. Returns 0 if successful, -1 if the function is not
@@ -125,6 +125,14 @@ int
 void
     zs_vm_compile_unnest (zs_vm_t *self);
 
+//  Compile a conditional branch
+void
+    zs_vm_compile_if (zs_vm_t *self);
+
+//  Close a conditional branch
+void
+    zs_vm_compile_if_end (zs_vm_t *self);
+
 //  Compile end of phrase. This appends the phrase output to the current
 //  sentence output, and starts a new phrase.
 void
@@ -139,25 +147,15 @@ void
 void
     zs_vm_dump (zs_vm_t *self);
 
-//  Return latest function by name; use with _prev to iterate through
+//  Return latest function by name; use with first to iterate through
 //  functions. Returns function name or NULL if there are none defined.
 const char *
     zs_vm_function_first (zs_vm_t *self);
 
-//  Return previous function by name; use after a _last to iterate through
+//  Return previous function by name; use after first to iterate through
 //  functions. Returns function name or NULL if there are no more.
 const char *
     zs_vm_function_next (zs_vm_t *self);
-
-//  Return first atomic by name; use with _next to iterate through atomics.
-//  Returns atomic name or NULL if there are none defined.
-const char *
-    zs_vm_atomic_first (zs_vm_t *self);
-
-//  Return next atomic by name; use with _first to iterate through atomics.
-//  Returns atomic name or NULL if there are no more defined.
-const char *
-    zs_vm_atomic_next (zs_vm_t *self);
 
 //  Enable tracing of VM compilation and execution.
 void
