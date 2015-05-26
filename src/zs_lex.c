@@ -127,7 +127,7 @@ zs_lex_destroy (zs_lex_t **self_p)
 //  Enable verbose tracing of lexer
 
 void
-zs_lex_verbose (zs_lex_t *self, bool verbose)
+zs_lex_set_verbose (zs_lex_t *self, bool verbose)
 {
     fsm_set_animate (self->fsm, verbose);
 }
@@ -421,7 +421,7 @@ zs_lex_test (bool verbose)
 
     //  @selftest
     zs_lex_t *lex = zs_lex_new ();
-    zs_lex_verbose (lex, verbose);
+    zs_lex_set_verbose (lex, verbose);
 
     //  Simple numbers and strings
     assert (zs_lex_first (lex, "1234") == zs_lex_number);

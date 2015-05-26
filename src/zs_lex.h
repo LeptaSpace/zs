@@ -49,7 +49,7 @@ void
 
 //  Enable verbose tracing of lexer
 void
-    zs_lex_verbose (zs_lex_t *self, bool verbose);
+    zs_lex_set_verbose (zs_lex_t *self, bool verbose);
 
 //  Start parsing buffer, return type of first token
 zs_lex_token_t

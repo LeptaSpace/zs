@@ -72,6 +72,8 @@ zs_repl_new (void)
         self->events [zs_lex_fn_nested] = fn_nested_event;
         self->events [zs_lex_fn_define] = fn_define_event;
         self->events [zs_lex_fn_close] = fn_close_event;
+        self->events [zs_lex_maybe] = maybe_event;
+        self->events [zs_lex_continue] = continue_event;
         self->events [zs_lex_string] = string_event;
         self->events [zs_lex_number] = number_event;
         self->events [zs_lex_phrase] = phrase_event;
@@ -108,6 +110,7 @@ void
 zs_repl_verbose (zs_repl_t *self, bool verbose)
 {
     fsm_set_animate (self->fsm, verbose);
+    zs_lex_set_verbose (self->lex, verbose);
     zs_vm_set_verbose (self->vm, verbose);
 }
 
