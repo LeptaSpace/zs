@@ -22,11 +22,13 @@
     </event>
     <event name = "fn inline" next = "building shell">
         <action name = "compile define shell" />
+        <action name = "remember loop function" />
         <action name = "compile inline call" />
         <action name = "get next token" />
     </event>
     <event name = "fn nested" next = "building shell">
         <action name = "compile define shell" />
+        <action name = "remember loop function" />
         <action name = "compile nested call" />
         <action name = "get next token" />
     </event>
@@ -34,8 +36,13 @@
         <action name = "compile define" />
         <action name = "get next token" />
     </event>
-    <event name = "maybe" next = "building shell">
-        <action name = "compile if" />
+    <event name = "start menu" next = "building shell">
+        <action name = "compile start menu" />
+        <action name = "get next token" />
+    </event>
+    <event name = "start loop" next = "building shell">
+        <action name = "require loop function" />
+        <action name = "compile start loop" />
         <action name = "get next token" />
     </event>
 </state>
@@ -64,10 +71,12 @@
         <action name = "get next token" />
     </event>
     <event name = "fn inline">
+        <action name = "remember loop function" />
         <action name = "compile inline call" />
         <action name = "get next token" />
     </event>
     <event name = "fn nested">
+        <action name = "remember loop function" />
         <action name = "compile nested call" />
         <action name = "get next token" />
     </event>
@@ -87,13 +96,22 @@
         <action name = "compile end of sentence" />
         <action name = "get next token" />
     </event>
-    <event name = "maybe">
-        <action name = "compile if" />
+    <event name = "start menu">
+        <action name = "compile start menu" />
         <action name = "get next token" />
     </event>
-    <event name = "continue">
+    <event name = "end menu">
         <action name = "pop and check scope" />
-        <action name = "compile if end" />
+        <action name = "compile end menu" />
+        <action name = "get next token" />
+    </event>
+    <event name = "start loop">
+        <action name = "compile start loop" />
+        <action name = "get next token" />
+    </event>
+    <event name = "end loop">
+        <action name = "pop and check scope" />
+        <action name = "compile end loop" />
         <action name = "get next token" />
     </event>
 </state>
@@ -132,11 +150,19 @@
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "maybe" next = "starting">
+    <event name = "start menu" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>
-    <event name = "continue" next = "starting">
+    <event name = "end menu" next = "starting">
+        <action name = "rollback the function" />
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "loop" next = "starting">
+        <action name = "rollback the function" />
+        <action name = "signal syntax error" />
+    </event>
+    <event name = "end loop" next = "starting">
         <action name = "rollback the function" />
         <action name = "signal syntax error" />
     </event>

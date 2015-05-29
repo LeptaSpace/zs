@@ -26,7 +26,9 @@
 
     Strings are quoted by < and >.
 
-    Clauses start with { and end with }.
+    Menus start with [ and end with ], and choices are separated by |.
+
+    Loops start with { and end with }.
 
     Accepts real or whole numbers:
         [sign]integer(.,)fraction(Ee)[sign]exponent (strtod format)
@@ -97,8 +99,11 @@ zs_lex_new (void)
         s_set_events (self, ">", close_quote_event);
         s_set_events (self, "(", open_paren_event);
         s_set_events (self, ")", close_paren_event);
-        s_set_events (self, "{", open_brace_event);
-        s_set_events (self, "}", close_brace_event);
+        s_set_events (self, "[", open_square_event);
+        s_set_events (self, "]", close_square_event);
+        s_set_events (self, "{", open_curly_event);
+        s_set_events (self, "}", close_curly_event);
+        s_set_events (self, "|", vertical_bar_event);
         s_set_events (self, "#", comment_event);
         s_set_events (self, " \t", whitespace_event);
         s_set_events (self, "\n", newline_event);
@@ -334,24 +339,57 @@ have_close_list_token (zs_lex_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  have_maybe_token
+//  have_start_menu_token
 //
 
 static void
-have_maybe_token (zs_lex_t *self)
+have_start_menu_token (zs_lex_t *self)
 {
-    self->type = zs_lex_maybe;
+    self->type = zs_lex_start_menu;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  have_continue_token
+//  have_end_menu_token
 //
 
 static void
-have_continue_token (zs_lex_t *self)
+have_end_menu_token (zs_lex_t *self)
 {
-    self->type = zs_lex_continue;
+    self->type = zs_lex_end_menu;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_choice_token
+//
+
+static void
+have_choice_token (zs_lex_t *self)
+{
+    self->type = zs_lex_choice;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_start_loop_token
+//
+
+static void
+have_start_loop_token (zs_lex_t *self)
+{
+    self->type = zs_lex_start_loop;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  have_end_loop_token
+//
+
+static void
+have_end_loop_token (zs_lex_t *self)
+{
+    self->type = zs_lex_end_loop;
 }
 
 
@@ -516,15 +554,21 @@ zs_lex_test (bool verbose)
     assert (zs_lex_next (lex) == zs_lex_fn_inline);
     assert (zs_lex_next (lex) == zs_lex_null);
 
-    //  Repetition braces
-    assert (zs_lex_first (lex, "5 {<hello>}") == zs_lex_number);
-    assert (zs_lex_next (lex) == zs_lex_maybe);
+    //  Menus are marked by square braces
+    assert (zs_lex_first (lex, "1 [<hello>]") == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_start_menu);
     assert (zs_lex_next (lex) == zs_lex_string);
-    assert (zs_lex_next (lex) == zs_lex_continue);
+    assert (zs_lex_next (lex) == zs_lex_end_menu);
+    assert (zs_lex_next (lex) == zs_lex_null);
+
+    //  loops are marked by curly braces
+    assert (zs_lex_first (lex, "{ 4 }") == zs_lex_start_loop);
+    assert (zs_lex_next (lex) == zs_lex_number);
+    assert (zs_lex_next (lex) == zs_lex_end_loop);
     assert (zs_lex_next (lex) == zs_lex_null);
 
     //  Test various invalid tokens
-    assert (zs_lex_first (lex, "[Hello, World>") == zs_lex_invalid);
+    assert (zs_lex_first (lex, "!Hello, World>") == zs_lex_invalid);
     assert (zs_lex_first (lex, "<Hello,>?<World>") == zs_lex_string);
     assert (zs_lex_next (lex) == zs_lex_invalid);
     assert (zs_lex_first (lex, "echo ( some text >") == zs_lex_fn_nested);

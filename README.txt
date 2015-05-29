@@ -228,13 +228,13 @@ Before we call a function, the VM prepares an input pipe based on the type of th
 
 * A modest function operates on the previous value in the current phrase, if there's one: "1 k". If we use a modest function at the start of a phrase, then it operates on the whole previous phrase: "1 2 3, k". This is like using parentheses: "k (1 2 3)".
 * A greedy function operates on the previous values in the current phrase, if there are any: "1 2 3 add". If we use a greedy function at the start of a phrase, it operators on the whole sentence so far: "1 2 3, 4 5 6, add".
-* An array function applies one value (the last value) to a phrase. Internally the last value is passed first, so the function can use it as an operand: "1 2 3, 2 times". The comma can help readability though isn't necessary.
+* An array function applies one value (the last value) to a phrase. Internally the last value is passed first, so the function can use it as an operand: "1 2 3, 2 x". The comma can help readability though isn't necessary.
 
 This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive. FIFO pipes seem more intuitive and more fitting for a language that aims to stretch itself over multiple threads, cores, boxes, and clouds.
 
 I'm trying to avoid forced-binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style. Hence the array functions. Here is how array functions work:
 
-    > 1 2 3, 2 times
+    > 1 2 3, 2 x
     2 4 6
     > 22 7 /
     3.14286
@@ -386,15 +386,15 @@ We use GSL code generation to build the core language pieces. There are two case
 
 ### The Shell
 
-The zs shell provides command history, editing, and tab completion. We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
+The zs shell provides command history, editing, and tab completion using the Tab key or '?' (as I'm trying to not use special characters in the language, the question mark should remain free for the CLI) (We'll see). We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
 
-### Arguments and Flamewars
+### Arguments
 
-The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
+The nice thing about languages is the Internet Comments per Kiloline of Code (IC/KLOC) factor, easily 10-1,000 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one gives a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
 
-If you want to talk about minor details like my use of < and > for strings, be my guest. There is no real agenda here, except to keep parsing as simple as possible for now. Asymmetric delimiters are trivial to parse. Curly quotes are too difficult to type. So < and > are a workable choice for now. It's also nice to be able to put ZeroScript strings inside C strings without any special escaping. Shrug.
+If you want to talk about minor details like my use of < and > for strings, be my guest. There is no real agenda here, except to provoke discussion, and to keep parsing as simple as possible for now. Asymmetric delimiters are trivial to parse. Curly ("real") quotes are too difficult to type. So < and > are a workable choice for now. It's also nice to be able to put ZeroScript strings inside C strings without any special escaping.
 
-If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
+When doing an experiment, "everyone else does it this way, so you should too" is not valid science. Unless, the alternatives are known to be painful, toxic, or deadly. In fact doing stuff no-one expects is kind of exactly the point.
 
 ### Other Goals
 
@@ -404,7 +404,11 @@ This experiment started with the idea of a domain specific language for ZeroMQ e
 
 Imagine a ZeroScript runtime for embedded systems, so we can throw apps at 32KB devices. I really can't wait to try this. It changes the sense of "programmable devices". If you know Forth, you know it was used exactly for this kind of work (telescopes), long decades ago.
 
-Imagine wrapping up libraries like Zyre, so ZeroScript apps can find each other on a network and throw themselves at each other.
+Imagine wrapping up libraries like Zyre, so ZeroScript apps can find each other on a network and throw themselves at each other. Start a Malamute broker with one command, then talk to it interactively and see what it says. Is the broker running in a thread, a process, or on a separate box?
+
+Imagine ZeroMQ messaging that just looks like data pipes. The same semantics for a function as a process. And imagine the same patterns that we love from ZeroMQ used to connect functions: pub-sub, pipeline, request-reply. I don't know if this makes any sense at all, yet it feels crunchy.
+
+Imagine a command shell that learns every time you use it, where you build up your working environment over weeks and years, which archives old unused functions and knows what to show you when you press Tab for auto-completion. Imagine being able to send such shells around to other people. "Here is my demo". It's not quite an application, and it's not quite a development environment. Someone's going to tell me Lisp already did it.
 
 Since each box will have an arbitrary set of atomics, bytecode is not portable. However the compilation process is lossless, so that we can produce source code back from bytecode.
 

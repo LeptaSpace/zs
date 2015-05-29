@@ -41,19 +41,22 @@ typedef enum {
     usable_event = 5,
     open_quote_event = 6,
     close_paren_event = 7,
-    open_brace_event = 8,
-    close_brace_event = 9,
-    comma_event = 10,
-    period_event = 11,
-    finished_event = 12,
-    whitespace_event = 13,
-    newline_event = 14,
-    colon_event = 15,
-    open_paren_event = 16,
-    percent_event = 17,
-    close_quote_event = 18,
-    other_event = 19,
-    comment_event = 20
+    open_square_event = 8,
+    close_square_event = 9,
+    vertical_bar_event = 10,
+    open_curly_event = 11,
+    close_curly_event = 12,
+    comma_event = 13,
+    period_event = 14,
+    finished_event = 15,
+    whitespace_event = 16,
+    newline_event = 17,
+    colon_event = 18,
+    open_paren_event = 19,
+    percent_event = 20,
+    close_quote_event = 21,
+    other_event = 22,
+    comment_event = 23
 } event_t;
 
 //  Names for state machine logging and error reporting
@@ -84,8 +87,11 @@ s_event_name [] = {
     "usable",
     "open_quote",
     "close_paren",
-    "open_brace",
-    "close_brace",
+    "open_square",
+    "close_square",
+    "vertical_bar",
+    "open_curly",
+    "close_curly",
     "comma",
     "period",
     "finished",
@@ -104,8 +110,11 @@ static void start_new_token (zs_lex_t *self);
 static void store_the_character (zs_lex_t *self);
 static void parse_next_character (zs_lex_t *self);
 static void have_close_list_token (zs_lex_t *self);
-static void have_maybe_token (zs_lex_t *self);
-static void have_continue_token (zs_lex_t *self);
+static void have_start_menu_token (zs_lex_t *self);
+static void have_end_menu_token (zs_lex_t *self);
+static void have_choice_token (zs_lex_t *self);
+static void have_start_loop_token (zs_lex_t *self);
+static void have_end_loop_token (zs_lex_t *self);
 static void have_phrase_token (zs_lex_t *self);
 static void have_null_token (zs_lex_t *self);
 static void have_fn_nested_token (zs_lex_t *self);
@@ -355,21 +364,48 @@ fsm_execute (fsm_t *self)
                 }
             }
             else
-            if (self->event == open_brace_event) {
+            if (self->event == open_square_event) {
                 if (!self->exception) {
-                    //  have_maybe_token
+                    //  have_start_menu_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_maybe_token");
-                    have_maybe_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_start_menu_token");
+                    have_start_menu_token (self->parent);
                 }
             }
             else
-            if (self->event == close_brace_event) {
+            if (self->event == close_square_event) {
                 if (!self->exception) {
-                    //  have_continue_token
+                    //  have_end_menu_token
                     if (self->animate)
-                        zsys_debug ("zs_lex:                $ have_continue_token");
-                    have_continue_token (self->parent);
+                        zsys_debug ("zs_lex:                $ have_end_menu_token");
+                    have_end_menu_token (self->parent);
+                }
+            }
+            else
+            if (self->event == vertical_bar_event) {
+                if (!self->exception) {
+                    //  have_choice_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_choice_token");
+                    have_choice_token (self->parent);
+                }
+            }
+            else
+            if (self->event == open_curly_event) {
+                if (!self->exception) {
+                    //  have_start_loop_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_start_loop_token");
+                    have_start_loop_token (self->parent);
+                }
+            }
+            else
+            if (self->event == close_curly_event) {
+                if (!self->exception) {
+                    //  have_end_loop_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_end_loop_token");
+                    have_end_loop_token (self->parent);
                 }
             }
             else
@@ -588,7 +624,7 @@ fsm_execute (fsm_t *self)
                     self->state = expecting_token_state;
             }
             else
-            if (self->event == open_brace_event) {
+            if (self->event == open_square_event) {
                 if (!self->exception) {
                     //  have_fn_inline_token
                     if (self->animate)
@@ -605,7 +641,58 @@ fsm_execute (fsm_t *self)
                     self->state = expecting_token_state;
             }
             else
-            if (self->event == close_brace_event) {
+            if (self->event == close_square_event) {
+                if (!self->exception) {
+                    //  have_fn_inline_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_fn_inline_token");
+                    have_fn_inline_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == vertical_bar_event) {
+                if (!self->exception) {
+                    //  have_fn_inline_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_fn_inline_token");
+                    have_fn_inline_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == open_curly_event) {
+                if (!self->exception) {
+                    //  have_fn_inline_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_fn_inline_token");
+                    have_fn_inline_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == close_curly_event) {
                 if (!self->exception) {
                     //  have_fn_inline_token
                     if (self->animate)
@@ -979,7 +1066,7 @@ fsm_execute (fsm_t *self)
                     self->state = expecting_token_state;
             }
             else
-            if (self->event == open_brace_event) {
+            if (self->event == open_square_event) {
                 if (!self->exception) {
                     //  have_fn_inline_token
                     if (self->animate)
@@ -996,7 +1083,58 @@ fsm_execute (fsm_t *self)
                     self->state = expecting_token_state;
             }
             else
-            if (self->event == close_brace_event) {
+            if (self->event == close_square_event) {
+                if (!self->exception) {
+                    //  have_fn_inline_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_fn_inline_token");
+                    have_fn_inline_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == vertical_bar_event) {
+                if (!self->exception) {
+                    //  have_fn_inline_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_fn_inline_token");
+                    have_fn_inline_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == open_curly_event) {
+                if (!self->exception) {
+                    //  have_fn_inline_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_fn_inline_token");
+                    have_fn_inline_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == close_curly_event) {
                 if (!self->exception) {
                     //  have_fn_inline_token
                     if (self->animate)
@@ -1223,7 +1361,7 @@ fsm_execute (fsm_t *self)
                     self->state = expecting_token_state;
             }
             else
-            if (self->event == open_brace_event) {
+            if (self->event == open_square_event) {
                 if (!self->exception) {
                     //  have_number_token
                     if (self->animate)
@@ -1240,7 +1378,24 @@ fsm_execute (fsm_t *self)
                     self->state = expecting_token_state;
             }
             else
-            if (self->event == close_brace_event) {
+            if (self->event == close_square_event) {
+                if (!self->exception) {
+                    //  have_number_token
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ have_number_token");
+                    have_number_token (self->parent);
+                }
+                if (!self->exception) {
+                    //  push_back_to_previous
+                    if (self->animate)
+                        zsys_debug ("zs_lex:                $ push_back_to_previous");
+                    push_back_to_previous (self->parent);
+                }
+                if (!self->exception)
+                    self->state = expecting_token_state;
+            }
+            else
+            if (self->event == vertical_bar_event) {
                 if (!self->exception) {
                     //  have_number_token
                     if (self->animate)

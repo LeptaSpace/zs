@@ -30,21 +30,21 @@
 
 **<a href="#toc3-398">The Shell</a>**
 
-**<a href="#toc3-403">Arguments and Flamewars</a>**
+**<a href="#toc3-403">Arguments</a>**
 
 **<a href="#toc3-412">Other Goals</a>**
 
-**<a href="#toc2-427">Design Notes</a>**
+**<a href="#toc2-431">Design Notes</a>**
 
-**<a href="#toc2-435">Bibliography</a>**
+**<a href="#toc2-439">Bibliography</a>**
 
-**<a href="#toc2-443">Technicalities</a>**
+**<a href="#toc2-448">Technicalities</a>**
 
-**<a href="#toc3-446">Ownership and License</a>**
+**<a href="#toc3-451">Ownership and License</a>**
 
-**<a href="#toc3-457">Building and Installing</a>**
+**<a href="#toc3-462">Building and Installing</a>**
 
-**<a href="#toc3-490">This Document</a>**
+**<a href="#toc3-495">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -435,16 +435,16 @@ We use GSL code generation to build the core language pieces. There are two case
 <A name="toc3-398" title="The Shell" />
 ### The Shell
 
-The zs shell provides command history, editing, and tab completion. We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
+The zs shell provides command history, editing, and tab completion using the Tab key or '?' (as I'm trying to not use special characters in the language, the question mark should remain free for the CLI) (We'll see). We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
 
-<A name="toc3-403" title="Arguments and Flamewars" />
-### Arguments and Flamewars
+<A name="toc3-403" title="Arguments" />
+### Arguments
 
-The nice thing about languages is the Internet Comments per Kiloline of Code factor, easily 10-100 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one seems to give a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
+The nice thing about languages is the Internet Comments per Kiloline of Code (IC/KLOC) factor, easily 10-1,000 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one gives a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
 
-If you want to talk about minor details like my use of < and > for strings, be my guest. There is no real agenda here, except to keep parsing as simple as possible for now. Asymmetric delimiters are trivial to parse. Curly quotes are too difficult to type. So < and > are a workable choice for now. It's also nice to be able to put ZeroScript strings inside C strings without any special escaping. Shrug.
+If you want to talk about minor details like my use of < and > for strings, be my guest. There is no real agenda here, except to provoke discussion, and to keep parsing as simple as possible for now. Asymmetric delimiters are trivial to parse. Curly ("real") quotes are too difficult to type. So < and > are a workable choice for now. It's also nice to be able to put ZeroScript strings inside C strings without any special escaping.
 
-If you want to accuse me of inventing new language to solve fundamental problems, perhaps do more research? Read the ZeroMQ Guide, and look at my numerous other projects. ZeroScript is experimental icing on top of a rather large and delicious cake.
+When doing an experiment, "everyone else does it this way, so you should too" is not valid science. Unless, the alternatives are known to be painful, toxic, or deadly. In fact doing stuff no-one expects is kind of exactly the point.
 
 <A name="toc3-412" title="Other Goals" />
 ### Other Goals
@@ -455,13 +455,17 @@ This experiment started with the idea of a domain specific language for ZeroMQ e
 
 Imagine a ZeroScript runtime for embedded systems, so we can throw apps at 32KB devices. I really can't wait to try this. It changes the sense of "programmable devices". If you know Forth, you know it was used exactly for this kind of work (telescopes), long decades ago.
 
-Imagine wrapping up libraries like Zyre, so ZeroScript apps can find each other on a network and throw themselves at each other.
+Imagine wrapping up libraries like Zyre, so ZeroScript apps can find each other on a network and throw themselves at each other. Start a Malamute broker with one command, then talk to it interactively and see what it says. Is the broker running in a thread, a process, or on a separate box?
+
+Imagine ZeroMQ messaging that just looks like data pipes. The same semantics for a function as a process. And imagine the same patterns that we love from ZeroMQ used to connect functions: pub-sub, pipeline, request-reply. I don't know if this makes any sense at all, yet it feels crunchy.
+
+Imagine a command shell that learns every time you use it, where you build up your working environment over weeks and years, which archives old unused functions and knows what to show you when you press Tab for auto-completion. Imagine being able to send such shells around to other people. "Here is my demo". It's not quite an application, and it's not quite a development environment. Someone's going to tell me Lisp already did it.
 
 Since each box will have an arbitrary set of atomics, bytecode is not portable. However the compilation process is lossless, so that we can produce source code back from bytecode.
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-427" title="Design Notes" />
+<A name="toc2-431" title="Design Notes" />
 ## Design Notes
 
 * Any language aspect that takes more than 10 minutes to understand is too complex.
@@ -469,18 +473,19 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
 * Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
 
-<A name="toc2-435" title="Bibliography" />
+<A name="toc2-439" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
 * http://en.wikipedia.org/wiki/Metric_prefix
 * http://en.wikipedia.org/wiki/Arity
 * http://en.wikipedia.org/wiki/Concatenative_programming_language
+* https://wiki.haskell.org/Functional_programming
 
-<A name="toc2-443" title="Technicalities" />
+<A name="toc2-448" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-446" title="Ownership and License" />
+<A name="toc3-451" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -491,7 +496,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-457" title="Building and Installing" />
+<A name="toc3-462" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -524,7 +529,7 @@ You will need the pkg-config, libtool, and autoreconf packages.
 
 Uses: https://github.com/troglobit/editline.
 
-<A name="toc3-490" title="This Document" />
+<A name="toc3-495" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).

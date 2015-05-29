@@ -44,8 +44,9 @@ struct _zs_repl_t {
     zs_vm_t *vm;                //  Execution context
     bool completed;             //  Input formed a complete phrase
     size_t scope;               //  Nesting scope, 0..n
-    zs_lex_token_t
-        scope_stack [SCOPE_MAX];    //  Stack matching closing token
+    //  Stack matching closing token
+    zs_lex_token_t scope_stack [SCOPE_MAX];
+    char *loop_function;        //  Last function we called
 };
 
 
@@ -72,8 +73,10 @@ zs_repl_new (void)
         self->events [zs_lex_fn_nested] = fn_nested_event;
         self->events [zs_lex_fn_define] = fn_define_event;
         self->events [zs_lex_fn_close] = fn_close_event;
-        self->events [zs_lex_maybe] = maybe_event;
-        self->events [zs_lex_continue] = continue_event;
+        self->events [zs_lex_start_menu] = start_menu_event;
+        self->events [zs_lex_end_menu] = end_menu_event;
+        self->events [zs_lex_start_loop] = start_loop_event;
+        self->events [zs_lex_end_loop] = end_loop_event;
         self->events [zs_lex_string] = string_event;
         self->events [zs_lex_number] = number_event;
         self->events [zs_lex_phrase] = phrase_event;
@@ -227,7 +230,7 @@ compile_nested_call (zs_repl_t *self)
 {
     assert (self->scope < SCOPE_MAX);
     self->scope_stack [self->scope++] = zs_lex_fn_close;
-    if (zs_vm_compile_nested (self->vm, zs_lex_value (self->lex)))
+    if (zs_vm_compile_nest (self->vm, zs_lex_value (self->lex)))
         fsm_set_exception (self->fsm, invalid_event);
 }
 
@@ -252,7 +255,7 @@ pop_and_check_scope (zs_repl_t *self)
 static void
 compile_unnest (zs_repl_t *self)
 {
-    zs_vm_compile_unnest (self->vm);
+    zs_vm_compile_xnest (self->vm);
 }
 
 
@@ -280,7 +283,7 @@ static void
 compile_unnest_or_commit (zs_repl_t *self)
 {
     if (self->scope)
-        zs_vm_compile_unnest (self->vm);
+        zs_vm_compile_xnest (self->vm);
     else {
         zs_vm_commit (self->vm);
         fsm_set_exception (self->fsm, committed_event);
@@ -289,26 +292,74 @@ compile_unnest_or_commit (zs_repl_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  compile_if
+//  compile_start_menu
 //
 
 static void
-compile_if (zs_repl_t *self)
+compile_start_menu (zs_repl_t *self)
 {
     assert (self->scope < SCOPE_MAX);
-    self->scope_stack [self->scope++] = zs_lex_continue;
-    zs_vm_compile_if (self->vm);
+    self->scope_stack [self->scope++] = zs_lex_end_menu;
+    zs_vm_compile_menu (self->vm);
 }
 
 
 //  ---------------------------------------------------------------------------
-//  compile_again
+//  compile_end_menu
 //
 
 static void
-compile_if_end (zs_repl_t *self)
+compile_end_menu (zs_repl_t *self)
 {
-    zs_vm_compile_if_end (self->vm);
+    zs_vm_compile_xmenu (self->vm);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  remember_loop_function
+//
+
+static void
+remember_loop_function (zs_repl_t *self)
+{
+    zstr_free (&self->loop_function);
+    self->loop_function = strdup (zs_lex_value (self->lex));
+}
+
+
+//  ---------------------------------------------------------------------------
+//  require_loop_function
+//
+
+static void
+require_loop_function (zs_repl_t *self)
+{
+    if (!self->loop_function)
+        fsm_set_exception (self->fsm, invalid_event);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_start_loop
+//
+
+static void
+compile_start_loop (zs_repl_t *self)
+{
+    assert (self->scope < SCOPE_MAX);
+    self->scope_stack [self->scope++] = zs_lex_end_loop;
+    zs_vm_compile_loop (self->vm, self->loop_function);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  compile_end_loop
+//
+
+static void
+compile_end_loop (zs_repl_t *self)
+{
+    zs_vm_compile_xloop (self->vm);
 }
 
 
@@ -451,12 +502,14 @@ zs_repl_offset (zs_repl_t *self)
 static void
 s_repl_assert (zs_repl_t *self, const char *input, const char *expected)
 {
-    int rc = zs_repl_execute (self, input);
-    assert (rc == 0);
+    if (zs_repl_execute (self, input)) {
+        printf ("E: syntax error: '%s'\n", input);
+        assert (false);
+    }
     const char *results = zs_repl_results (self);
     if (strneq (results, expected)) {
         printf ("input='%s' results='%s' expected='%s'\n", input, results, expected);
-        exit (-1);
+        assert (false);
     }
 }
 
@@ -495,6 +548,7 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "K: (1000 *)", "");
     s_repl_assert (repl, "K (1 2 3)", "1000 2000 3000");
     s_repl_assert (repl, "12.0 .1 +", "12.1");
+    s_repl_assert (repl, "1 [1 2] 0.5 [1 2] 0.49 [1 2] count", "4");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");
