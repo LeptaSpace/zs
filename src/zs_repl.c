@@ -46,7 +46,8 @@ struct _zs_repl_t {
     size_t scope;               //  Nesting scope, 0..n
     //  Stack matching closing token
     zs_lex_token_t scope_stack [SCOPE_MAX];
-    char *loop_function;        //  Last function we called
+    //  Loop function at each open scope
+    char *loop_function [SCOPE_MAX];
 };
 
 
@@ -100,6 +101,8 @@ zs_repl_destroy (zs_repl_t **self_p)
         fsm_destroy (&self->fsm);
         zs_lex_destroy (&self->lex);
         zs_vm_destroy (&self->vm);
+        while (self->scope)
+            zstr_free (&self->loop_function [self->scope--]);
         free (self);
         *self_p = NULL;
     }
@@ -322,8 +325,8 @@ compile_end_menu (zs_repl_t *self)
 static void
 remember_loop_function (zs_repl_t *self)
 {
-    zstr_free (&self->loop_function);
-    self->loop_function = strdup (zs_lex_value (self->lex));
+    zstr_free (&self->loop_function [self->scope]);
+    self->loop_function [self->scope] = strdup (zs_lex_value (self->lex));
 }
 
 
@@ -334,7 +337,7 @@ remember_loop_function (zs_repl_t *self)
 static void
 require_loop_function (zs_repl_t *self)
 {
-    if (!self->loop_function)
+    if (!self->loop_function [self->scope])
         fsm_set_exception (self->fsm, invalid_event);
 }
 
@@ -346,9 +349,9 @@ require_loop_function (zs_repl_t *self)
 static void
 compile_start_loop (zs_repl_t *self)
 {
+    zs_vm_compile_loop (self->vm, self->loop_function [self->scope]);
     assert (self->scope < SCOPE_MAX);
     self->scope_stack [self->scope++] = zs_lex_end_loop;
-    zs_vm_compile_loop (self->vm, self->loop_function);
 }
 
 
@@ -549,6 +552,7 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "K (1 2 3)", "1000 2000 3000");
     s_repl_assert (repl, "12.0 .1 +", "12.1");
     s_repl_assert (repl, "1 [1 2] 0.5 [1 2] 0.49 [1 2] count", "4");
+    s_repl_assert (repl, "times (1 k) { 1 } count", "1000");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

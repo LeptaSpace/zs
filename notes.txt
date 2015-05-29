@@ -1,26 +1,42 @@
 TODO
 
+
+    - passes k instead of times as loop function
+
 Problem: need loops and conditionals
 
 
-    WHEN:
+    LOOP:
+
+        function { phrase }
+
+        - function is called before phrase
+        - sends yes/no (1/0) and next index
+        - atomics for basic operations:
+            n times
+            forever
+
+
+        ? how to access loop index inside phrase
+        - we have no variables or symbols to play with
+        - function could inject value into input stream
+
+        ? how to store more than a single value in loop state
+        - having a loop stack is pretty clumsy
+
+
+        times (1 k) { 1 } count
+
+
+
+
+    MENU:
 
         function [ phrase | phrase | phrase ]
             outputs whole number
             0 or less -> skip all
             1, 2, 3... -> matching phrase
 
-
-    LOOP:
-
-        function { phrase }
-            outputs 0/1 plus state
-            execute phrase, collect output
-            re-execute function with state
-            repeat
-
-
-    parsing function,
 
 
 

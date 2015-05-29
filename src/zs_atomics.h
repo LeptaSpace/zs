@@ -244,8 +244,10 @@ s_whole (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 static int
 s_add (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "+", zs_type_array, "Add value to all");
+        zs_vm_register (self, "add", zs_type_array, NULL);
+    }
     else
     if (zs_pipe_has_real (input)) {
         double operand = zs_pipe_recv_real (input);
@@ -263,8 +265,10 @@ s_add (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 static int
 s_subtract (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "-", zs_type_array, "Subtract value from all");
+        zs_vm_register (self, "subtract", zs_type_array, NULL);
+    }
     else
     if (zs_pipe_has_real (input)) {
         double operand = zs_pipe_recv_real (input);
@@ -285,6 +289,7 @@ s_multiply (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self)) {
         zs_vm_register (self, "*", zs_type_array, "Multiply value by all");
         zs_vm_register (self, "x", zs_type_array, NULL);
+        zs_vm_register (self, "multiply", zs_type_array, NULL);
     }
     else
     if (zs_pipe_has_real (input)) {
@@ -303,8 +308,10 @@ s_multiply (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 static int
 s_divide (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
-    if (zs_vm_probing (self))
+    if (zs_vm_probing (self)) {
         zs_vm_register (self, "/", zs_type_array, "Divide value into all");
+        zs_vm_register (self, "divide", zs_type_array, NULL);
+    }
     else {
         double operand = zs_pipe_recv_real (input);
         while (zs_pipe_recv (input))

@@ -157,6 +157,7 @@ struct _zs_vm_t {
     zs_pipe_t *input;               //  Input to next function
     zs_pipe_t *output;              //  Current phrase output
     char *results;                  //  Sentence results, if any
+    size_t cpu_quota;               //  Number of cycles we can use
 
     bool verbose;                   //  Trace execution progress
     size_t iterator;                //  For listing functions & atomics
@@ -752,6 +753,7 @@ zs_vm_run (zs_vm_t *self)
     size_t needle = s_function_body (self, self->code_head);
     self->call_stack [0] = 0;
     self->call_stack_ptr = 1;
+    self->cpu_quota = 100000;
 
     if (self->verbose)
         printf ("D [%04zd]: run '%s'\n", needle, s_function_name (self, self->code_head));
@@ -762,6 +764,7 @@ zs_vm_run (zs_vm_t *self)
 
     //  Run virtual machine until stopped
     while (true) {
+        assert (self->cpu_quota--);
         if (self->verbose)
             printf ("D [%04zd]: ", needle);
         byte opcode = self->code [needle++];
