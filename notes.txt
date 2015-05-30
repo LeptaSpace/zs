@@ -1,9 +1,8 @@
 TODO
 
 
-    - passes k instead of times as loop function
-
-Problem: need loops and conditionals
+Problem: need access to loop index/counter
+Solution: make an index function
 
 
     LOOP:
@@ -19,13 +18,14 @@ Problem: need loops and conditionals
 
         ? how to access loop index inside phrase
         - we have no variables or symbols to play with
-        - function could inject value into input stream
+        - some function could inject value into input stream
+
+            index atomic
 
         ? how to store more than a single value in loop state
         - having a loop stack is pretty clumsy
 
 
-        times (1 k) { 1 } count
 
 
 

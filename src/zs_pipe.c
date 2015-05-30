@@ -90,40 +90,41 @@ zs_pipe_destroy (zs_pipe_t **self_p)
 
 
 //  ---------------------------------------------------------------------------
-//  Sets pipe register to contain a specified whole number; any previous
-//  value in the register is lost.
+//  Send whole number to pipe; this wipes the current pipe register.
 
 void
-zs_pipe_set_whole (zs_pipe_t *self, int64_t whole)
+zs_pipe_send_whole (zs_pipe_t *self, int64_t whole)
 {
     if (!self->value)
         self->value = s_value_new (NULL);
     self->value->type = 'w';
     self->value->whole = whole;
+    zlistx_add_end (self->values, self->value);
+    self->value = NULL;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Sets pipe register to contain a specified real number; any previous
-//  value in the register is lost.
+//  Send real number to pipe; this wipes the current pipe register.
 
 void
-zs_pipe_set_real (zs_pipe_t *self, double real)
+zs_pipe_send_real (zs_pipe_t *self, double real)
 {
     if (!self->value)
         self->value = s_value_new (NULL);
-
     self->value->type = 'r';
     self->value->real = real;
+    zlistx_add_end (self->values, self->value);
+    self->nbr_reals++;
+    self->value = NULL;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Sets pipe register to contain a specified string; any previous value
-//  in the register is lost.
+//  Send string to pipe; this wipes the current pipe register.
 
 void
-zs_pipe_set_string (zs_pipe_t *self, const char *string)
+zs_pipe_send_string (zs_pipe_t *self, const char *string)
 {
     if (!self->value
     ||  self->value->type != 's'
@@ -134,57 +135,8 @@ zs_pipe_set_string (zs_pipe_t *self, const char *string)
         self->value->string = &self->value->type + 1;
     }
     strcpy (self->value->string, string);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Sends current pipe register to the pipe; returns 0 if successful, or
-//  -1 if the pipe register was empty. Clears the register.
-
-int
-zs_pipe_send (zs_pipe_t *self)
-{
-    if (self->value) {
-        zlistx_add_end (self->values, self->value);
-        self->nbr_reals += self->value->type == 'r'? 1: 0;
-        self->value = NULL;
-        return 0;
-    }
-    else
-        return -1;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Send whole number to pipe; this wipes the current pipe register.
-
-void
-zs_pipe_send_whole (zs_pipe_t *self, int64_t whole)
-{
-    zs_pipe_set_whole (self, whole);
-    zs_pipe_send (self);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Send real number to pipe; this wipes the current pipe register.
-
-void
-zs_pipe_send_real (zs_pipe_t *self, double real)
-{
-    zs_pipe_set_real (self, real);
-    zs_pipe_send (self);
-}
-
-
-//  ---------------------------------------------------------------------------
-//  Send string to pipe; this wipes the current pipe register.
-
-void
-zs_pipe_send_string (zs_pipe_t *self, const char *string)
-{
-    zs_pipe_set_string (self, string);
-    zs_pipe_send (self);
+    zlistx_add_end (self->values, self->value);
+    self->value = NULL;
 }
 
 
@@ -193,7 +145,7 @@ zs_pipe_send_string (zs_pipe_t *self, const char *string)
 //  otherwise.
 
 bool
-zs_pipe_has_real (zs_pipe_t *self)
+zs_pipe_realish (zs_pipe_t *self)
 {
     return (self->nbr_reals > 0);
 }
@@ -661,12 +613,12 @@ zs_pipe_test (bool verbose)
     zs_pipe_send_whole (pipe, 1);
     zs_pipe_send_real  (pipe, 2.0);
     zs_pipe_send_whole (pipe, 3);
-    assert (zs_pipe_has_real (pipe));
+    assert (zs_pipe_realish (pipe));
     double real = zs_pipe_recv_real (pipe);
     assert (real == 1.0);
     real = zs_pipe_recv_real (pipe);
     assert (real == 2.0);
-    assert (!zs_pipe_has_real (pipe));
+    assert (!zs_pipe_realish (pipe));
     real = zs_pipe_recv_real (pipe);
     assert (real == 3.0);
 

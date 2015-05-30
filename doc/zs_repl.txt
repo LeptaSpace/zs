@@ -91,5 +91,6 @@ s_repl_assert (repl, "K: (1000 *)", "");
 s_repl_assert (repl, "K (1 2 3)", "1000 2000 3000");
 s_repl_assert (repl, "12.0 .1 +", "12.1");
 s_repl_assert (repl, "1 [1 2] 0.5 [1 2] 0.49 [1 2] count", "4");
+s_repl_assert (repl, "times (1 k) { 1 } count", "1000");
 zs_repl_destroy (&repl);
 ----
