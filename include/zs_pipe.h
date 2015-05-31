@@ -34,26 +34,6 @@ zs_pipe_t *
 void
     zs_pipe_destroy (zs_pipe_t **self_p);
 
-//  Sets pipe register to contain a specified whole number; any previous
-//  value in the register is lost.
-void
-    zs_pipe_set_whole (zs_pipe_t *self, int64_t whole);
-
-//  Sets pipe register to contain a specified real number; any previous
-//  value in the register is lost.
-void
-    zs_pipe_set_real (zs_pipe_t *self, double real);
-
-//  Sets pipe register to contain a specified string; any previous value
-//  in the register is lost.
-void
-    zs_pipe_set_string (zs_pipe_t *self, const char *string);
-
-//  Sends current pipe register to the pipe; returns 0 if successful, or
-//  -1 if the pipe register was empty. Clears the register.
-int
-    zs_pipe_send (zs_pipe_t *self);
-
 //  Send whole number to pipe; this wipes the current pipe register.
 void
     zs_pipe_send_whole (zs_pipe_t *self, int64_t whole);
@@ -69,7 +49,7 @@ void
 //  Returns true if the pipe contains at least one real number. Returns false
 //  otherwise.
 bool
-    zs_pipe_has_real (zs_pipe_t *self);
+    zs_pipe_realish (zs_pipe_t *self);
 
 //  Receives the next value off the pipe, into the register. Any previous
 //  value in the register is lost. Returns true if a value was successfully
@@ -123,11 +103,10 @@ char *
 void
     zs_pipe_mark (zs_pipe_t *self);
 
-//  Pulls a single value from the pipe into the register. Any  previous value
-//  in the register is lost. Returns true if value was successfully received.
-//  If no values were received, returns false.
-bool
-    zs_pipe_pull_single (zs_pipe_t *self);
+//  Pulls a single value from the source pipe into the pipe. If there was
+//  no value to pull, sends a constant '1' value to the pipe.
+void
+    zs_pipe_pull_single (zs_pipe_t *self, zs_pipe_t *source);
 
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "modest" pull: in a phrase, pulls the last single value. After a
@@ -151,6 +130,10 @@ void
 //  separated by spaces. This empties the pipe.
 char *
     zs_pipe_paste (zs_pipe_t *self);
+
+//  Print pipe contents, for debugging, prints nothing if pipe is empty
+void
+    zs_pipe_print (zs_pipe_t *self, const char *prefix);
 
 //  Empty the pipe of any values it might contain.
 void

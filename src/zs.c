@@ -111,6 +111,12 @@ int main (int argc, char *argv [])
         }
         if (zs_repl_execute (repl, input))
             puts ("E: syntax error");
+        else
+        if (zs_repl_completed (repl)) {
+            const char *results = zs_repl_results (repl);
+            if (*results)
+                puts (results);
+        }
     }
     else {
         //  If run without arguments, drop into REPL shell

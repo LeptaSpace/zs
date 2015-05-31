@@ -37,11 +37,20 @@
     <event name = "close paren">
         <action name = "have close list token" />
     </event>
-    <event name = "open brace">
-        <action name = "have maybe token" />
+    <event name = "open square">
+        <action name = "have start menu token" />
     </event>
-    <event name = "close brace">
-        <action name = "have continue token" />
+    <event name = "close square">
+        <action name = "have end menu token" />
+    </event>
+    <event name = "vertical bar">
+        <action name = "have choice token" />
+    </event>
+    <event name = "open curly">
+        <action name = "have start loop token" />
+    </event>
+    <event name = "close curly">
+        <action name = "have end loop token" />
     </event>
     <event name = "comma">
         <action name = "have phrase token" />
@@ -89,11 +98,23 @@
         <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
-    <event name = "open brace" next = "expecting token">
+    <event name = "open square" next = "expecting token">
         <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
-    <event name = "close brace" next = "expecting token">
+    <event name = "close square" next = "expecting token">
+        <action name = "have fn inline token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "vertical bar" next = "expecting token">
+        <action name = "have fn inline token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "open curly" next = "expecting token">
+        <action name = "have fn inline token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "close curly" next = "expecting token">
         <action name = "have fn inline token" />
         <action name = "push back to previous" />
     </event>
@@ -191,11 +212,15 @@
         <action name = "have number token" />
         <action name = "push back to previous" />
     </event>
-    <event name = "open brace" next = "expecting token">
+    <event name = "open square" next = "expecting token">
         <action name = "have number token" />
         <action name = "push back to previous" />
     </event>
-    <event name = "close brace" next = "expecting token">
+    <event name = "close square" next = "expecting token">
+        <action name = "have number token" />
+        <action name = "push back to previous" />
+    </event>
+    <event name = "vertical bar" next = "expecting token">
         <action name = "have number token" />
         <action name = "push back to previous" />
     </event>

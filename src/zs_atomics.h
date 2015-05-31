@@ -50,6 +50,29 @@ s_help (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 
 
 //  ---------------------------------------------------------------------------
+//  Modest functions
+
+static int
+s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "times", zs_type_modest, "Loop N times");
+    else {
+        int64_t value = zs_pipe_recv_whole (input);
+        if (value > 0) {
+            //  Send loop event 1 = continue loop
+            zs_pipe_send_whole (output, 1);
+            //  Send loop state = our next counter
+            zs_pipe_send_whole (output, value - 1);
+        }
+        else
+            //  Send loop event 0 = end loop
+            zs_pipe_send_whole (output, 0);
+    }
+    return 0;
+}
+
+//  ---------------------------------------------------------------------------
 //  Greedy functions
 
 static int
@@ -58,7 +81,7 @@ s_sum (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "sum", zs_type_greedy, "Sum of the values");
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double result = 0;
         while (zs_pipe_recv (input))
             result += zs_pipe_real (input);
@@ -79,7 +102,7 @@ s_product (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "product", zs_type_greedy, "Product of the values");
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double result = 1;
         while (zs_pipe_recv (input))
             result += zs_pipe_real (input);
@@ -131,7 +154,7 @@ s_min (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "min", zs_type_greedy, "Minimum of the values");
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double result = zs_pipe_recv_whole (input);
         while (zs_pipe_recv (input)) {
             if (result > zs_pipe_real (input))
@@ -156,7 +179,7 @@ s_max (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "max", zs_type_greedy, "Maximum of the values");
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double result = zs_pipe_recv_whole (input);
         while (zs_pipe_recv (input)) {
             if (result < zs_pipe_real (input))
@@ -181,7 +204,7 @@ s_assert (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "assert", zs_type_greedy, "Assert first two values are the same");
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double first = zs_pipe_recv_real (input);
         double second = zs_pipe_recv_real (input);
         if (first != second) {
@@ -206,10 +229,8 @@ s_whole (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "whole", zs_type_greedy, "Coerce values to whole numbers");
     else {
-        while (zs_pipe_recv (input)) {
-            zs_pipe_set_whole (output, zs_pipe_whole (input));
-            zs_pipe_send (output);
-        }
+        while (zs_pipe_recv (input))
+            zs_pipe_send_whole (output, zs_pipe_whole (input));
     }
     return 0;
 }
@@ -219,14 +240,14 @@ s_whole (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 //  Array functions
 
 static int
-s_plus (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_add (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self)) {
-        zs_vm_register (self, "plus", zs_type_array, "Add value to all");
-        zs_vm_register (self, "+", zs_type_array, NULL);
+        zs_vm_register (self, "+", zs_type_array, "Add value to all");
+        zs_vm_register (self, "add", zs_type_array, NULL);
     }
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double operand = zs_pipe_recv_real (input);
         while (zs_pipe_recv (input))
             zs_pipe_send_real (output, zs_pipe_real (input) + operand);
@@ -240,14 +261,14 @@ s_plus (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 }
 
 static int
-s_minus (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_subtract (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self)) {
-        zs_vm_register (self, "minus", zs_type_array, "Subtract value from all");
-        zs_vm_register (self, "-", zs_type_array, NULL);
+        zs_vm_register (self, "-", zs_type_array, "Subtract value from all");
+        zs_vm_register (self, "subtract", zs_type_array, NULL);
     }
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double operand = zs_pipe_recv_real (input);
         while (zs_pipe_recv (input))
             zs_pipe_send_real (output, zs_pipe_real (input) - operand);
@@ -261,15 +282,15 @@ s_minus (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 }
 
 static int
-s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_multiply (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self)) {
-        zs_vm_register (self, "times", zs_type_array, "Multiply value by all");
-        zs_vm_register (self, "*", zs_type_array, NULL);
+        zs_vm_register (self, "*", zs_type_array, "Multiply value by all");
         zs_vm_register (self, "x", zs_type_array, NULL);
+        zs_vm_register (self, "multiply", zs_type_array, NULL);
     }
     else
-    if (zs_pipe_has_real (input)) {
+    if (zs_pipe_realish (input)) {
         double operand = zs_pipe_recv_real (input);
         while (zs_pipe_recv (input))
             zs_pipe_send_real (output, zs_pipe_real (input) * operand);
@@ -286,8 +307,8 @@ static int
 s_divide (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self)) {
-        zs_vm_register (self, "divide", zs_type_array, "Divide value into all");
-        zs_vm_register (self, "/", zs_type_array, NULL);
+        zs_vm_register (self, "/", zs_type_array, "Divide value into all");
+        zs_vm_register (self, "divide", zs_type_array, NULL);
     }
     else {
         double operand = zs_pipe_recv_real (input);
@@ -304,6 +325,8 @@ s_register_atomics (zs_vm_t *self)
     zs_vm_probe (self, s_check);
     zs_vm_probe (self, s_help);
 
+    zs_vm_probe (self, s_times);
+
     zs_vm_probe (self, s_sum);
     zs_vm_probe (self, s_product);
     zs_vm_probe (self, s_count);
@@ -313,9 +336,9 @@ s_register_atomics (zs_vm_t *self)
 
     zs_vm_probe (self, s_assert);
     zs_vm_probe (self, s_whole);
-    zs_vm_probe (self, s_plus);
-    zs_vm_probe (self, s_minus);
-    zs_vm_probe (self, s_times);
+    zs_vm_probe (self, s_add);
+    zs_vm_probe (self, s_subtract);
+    zs_vm_probe (self, s_multiply);
     zs_vm_probe (self, s_divide);
 }
 #endif

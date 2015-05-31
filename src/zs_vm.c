@@ -51,7 +51,8 @@
 */
 
 #define MAX_SCOPE   256     //  Nesting limit at compile time
-#define MAX_OUTPUT  256     //  Maximum () nesting limit
+#define MAX_NEST    256     //  Maximum nest () depth
+#define MAX_LOOP    256     //  Maximum loop {} depth
 #define MAX_CALLS   256     //  Maximum function call depth
 
 //  Bytecodes
@@ -63,28 +64,33 @@
 //  Lol. \o/  Put these in order of frequency.
 #define VM_CALL         254     //  Call a user function
 #define VM_RETURN       253     //  Return to previous needle
-#define VM_IF           252     //  Conditional branch
-#define VM_WHOLE        251     //  Issue a whole number constant
-#define VM_REAL         250     //  Issue a real number constant
-#define VM_STRING       249     //  Issue a string constant
-#define VM_PIPE         248     //  Execute pipe operation
-#define VM_SENTENCE     247     //  End sentence
+#define VM_LOOP         252     //  Open loop
+#define VM_XLOOP        251     //  Close loop
+#define VM_JUMP         250     //  Jump unconditionally
+#define VM_JUMPEX       249     //  Jump if current value not positive
+#define VM_WHOLE        248     //  Issue a whole number constant
+#define VM_REAL         247     //  Issue a real number constant
+#define VM_STRING       246     //  Issue a string constant
+#define VM_PIPE         245     //  Execute pipe operation
+#define VM_SENTENCE     244     //  End sentence
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
 
 //  These are the pipe operations, managing output and input pipes so that
 //  functions what they need. The pipe operation is always compiled after a
 //  VM_PIPE opcode.
-#define VM_PIPE_NEST    1       //  Push output, open new scope
-#define VM_PIPE_UNNEST  2       //  Pop output, close scope
-#define VM_PIPE_MODEST  3       //  Prepare modest function call
-#define VM_PIPE_GREEDY  4       //  Prepare greedy function call
-#define VM_PIPE_ARRAY   5       //  Prepare array function call
-#define VM_PIPE_MARK    6       //  End phrase
+#define VM_PIPE_NEST    1       //  Prepare nested argument list
+#define VM_PIPE_UNNEST  2       //  Prepare nested function call
+#define VM_PIPE_SINGLE  3       //  Pull single value from pipe
+#define VM_PIPE_MODEST  4       //  Prepare modest function call
+#define VM_PIPE_GREEDY  5       //  Prepare greedy function call
+#define VM_PIPE_ARRAY   6       //  Prepare array function call
+#define VM_PIPE_UNLOOP  7       //  Prepare to call loop function
+#define VM_PIPE_MARK    8       //  End phrase
 
 static const char *
 pipe_op_name [] = {
-    "?", "NEST", "UNNEST", "MODEST", "GREEDY", "ARRAY", "MARK"
+    "?", "NEST", "UNNEST", "SINGLE", "MODEST", "GREEDY", "ARRAY", "UNLOOP", "MARK"
 };
 
 #include "zs_classes.h"
@@ -134,18 +140,28 @@ struct _zs_vm_t {
     size_t code_head;               //  Last defined function
     size_t checkpoint;              //  When defining a function
 
+    //  We use this during compile time to match start/end scopes
     size_t scope_stack [MAX_SCOPE]; //  Scope stack, arbitrary size
     size_t scope_stack_ptr;         //  Size of scope stack
 
-    zs_pipe_t *
-        output_stack [MAX_OUTPUT];  //  Output stack, arbitrary size
-    size_t output_stack_ptr;        //  Size of output stack
-    zs_pipe_t *input;               //  Input to next function
-    zs_pipe_t *output;              //  Current phrase output
-    char *results;                  //  Sentence results, if any
+    //  The nest stack holds output pipes during nested calls
+    zs_pipe_t *nest_stack [MAX_NEST];
+    size_t nest_stack_ptr;
 
-    size_t call_stack [MAX_CALLS];  //  Function call stack
-    size_t call_stack_ptr;          //  Size of call stack
+    //  The loop stack holds input pipes during loop cycles
+    zs_pipe_t *loop_stack [MAX_LOOP];
+    size_t loop_stack_ptr;
+
+    //  The call stack is used for actual function calls
+    size_t call_stack [MAX_CALLS];
+    size_t call_stack_ptr;
+
+    zs_pipe_t *stdin;               //  Input to next function
+    zs_pipe_t *stdout;              //  Current phrase output
+    zs_pipe_t *loopin;              //  Input to next loop function
+    zs_pipe_t *loopout;             //  Output of next loop function
+    char *results;                  //  Sentence results, if any
+    bool loop_fn;                   //  Call as loop function
 
     bool verbose;                   //  Trace execution progress
     size_t iterator;                //  For listing functions & atomics
@@ -256,8 +272,10 @@ zs_vm_new (void)
 {
     zs_vm_t *self = (zs_vm_t *) zmalloc (sizeof (zs_vm_t));
     if (self) {
-        self->input = zs_pipe_new ();
-        self->output = zs_pipe_new ();
+        self->stdin = zs_pipe_new ();
+        self->stdout = zs_pipe_new ();
+        self->loopin = zs_pipe_new ();
+        self->loopout = zs_pipe_new ();
         self->code_max = 32000;         //  Arbitrary; TODO: extensible
         self->code = (byte *) malloc (self->code_max);
         self->code [self->code_size++] = VM_STOP;
@@ -277,8 +295,10 @@ zs_vm_destroy (zs_vm_t **self_p)
     if (*self_p) {
         zs_vm_t *self = *self_p;
         zstr_free (&self->results);
-        zs_pipe_destroy (&self->input);
-        zs_pipe_destroy (&self->output);
+        zs_pipe_destroy (&self->stdin);
+        zs_pipe_destroy (&self->stdout);
+        zs_pipe_destroy (&self->loopin);
+        zs_pipe_destroy (&self->loopout);
         while (self->nbr_atomics)
             s_atomic_destroy (&self->atomics [--self->nbr_atomics]);
         free (self->code);
@@ -459,55 +479,51 @@ zs_vm_compile_inline (zs_vm_t *self, const char *name)
     //  User-defined functions do not touch the pipes; they're effectively
     //  macros that inline their contents where they are invoked
     size_t address = s_resolve (self, name);
-    if (address) {
-        byte pipe_op = 0;
-        if (address < 256) {
-            //  Atomics can need extra work to prepare an input pipe
-            if (self->atomics [address]->type == zs_type_modest)
-                pipe_op = VM_PIPE_MODEST;
-            else
-            if (self->atomics [address]->type == zs_type_greedy)
-                pipe_op = VM_PIPE_GREEDY;
-            else
-            if (self->atomics [address]->type == zs_type_array)
-                pipe_op = VM_PIPE_ARRAY;
-        }
-        s_compile_call (self, address, pipe_op);
-        return 0;
-    }
-    else
+    if (!address)
         return -1;              //  Undefined function, forget it
+
+    byte pipe_op = 0;
+    if (address < 256) {
+        //  Atomics can need extra work to prepare an input pipe
+        if (self->atomics [address]->type == zs_type_modest)
+            pipe_op = VM_PIPE_MODEST;
+        else
+        if (self->atomics [address]->type == zs_type_greedy)
+            pipe_op = VM_PIPE_GREEDY;
+        else
+        if (self->atomics [address]->type == zs_type_array)
+            pipe_op = VM_PIPE_ARRAY;
+    }
+    s_compile_call (self, address, pipe_op);
+    return 0;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Compile a nested function call. The current sentence is stacked and we
-//  start a new sentence. The actual function call is executed when we hit
-//  the matching unnest. Returns 0 if OK or -1 if the function was not
-//  defined.
+//  Open a nested function call. This stacks the current VM output and starts
+//  a new output pipe. Returns 0 if OK or -1 if the function is not defined.
 
 int
-zs_vm_compile_nested (zs_vm_t *self, const char *name)
+zs_vm_compile_nest (zs_vm_t *self, const char *name)
 {
     size_t address = s_resolve (self, name);
-    if (address) {
-        self->code [self->code_size++] = VM_PIPE;
-        self->code [self->code_size++] = VM_PIPE_NEST;
-        assert (self->scope_stack_ptr < MAX_SCOPE);
-        self->scope_stack [self->scope_stack_ptr++] = address;
-        return 0;
-    }
-    else
-        return -1;              //  Not a defined function
+    if (!address)
+        return -1;              //  Undefined function, forget it
+
+    self->code [self->code_size++] = VM_PIPE;
+    self->code [self->code_size++] = VM_PIPE_NEST;
+    assert (self->scope_stack_ptr < MAX_SCOPE);
+    self->scope_stack [self->scope_stack_ptr++] = address;
+    return 0;
 }
 
 
 //  ---------------------------------------------------------------------------
-//  Compile an unnest operation; this executes the nested function on the
-//  current phrase or sentence.
+//  Close a nested function call. This moves the current output to input, and
+//  unstacks the saved VM output, then executes the function.
 
 void
-zs_vm_compile_unnest (zs_vm_t *self)
+zs_vm_compile_xnest (zs_vm_t *self)
 {
     assert (self->scope_stack_ptr);
     size_t address = self->scope_stack [--self->scope_stack_ptr];
@@ -516,15 +532,20 @@ zs_vm_compile_unnest (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Compile a conditional branch
+//  TBD
 
 void
-zs_vm_compile_if (zs_vm_t *self)
+zs_vm_compile_menu (zs_vm_t *self)
 {
-    self->code [self->code_size++] = VM_IF;
+    //  VM: pull test value from loop function
+    self->code [self->code_size++] = VM_PIPE;
+    self->code [self->code_size++] = VM_PIPE_SINGLE;
+
     //  Stack address of jump address
-    self->scope_stack [self->scope_stack_ptr++] = self->code_size;
     //  Leave 24 bits for the jump address, fill with magic
+    assert (self->scope_stack_ptr < MAX_SCOPE);
+    self->scope_stack [self->scope_stack_ptr++] = self->code_size + 1;
+    self->code [self->code_size++] = VM_JUMPEX;
     self->code [self->code_size++] = 0xA5;
     self->code [self->code_size++] = 0xA5;
     self->code [self->code_size++] = 0xA5;
@@ -532,20 +553,105 @@ zs_vm_compile_if (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Close a conditional branch
+//  TBD
 
 void
-zs_vm_compile_if_end (zs_vm_t *self)
+zs_vm_compile_xmenu (zs_vm_t *self)
 {
     //  Pop location of jump address
     size_t address = self->scope_stack [--self->scope_stack_ptr];
     assert (self->code [address + 0] == 0xA5);
     assert (self->code [address + 1] == 0xA5);
     assert (self->code [address + 2] == 0xA5);
+
     //  Store current code_size into jump address
     self->code [address++] = (byte) (self->code_size >> 16);
     self->code [address++] = (byte) (self->code_size >> 8);
     self->code [address++] = (byte) (self->code_size);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Compiles a loop. Caller must provide name of function, which has just run
+//  and left its output on stdout: loop state, and loop event.
+
+int
+zs_vm_compile_loop (zs_vm_t *self, const char *name)
+{
+    size_t fn_address = s_resolve (self, name);
+    if (!fn_address)
+        return -1;              //  Undefined function, forget it
+
+    //  The loop starts here
+    //  VM:
+    //  - stack loopin, loopout pipes
+    //  - new loopin, loopout pipes
+    //  - pipe op GREEDY (stdout -> loopin)
+    //  - recv whole event from loopin
+    //  - jump to address if event <= 0
+    //
+    //   - push loop_address for xloop so it can fill in the blanks
+    //   - use a magic value A5A5A5 to double-check this code
+    assert (self->scope_stack_ptr < MAX_SCOPE);
+    self->scope_stack [self->scope_stack_ptr++] = self->code_size + 1;
+    self->code [self->code_size++] = VM_LOOP;
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+
+    //  Push function address to scope stack for xloop
+    assert (self->scope_stack_ptr < MAX_SCOPE);
+    self->scope_stack [self->scope_stack_ptr++] = fn_address;
+
+    //  Push body address to scope stack for xloop
+    assert (self->scope_stack_ptr < MAX_SCOPE);
+    self->scope_stack [self->scope_stack_ptr++] = self->code_size;
+
+    return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  TBD
+//  We compile xloop into this code:
+//  VM:
+//  - call loop function (loopin -> loopout)
+//  - pipe op GREEDY (loopout -> loopin)
+//  - recv whole event from loopin
+//  - jump to address if event > 0
+//    ... continue
+
+void
+zs_vm_compile_xloop (zs_vm_t *self)
+{
+    //  Pop stacked body address (jump here if loop continues)
+    assert (self->scope_stack_ptr);
+    size_t body_address = self->scope_stack [--self->scope_stack_ptr];
+
+    //  Pop loop function address (call to reevaluate loop)
+    assert (self->scope_stack_ptr);
+    size_t fn_address = self->scope_stack [--self->scope_stack_ptr];
+
+    //  Pop stacked loop address (address of VM_LOOP parameter)
+    assert (self->scope_stack_ptr);
+    size_t loop_address = self->scope_stack [--self->scope_stack_ptr];
+
+    //  VM: execute loop function with unloop pipe semantics
+    s_compile_call (self, fn_address, VM_PIPE_UNLOOP);
+
+    //  VM: evaluate loop event and jump to body if positive
+    self->code [self->code_size++] = VM_XLOOP;
+    self->code [self->code_size++] = (byte) (body_address >> 16);
+    self->code [self->code_size++] = (byte) (body_address >> 8);
+    self->code [self->code_size++] = (byte) (body_address);
+
+    //  Fix VM_LOOP argument to point to current code_size
+    assert (self->code [loop_address + 0] == 0xA5);
+    assert (self->code [loop_address + 1] == 0xA5);
+    assert (self->code [loop_address + 2] == 0xA5);
+    self->code [loop_address++] = (byte) (self->code_size >> 16);
+    self->code [loop_address++] = (byte) (self->code_size >> 8);
+    self->code [loop_address++] = (byte) (self->code_size);
 }
 
 
@@ -664,17 +770,28 @@ zs_vm_run (zs_vm_t *self)
         printf ("D [%04zd]: run '%s'\n", needle, s_function_name (self, self->code_head));
 
     //  Clean pipes before each run
-    zs_pipe_purge (self->input);
-    zs_pipe_purge (self->output);
+    zs_pipe_purge (self->stdin);
+    zs_pipe_purge (self->stdout);
 
-    //  Run virtual machine until stopped
-    while (true) {
+    //  Run virtual machine until stopped or interrupted
+    while (!zctx_interrupted) {
+        if (self->verbose) {
+//          Enable this only when debugging pipes; it creates a lot of output
+//             zs_pipe_print (self->stdin, "Stdin:   ");
+//             zs_pipe_print (self->stdout, "Stdout:  ");
+//             zs_pipe_print (self->loopin, "Loopin:  ");
+//             zs_pipe_print (self->loopout, "Loopout: ");
+            printf ("D [%04zd]: ", needle);
+        }
         byte opcode = self->code [needle++];
         if (opcode < 240) {
             if (self->verbose)
-                printf ("D [%04zd]: atomic=%s\n", needle, self->atomics [opcode]->name);
-            if ((self->atomics [opcode]->function) (self, self->input, self->output))
+                printf ("atomic=%s\n", self->atomics [opcode]->name);
+            if ((self->atomics [opcode]->function) (self,
+                self->loop_fn? self->loopin: self->stdin,
+                self->loop_fn? self->loopout: self->stdout))
                 break;
+            self->loop_fn = false;
         }
         else
         if (opcode == VM_CALL) {
@@ -685,8 +802,8 @@ zs_vm_run (zs_vm_t *self)
             needle += 3;
             assert (self->code [address] == VM_GUARD);
             if (self->verbose)
-                printf ("D [%04zd]: call function=%s stack=%zd\n", needle,
-                        s_function_name (self, address), self->call_stack_ptr);
+                printf ("call function=%s address=%zd stack=%zd\n",
+                        s_function_name (self, address), address, self->call_stack_ptr);
             assert (self->call_stack_ptr < MAX_CALLS);
             self->call_stack [self->call_stack_ptr++] = needle;
             needle = s_function_body (self, address);
@@ -694,44 +811,94 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_RETURN) {
             if (self->verbose)
-                printf ("D [%04zd]: return stack=%zd\n", needle, self->call_stack_ptr);
+                printf ("return stack=%zd\n", self->call_stack_ptr);
             needle = self->call_stack [--self->call_stack_ptr];
         }
         else
-        if (opcode == VM_IF) {
+        if (opcode == VM_LOOP) {
+            //  - stack loopin, loopout pipes
+            //  - new loopin, loopout pipes
+            //  - pipe op GREEDY (stdout -> loopin)
+            //  - recv whole event from loopin
+            //  - jump to address if event <= 0
+
+            //  Get last phrase into loopin pipe
+            zs_pipe_purge (self->loopin);
+            zs_pipe_pull_greedy (self->loopin, self->stdout);
+            int64_t event = zs_pipe_recv_whole (self->loopin);
+            if (self->verbose)
+                printf ("loop event=%" PRId64 "\n", event);
+            if (event > 0)
+                needle += 3;        //  Skip jump address
+            else {
+                needle = (size_t) (self->code [needle + 0] << 16)
+                       + (size_t) (self->code [needle + 1] << 8)
+                       + (size_t) (self->code [needle + 2]);
+            }
+        }
+        else
+        if (opcode == VM_XLOOP) {
+            //  - pipe op GREEDY (loopout -> loopin)
+            //  - recv whole event from loopin
+            //  - jump to address if event > 0
+            zs_pipe_pull_greedy (self->loopin, self->loopout);
+            int64_t event = zs_pipe_recv_whole (self->loopin);
+            if (self->verbose)
+                printf ("xloop event=%" PRId64 "\n", event);
+            if (event > 0) {
+                needle = (size_t) (self->code [needle + 0] << 16)
+                       + (size_t) (self->code [needle + 1] << 8)
+                       + (size_t) (self->code [needle + 2]);
+            }
+            else
+                needle += 3;        //  Skip jump address
+        }
+        else
+        if (opcode == VM_JUMP) {
+            //  Jump unconditionally
             size_t address = (size_t) (self->code [needle + 0] << 16)
                            + (size_t) (self->code [needle + 1] << 8)
                            + (size_t) (self->code [needle + 2]);
-            int64_t value = zs_pipe_pull_single (self->output)?
-                            zs_pipe_whole (self->output): 0;
             if (self->verbose)
-                printf ("D [%04zd]: if value=%" PRId64 "\n", needle, value);
-            needle = value? needle + 3: address;
+                printf ("jump address=%zd\n", address);
+            needle = address;
+        }
+        else
+        if (opcode == VM_JUMPEX) {
+            //  Jump if next input value is zero or negative
+            size_t address = (size_t) (self->code [needle + 0] << 16)
+                           + (size_t) (self->code [needle + 1] << 8)
+                           + (size_t) (self->code [needle + 2]);
+            //  We expect test value on input pipe
+            int64_t value = zs_pipe_recv_whole (self->stdin);
+            if (self->verbose)
+                printf ("jumpex address=%zd value=%" PRId64 "\n", address, value);
+            needle = value > 0? needle + 3: address;
         }
         else
         if (opcode == VM_WHOLE) {
             int64_t whole;
             memcpy (&whole, self->code + needle, sizeof (whole));
-            zs_pipe_send_whole (self->output, whole);
+            zs_pipe_send_whole (self->stdout, whole);
             if (self->verbose)
-                printf ("D [%04zd]: whole value=%" PRId64 "\n", needle, whole);
+                printf ("whole value=%" PRId64 "\n", whole);
             needle += sizeof (whole);
         }
         else
         if (opcode == VM_REAL) {
             double real;
             memcpy (&real, self->code + needle, sizeof (real));
-            zs_pipe_send_real (self->output, real);
+            zs_pipe_send_real (self->stdout, real);
             if (self->verbose)
-                printf ("D [%04zd]: real value=%g\n", needle, real);
+                printf ("real value=%g\n", real);
             needle += sizeof (real);
         }
         else
         if (opcode == VM_STRING) {
             char *string = (char *) self->code + needle;
-            zs_pipe_send_string (self->output, string);
+            zs_pipe_send_string (self->stdout, string);
             if (self->verbose)
-                printf ("D [%04zd]: string value=%s\n", needle, string);
+                printf ("string value=%s\n", string);
             needle += strlen (string) + 1;
         }
         else
@@ -740,57 +907,64 @@ zs_vm_run (zs_vm_t *self)
             //  the VM. The current design makes it easy to develop the language.
             byte pipe_op = self->code [needle++];
             if (self->verbose)
-                printf ("D [%04zd]: pipe op=%s\n", needle, pipe_op_name [pipe_op]);
+                printf ("pipe op=%s\n", pipe_op_name [pipe_op]);
 
             switch (pipe_op) {
                 case VM_PIPE_NEST:
-                    assert (self->output_stack_ptr < MAX_OUTPUT);
-                    self->output_stack [self->output_stack_ptr++] = self->output;
-                    self->output = zs_pipe_new ();
+                    assert (self->nest_stack_ptr < MAX_NEST);
+                    self->nest_stack [self->nest_stack_ptr++] = self->stdout;
+                    self->stdout = zs_pipe_new ();
                     break;
                 case VM_PIPE_UNNEST:
-                    assert (self->output_stack_ptr > 0);
-                    self->output_stack_ptr--;
-                    zs_pipe_destroy (&self->input);
-                    self->input = self->output;
-                    self->output = self->output_stack [self->output_stack_ptr];
+                    assert (self->nest_stack_ptr > 0);
+                    self->nest_stack_ptr--;
+                    zs_pipe_destroy (&self->stdin);
+                    self->stdin = self->stdout;
+                    self->stdout = self->nest_stack [self->nest_stack_ptr];
+                    break;
+                case VM_PIPE_SINGLE:
+                    zs_pipe_pull_single (self->stdin, self->stdout);
                     break;
                 case VM_PIPE_MODEST:
-                    zs_pipe_pull_modest (self->input, self->output);
+                    zs_pipe_pull_modest (self->stdin, self->stdout);
                     break;
                 case VM_PIPE_GREEDY:
-                    zs_pipe_pull_greedy (self->input, self->output);
+                    zs_pipe_pull_greedy (self->stdin, self->stdout);
                     break;
                 case VM_PIPE_ARRAY:
-                    zs_pipe_pull_array (self->input, self->output);
+                    zs_pipe_pull_array (self->stdin, self->stdout);
+                    break;
+                case VM_PIPE_UNLOOP:
+                    zs_pipe_purge (self->loopout);
+                    self->loop_fn = true;
                     break;
                 case VM_PIPE_MARK:
-                    zs_pipe_mark (self->output);
+                    zs_pipe_mark (self->stdout);
                     break;
             }
         }
         else
         if (opcode == VM_SENTENCE) {
             if (self->verbose)
-                printf ("D [%04zd]: sentence\n", needle);
+                printf ("sentence\n");
             //  TODO: send results to console/actor pipe
             //  For now zs_repl grabs results via the zs_vm_results call
         }
         else
         if (opcode == VM_GUARD) {
             if (self->verbose)
-                printf ("D [%04zd]: guard\n", needle);
+                printf ("guard\n");
             printf ("E: corrupt VM, aborting\n");
             assert (false);
         }
         else
         if (opcode == VM_STOP) {
             if (self->verbose)
-                printf ("D [%04zd]: stop\n", needle);
+                printf ("stop\n");
             break;
         }
         else {
-            printf ("E [%04zd]: error opcode=%d\n", needle, opcode);
+            printf ("ERROR opcode=%d\n", opcode);
             break;
         }
     }
@@ -807,7 +981,7 @@ const char *
 zs_vm_results (zs_vm_t *self)
 {
     zstr_free (&self->results);
-    self->results = zs_pipe_paste (self->output);
+    self->results = zs_pipe_paste (self->stdout);
     return self->results;
 }
 
@@ -870,6 +1044,26 @@ s_year (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     return 0;
 }
 
+static int
+s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "times", zs_type_modest, "Loop N times");
+    else {
+        int64_t value = zs_pipe_recv_whole (input);
+        if (value > 0) {
+            //  Send loop event 1 = continue loop
+            zs_pipe_send_whole (output, 1);
+            //  Send loop state = our next counter
+            zs_pipe_send_whole (output, value - 1);
+        }
+        else
+            //  Send loop event 0 = end loop
+            zs_pipe_send_whole (output, 0);
+    }
+    return 0;
+}
+
 
 void
 zs_vm_test (bool verbose)
@@ -886,6 +1080,7 @@ zs_vm_test (bool verbose)
     zs_vm_probe (vm, s_count);
     zs_vm_probe (vm, s_assert);
     zs_vm_probe (vm, s_year);
+    zs_vm_probe (vm, s_times);
 
     //  --------------------------------------------------------------------
     //  sub: (<OK> <Guys> count 2 assert)
@@ -923,56 +1118,71 @@ zs_vm_test (bool verbose)
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
 
-    zs_vm_compile_nested (vm, "sum");
+    zs_vm_compile_nest   (vm, "sum");
     zs_vm_compile_whole  (vm, 123);
     zs_vm_compile_whole  (vm, 456);
-    zs_vm_compile_unnest (vm);
+    zs_vm_compile_xnest  (vm);
     zs_vm_compile_whole  (vm, 579);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
 
-    zs_vm_compile_nested (vm, "sum");
+    zs_vm_compile_nest   (vm, "sum");
     zs_vm_compile_whole  (vm, 123);
-    zs_vm_compile_nested (vm, "count");
+    zs_vm_compile_nest   (vm, "count");
     zs_vm_compile_whole  (vm, 1);
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_whole  (vm, 3);
-    zs_vm_compile_unnest (vm);
-    zs_vm_compile_unnest (vm);
+    zs_vm_compile_xnest  (vm);
+    zs_vm_compile_xnest  (vm);
     zs_vm_compile_whole  (vm, 126);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
 
-    zs_vm_compile_inline  (vm, "year");
-    zs_vm_compile_inline  (vm, "year");
-    zs_vm_compile_inline  (vm, "count");
-    zs_vm_compile_whole   (vm, 2);
-    zs_vm_compile_inline  (vm, "assert");
+    zs_vm_compile_inline (vm, "year");
+    zs_vm_compile_inline (vm, "year");
+    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_whole  (vm, 2);
+    zs_vm_compile_inline (vm, "assert");
 
     zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
-    //  maybe: (1 { <hello> } 0 { <world> } count 1 assert)
+    //  menu: (0 [ <hello> ] -1 [ <world> ] count 1 assert)
 
-    zs_vm_compile_define (vm, "maybe");
+    zs_vm_compile_define (vm, "menu");
     zs_vm_compile_whole  (vm, 1);
-    zs_vm_compile_if     (vm);
+    zs_vm_compile_menu   (vm);
     zs_vm_compile_string (vm, "hello");
-    zs_vm_compile_if_end (vm);
+    zs_vm_compile_xmenu  (vm);
     zs_vm_compile_whole  (vm, 0);
-    zs_vm_compile_if     (vm);
+    zs_vm_compile_menu   (vm);
     zs_vm_compile_string (vm, "world");
-    zs_vm_compile_if_end (vm);
+    zs_vm_compile_xmenu  (vm);
     zs_vm_compile_inline (vm, "count");
     zs_vm_compile_whole  (vm, 1);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
-    //  go: (sub main loop)
+    //  loop: (3 times { <hello> } count 3 assert )
+
+    zs_vm_compile_define (vm, "loop");
+    zs_vm_compile_whole  (vm, 3);
+    zs_vm_compile_inline (vm, "times");
+    zs_vm_compile_loop   (vm, "times");
+    zs_vm_compile_string (vm, "hello");
+    zs_vm_compile_xloop  (vm);
+    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_whole  (vm, 3);
+    zs_vm_compile_inline (vm, "assert");
+    zs_vm_commit (vm);
+
+    //  --------------------------------------------------------------------
+    //  go: (sub main menu)
     zs_vm_compile_define (vm, "go");
     zs_vm_compile_inline (vm, "sub");
     zs_vm_compile_inline (vm, "main");
+    zs_vm_compile_inline (vm, "menu");
     zs_vm_compile_inline (vm, "loop");
     zs_vm_commit (vm);
     if (verbose)
@@ -986,7 +1196,7 @@ zs_vm_test (bool verbose)
             break;
         nbr_functions++;
     }
-    assert (nbr_functions == 4);
+    assert (nbr_functions == 5);
 
     zs_vm_destroy (&vm);
     //  @end

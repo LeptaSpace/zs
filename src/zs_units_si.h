@@ -23,16 +23,16 @@ static void
 s_scale_up (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
 {
     if (zs_pipe_type (input) == 'w')
-        zs_pipe_set_whole (output, zs_pipe_whole (input) * scale);
+        zs_pipe_send_whole (output, zs_pipe_whole (input) * scale);
     else
     if (zs_pipe_type (input) == 'r')
-        zs_pipe_set_real (output, zs_pipe_real (input) * (double) scale);
+        zs_pipe_send_real (output, zs_pipe_real (input) * (double) scale);
     else {
         //  String could be real or whole
         if ((double) zs_pipe_whole (input) == zs_pipe_real (input))
-            zs_pipe_set_whole (output, zs_pipe_whole (input) * scale);
+            zs_pipe_send_whole (output, zs_pipe_whole (input) * scale);
         else
-            zs_pipe_set_real (output, zs_pipe_real (input) * scale);
+            zs_pipe_send_real (output, zs_pipe_real (input) * scale);
     }
 }
 #endif
@@ -47,7 +47,6 @@ s_Ki (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1024LL));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -63,7 +62,6 @@ s_Mi (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1024LL * 1024LL));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -79,7 +77,6 @@ s_Gi (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1024LL * 1024LL * 1024LL));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -95,7 +92,6 @@ s_Ti (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1024LL * 1024LL * 1024LL * 1024LL));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -111,7 +107,6 @@ s_Pi (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1024LL * 1024LL * 1024LL * 1024LL * 1024LL));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -127,7 +122,6 @@ s_Ei (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1024LL * 1024LL * 1024LL * 1024LL * 1024LL * 1024LL));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -143,7 +137,6 @@ s_da (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (10));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -159,7 +152,6 @@ s_h (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (100));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -175,7 +167,6 @@ s_k (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1000));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -191,7 +182,6 @@ s_M (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1000000));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -207,7 +197,6 @@ s_G (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1E9));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -223,7 +212,6 @@ s_T (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1E12));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -239,7 +227,6 @@ s_P (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1E15));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -255,7 +242,6 @@ s_E (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             s_scale_up (input, output, (int64_t) (1E18));
-            zs_pipe_send (output);
         }
     }
     return 0;
@@ -271,8 +257,7 @@ s_Z (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E21));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E21));
         }
     }
     return 0;
@@ -288,8 +273,7 @@ s_Y (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E24));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E24));
         }
     }
     return 0;
@@ -305,8 +289,7 @@ s_d (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (0.1));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (0.1));
         }
     }
     return 0;
@@ -322,8 +305,7 @@ s_c (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (0.01));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (0.01));
         }
     }
     return 0;
@@ -339,8 +321,7 @@ s_m (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-3));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-3));
         }
     }
     return 0;
@@ -356,8 +337,7 @@ s_u (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-6));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-6));
         }
     }
     return 0;
@@ -373,8 +353,7 @@ s_n (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-9));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-9));
         }
     }
     return 0;
@@ -390,8 +369,7 @@ s_p (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-12));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-12));
         }
     }
     return 0;
@@ -407,8 +385,7 @@ s_f (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-15));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-15));
         }
     }
     return 0;
@@ -424,8 +401,7 @@ s_a (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-18));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-18));
         }
     }
     return 0;
@@ -441,8 +417,7 @@ s_z (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-21));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-21));
         }
     }
     return 0;
@@ -458,8 +433,7 @@ s_y (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         //  Process all values on input pipe
         while (zs_pipe_recv (input)) {
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) * (1E-24));
-            zs_pipe_send (output);
+            zs_pipe_send_real (output, zs_pipe_real (input) * (1E-24));
         }
     }
     return 0;

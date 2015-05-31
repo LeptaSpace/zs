@@ -113,25 +113,31 @@ int
 int
     zs_vm_compile_inline (zs_vm_t *self, const char *name);
 
-//  Compile a nested function call. The current sentence is stacked and we
-//  start a new sentence. The actual function call is executed when we hit
-//  the matching unnest. Returns 0 if OK or -1 if the function is not
-//  defined.
+//  Open a nested function call. This stacks the current VM output and starts
+//  a new output pipe. Returns 0 if OK or -1 if the function is not defined.
 int
-    zs_vm_compile_nested (zs_vm_t *self, const char *name);
+    zs_vm_compile_nest (zs_vm_t *self, const char *name);
 
-//  Compile an unnest operation; this executes the nested function on the
-//  current phrase or sentence.
+//  Close a nested function call. This moves the current output to input, and
+//  unstacks the saved VM output, then executes the function.
 void
-    zs_vm_compile_unnest (zs_vm_t *self);
+    zs_vm_compile_xnest (zs_vm_t *self);
 
-//  Compile a conditional branch
+//  TBD
 void
-    zs_vm_compile_if (zs_vm_t *self);
+    zs_vm_compile_menu (zs_vm_t *self);
 
-//  Close a conditional branch
+//  TBD
 void
-    zs_vm_compile_if_end (zs_vm_t *self);
+    zs_vm_compile_xmenu (zs_vm_t *self);
+
+//  TBD
+int
+    zs_vm_compile_loop (zs_vm_t *self, const char *name);
+
+//  TBD
+void
+    zs_vm_compile_xloop (zs_vm_t *self);
 
 //  Compile end of phrase. This appends the phrase output to the current
 //  sentence output, and starts a new phrase.

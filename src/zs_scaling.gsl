@@ -27,16 +27,16 @@ static void
 s_scale_up (zs_pipe_t *input, zs_pipe_t *output, int64_t scale)
 {
     if (zs_pipe_type (input) == 'w')
-        zs_pipe_set_whole (output, zs_pipe_whole (input) * scale);
+        zs_pipe_send_whole (output, zs_pipe_whole (input) * scale);
     else
     if (zs_pipe_type (input) == 'r')
-        zs_pipe_set_real (output, zs_pipe_real (input) * (double) scale);
+        zs_pipe_send_real (output, zs_pipe_real (input) * (double) scale);
     else {
         //  String could be real or whole
         if ((double) zs_pipe_whole (input) == zs_pipe_real (input))
-            zs_pipe_set_whole (output, zs_pipe_whole (input) * scale);
+            zs_pipe_send_whole (output, zs_pipe_whole (input) * scale);
         else
-            zs_pipe_set_real (output, zs_pipe_real (input) * scale);
+            zs_pipe_send_real (output, zs_pipe_real (input) * scale);
     }
 }
 #endif
@@ -64,11 +64,10 @@ s_$(name:c,no) (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         while (zs_pipe_recv (input)) {
 .   if type = "real"
             //  Always coerce to a real value
-            zs_pipe_set_real (output, zs_pipe_real (input) $(op) ($(value:)));
+            zs_pipe_send_real (output, zs_pipe_real (input) $(op) ($(value:)));
 .   else
             s_scale_up (input, output, (int64_t) ($(value:)));
 .   endif
-            zs_pipe_send (output);
         }
     }
     return 0;
