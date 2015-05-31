@@ -33,18 +33,12 @@ s_check (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 }
 
 static int
-s_help (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_index (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "help", zs_type_nullary, "List all known functions");
-    else {
-        const char *name = zs_vm_function_first (self);
-        while (name) {
-            if (strneq (name, "$shell$"))
-                printf ("%s ", name);
-            name = zs_vm_function_next (self);
-        }
-    }
+        zs_vm_register (self, "index", zs_type_nullary, "Report current loop index");
+    else
+        zs_pipe_send_whole (output, zs_vm_loop_index (self, 0));
     return 0;
 }
 
@@ -72,6 +66,7 @@ s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     }
     return 0;
 }
+
 
 //  ---------------------------------------------------------------------------
 //  Greedy functions
@@ -324,7 +319,7 @@ static void
 s_register_atomics (zs_vm_t *self)
 {
     zs_vm_probe (self, s_check);
-    zs_vm_probe (self, s_help);
+    zs_vm_probe (self, s_index);
 
     zs_vm_probe (self, s_times);
 

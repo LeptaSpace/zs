@@ -149,7 +149,9 @@ struct _zs_vm_t {
     size_t nest_stack_ptr;
 
     //  The loop stack holds input pipes during loop cycles
+    //  The indices table matches the stack and holds index values
     zs_pipe_t *loop_stack [MAX_LOOP];
+    size_t loop_indices [MAX_LOOP];
     size_t loop_stack_ptr;
 
     //  The call stack is used for actual function calls
@@ -162,6 +164,7 @@ struct _zs_vm_t {
     zs_pipe_t *loopout;             //  Output of next loop function
     char *results;                  //  Sentence results, if any
     bool loop_fn;                   //  Call as loop function
+    size_t loop_index;              //  Current loop index
 
     bool verbose;                   //  Trace execution progress
     size_t iterator;                //  For listing functions & atomics
@@ -532,48 +535,9 @@ zs_vm_compile_xnest (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  TBD
-
-void
-zs_vm_compile_menu (zs_vm_t *self)
-{
-    //  VM: pull test value from loop function
-    self->code [self->code_size++] = VM_PIPE;
-    self->code [self->code_size++] = VM_PIPE_SINGLE;
-
-    //  Stack address of jump address
-    //  Leave 24 bits for the jump address, fill with magic
-    assert (self->scope_stack_ptr < MAX_SCOPE);
-    self->scope_stack [self->scope_stack_ptr++] = self->code_size + 1;
-    self->code [self->code_size++] = VM_JUMPEX;
-    self->code [self->code_size++] = 0xA5;
-    self->code [self->code_size++] = 0xA5;
-    self->code [self->code_size++] = 0xA5;
-}
-
-
-//  ---------------------------------------------------------------------------
-//  TBD
-
-void
-zs_vm_compile_xmenu (zs_vm_t *self)
-{
-    //  Pop location of jump address
-    size_t address = self->scope_stack [--self->scope_stack_ptr];
-    assert (self->code [address + 0] == 0xA5);
-    assert (self->code [address + 1] == 0xA5);
-    assert (self->code [address + 2] == 0xA5);
-
-    //  Store current code_size into jump address
-    self->code [address++] = (byte) (self->code_size >> 16);
-    self->code [address++] = (byte) (self->code_size >> 8);
-    self->code [address++] = (byte) (self->code_size);
-}
-
-
-//  ---------------------------------------------------------------------------
 //  Compiles a loop. Caller must provide name of function, which has just run
-//  and left its output on stdout: loop state, and loop event.
+//  and left its output on stdout: loop event, and then loop state, either as
+//  one value or as a phrase.
 
 int
 zs_vm_compile_loop (zs_vm_t *self, const char *name)
@@ -612,7 +576,6 @@ zs_vm_compile_loop (zs_vm_t *self, const char *name)
 
 
 //  ---------------------------------------------------------------------------
-//  TBD
 //  We compile xloop into this code:
 //  VM:
 //  - call loop function (loopin -> loopout)
@@ -652,6 +615,46 @@ zs_vm_compile_xloop (zs_vm_t *self)
     self->code [loop_address++] = (byte) (self->code_size >> 16);
     self->code [loop_address++] = (byte) (self->code_size >> 8);
     self->code [loop_address++] = (byte) (self->code_size);
+}
+
+
+//  ---------------------------------------------------------------------------
+//  TBD
+
+void
+zs_vm_compile_menu (zs_vm_t *self)
+{
+    //  VM: pull test value from loop function
+    self->code [self->code_size++] = VM_PIPE;
+    self->code [self->code_size++] = VM_PIPE_SINGLE;
+
+    //  Stack address of jump address
+    //  Leave 24 bits for the jump address, fill with magic
+    assert (self->scope_stack_ptr < MAX_SCOPE);
+    self->scope_stack [self->scope_stack_ptr++] = self->code_size + 1;
+    self->code [self->code_size++] = VM_JUMPEX;
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+    self->code [self->code_size++] = 0xA5;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  TBD
+
+void
+zs_vm_compile_xmenu (zs_vm_t *self)
+{
+    //  Pop location of jump address
+    size_t address = self->scope_stack [--self->scope_stack_ptr];
+    assert (self->code [address + 0] == 0xA5);
+    assert (self->code [address + 1] == 0xA5);
+    assert (self->code [address + 2] == 0xA5);
+
+    //  Store current code_size into jump address
+    self->code [address++] = (byte) (self->code_size >> 16);
+    self->code [address++] = (byte) (self->code_size >> 8);
+    self->code [address++] = (byte) (self->code_size);
 }
 
 
@@ -784,10 +787,10 @@ zs_vm_run (zs_vm_t *self)
     while (!zctx_interrupted) {
         if (self->verbose) {
 //          Enable this only when debugging pipes; it creates a lot of output
-//             zs_pipe_print (self->stdin, "Stdin:   ");
-//             zs_pipe_print (self->stdout, "Stdout:  ");
-//             zs_pipe_print (self->loopin, "Loopin:  ");
-//             zs_pipe_print (self->loopout, "Loopout: ");
+            zs_pipe_print (self->stdin, "Stdin:   ");
+            zs_pipe_print (self->stdout, "Stdout:  ");
+            zs_pipe_print (self->loopin, "Loopin:  ");
+            zs_pipe_print (self->loopout, "Loopout: ");
             printf ("D [%04zd]: ", needle);
         }
         byte opcode = self->code [needle++];
@@ -835,8 +838,10 @@ zs_vm_run (zs_vm_t *self)
                 printf ("LOOP event=%" PRId64 "\n", event);
             if (event > 0)
                 needle += 3;        //  Skip jump address
-            else
+            else {
                 needle = s_decode_address (self->code + needle);
+                self->loop_index = 1;
+            }
         }
         else
         if (opcode == VM_XLOOP) {
@@ -850,8 +855,10 @@ zs_vm_run (zs_vm_t *self)
             int64_t event = zs_pipe_recv_whole (self->loopin);
             if (self->verbose)
                 printf ("XLOOP event=%" PRId64 "\n", event);
-            if (event > 0)
+            if (event > 0) {
                 needle = s_decode_address (self->code + needle);
+                self->loop_index++;
+            }
             else {
                 needle += 3;        //  Skip jump address
                 //  Restore previous loopin pipe
@@ -972,6 +979,17 @@ zs_vm_run (zs_vm_t *self)
         }
     }
     return 0;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Atomic API: return index for the current (denest = 0) or specified
+//  parent loop (denest > 0). If there is no loop as specified, returns 0.
+
+size_t
+zs_vm_loop_index (zs_vm_t *self, size_t denest)
+{
+    return self->loop_index;
 }
 
 

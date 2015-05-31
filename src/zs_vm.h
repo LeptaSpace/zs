@@ -123,6 +123,16 @@ int
 void
     zs_vm_compile_xnest (zs_vm_t *self);
 
+//  Compiles a loop. Caller must provide name of function, which has just run
+//  and left its output on stdout: loop event, and then loop state, either as
+//  one value or as a phrase.
+int
+    zs_vm_compile_loop (zs_vm_t *self, const char *name);
+
+//  TBD
+void
+    zs_vm_compile_xloop (zs_vm_t *self);
+
 //  TBD
 void
     zs_vm_compile_menu (zs_vm_t *self);
@@ -130,14 +140,6 @@ void
 //  TBD
 void
     zs_vm_compile_xmenu (zs_vm_t *self);
-
-//  TBD
-int
-    zs_vm_compile_loop (zs_vm_t *self, const char *name);
-
-//  TBD
-void
-    zs_vm_compile_xloop (zs_vm_t *self);
 
 //  Compile end of phrase. This appends the phrase output to the current
 //  sentence output, and starts a new phrase.
@@ -177,6 +179,11 @@ int
 //  modify returned value.
 const char *
     zs_vm_results (zs_vm_t *self);
+
+//  Atomic API: return index for the current (denest = 0) or specified
+//  parent loop (denest > 0). If there is no loop as specified, returns 0.
+size_t
+    zs_vm_loop_index (zs_vm_t *self, size_t denest);
 
 //  Self test of this class
 void
