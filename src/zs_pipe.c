@@ -350,6 +350,27 @@ s_pull_values (zs_pipe_t *self, zs_pipe_t *source)
 
 
 //  ---------------------------------------------------------------------------
+//  Pulls a single value from the source pipe into the pipe. If there was
+//  no value to pull, sends a constant '1' value to the pipe.
+
+void
+zs_pipe_pull_single (zs_pipe_t *self, zs_pipe_t *source)
+{
+    value_t *value = (value_t *) zlistx_last (source->values);
+    if (value && value->type != '|') {
+        zlistx_detach_cur (source->values);
+        zlistx_add_end (self->values, value);
+        if (value->type == 'r') {
+            source->nbr_reals--;
+            self->nbr_reals++;
+        }
+    }
+    else
+        zs_pipe_send_whole (self, 1);
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "modest" pull: in a phrase, pulls the last single value. After a
 //  phrase, pulls the preceding phrase. If the input is empty, provides a
@@ -474,6 +495,29 @@ zs_pipe_paste (zs_pipe_t *self)
 
 
 //  ---------------------------------------------------------------------------
+//  Print pipe contents, for debugging, prints nothing if pipe is empty
+
+void
+zs_pipe_print (zs_pipe_t *self, const char *prefix)
+{
+    if (zlistx_size (self->values)) {
+        size_t limit = 10;          //  Keep things simple with long pipes
+        printf ("%s", prefix);
+        self->value = (value_t *) zlistx_first (self->values);
+        while (self->value) {
+            printf ("[%s] ", zs_pipe_string (self));
+            self->value = (value_t *) zlistx_next (self->values);
+            if (--limit == 0) {
+                printf ("...");
+                break;
+            }
+        }
+        printf ("\n");
+    }
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Empty the pipe of any values it might contain.
 
 void
@@ -512,6 +556,7 @@ zs_pipe_test (bool verbose)
 
     char *results = zs_pipe_paste (pipe);
     assert (streq (results, ""));
+    zstr_free (&results);
 
     zs_pipe_send_whole (pipe, 4);
     zs_pipe_send_whole (pipe, 5);

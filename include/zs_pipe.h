@@ -103,6 +103,11 @@ char *
 void
     zs_pipe_mark (zs_pipe_t *self);
 
+//  Pulls a single value from the source pipe into the pipe. If there was
+//  no value to pull, sends a constant '1' value to the pipe.
+void
+    zs_pipe_pull_single (zs_pipe_t *self, zs_pipe_t *source);
+
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "modest" pull: in a phrase, pulls the last single value. After a
 //  phrase, pulls the preceding phrase.
@@ -125,6 +130,10 @@ void
 //  separated by spaces. This empties the pipe.
 char *
     zs_pipe_paste (zs_pipe_t *self);
+
+//  Print pipe contents, for debugging, prints nothing if pipe is empty
+void
+    zs_pipe_print (zs_pipe_t *self, const char *prefix);
 
 //  Empty the pipe of any values it might contain.
 void

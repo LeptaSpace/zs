@@ -64,13 +64,15 @@
 //  Lol. \o/  Put these in order of frequency.
 #define VM_CALL         254     //  Call a user function
 #define VM_RETURN       253     //  Return to previous needle
-#define VM_JUMP         252     //  Jump unconditionally
-#define VM_JUMPEX       251     //  Jump if current value not positive
-#define VM_WHOLE        250     //  Issue a whole number constant
-#define VM_REAL         249     //  Issue a real number constant
-#define VM_STRING       248     //  Issue a string constant
-#define VM_PIPE         247     //  Execute pipe operation
-#define VM_SENTENCE     246     //  End sentence
+#define VM_LOOP         252     //  Open loop
+#define VM_XLOOP        251     //  Close loop
+#define VM_JUMP         250     //  Jump unconditionally
+#define VM_JUMPEX       249     //  Jump if current value not positive
+#define VM_WHOLE        248     //  Issue a whole number constant
+#define VM_REAL         247     //  Issue a real number constant
+#define VM_STRING       246     //  Issue a string constant
+#define VM_PIPE         245     //  Execute pipe operation
+#define VM_SENTENCE     244     //  End sentence
 #define VM_GUARD        241     //  Assert if we ever reach this
 #define VM_STOP         240     //  Last built-in
 
@@ -79,16 +81,16 @@
 //  VM_PIPE opcode.
 #define VM_PIPE_NEST    1       //  Prepare nested argument list
 #define VM_PIPE_UNNEST  2       //  Prepare nested function call
-#define VM_PIPE_LOOP    3       //  Push input, open new loop
-#define VM_PIPE_UNLOOP  4       //  Pop input, close loop
-#define VM_PIPE_MODEST  5       //  Prepare modest function call
-#define VM_PIPE_GREEDY  6       //  Prepare greedy function call
-#define VM_PIPE_ARRAY   7       //  Prepare array function call
+#define VM_PIPE_SINGLE  3       //  Pull single value from pipe
+#define VM_PIPE_MODEST  4       //  Prepare modest function call
+#define VM_PIPE_GREEDY  5       //  Prepare greedy function call
+#define VM_PIPE_ARRAY   6       //  Prepare array function call
+#define VM_PIPE_UNLOOP  7       //  Prepare to call loop function
 #define VM_PIPE_MARK    8       //  End phrase
 
 static const char *
 pipe_op_name [] = {
-    "?", "NEST", "UNNEST", "LOOP", "UNLOOP", "MODEST", "GREEDY", "ARRAY", "MARK"
+    "?", "NEST", "UNNEST", "SINGLE", "MODEST", "GREEDY", "ARRAY", "UNLOOP", "MARK"
 };
 
 #include "zs_classes.h"
@@ -154,10 +156,12 @@ struct _zs_vm_t {
     size_t call_stack [MAX_CALLS];
     size_t call_stack_ptr;
 
-    zs_pipe_t *input;               //  Input to next function
-    zs_pipe_t *output;              //  Current phrase output
+    zs_pipe_t *stdin;               //  Input to next function
+    zs_pipe_t *stdout;              //  Current phrase output
+    zs_pipe_t *loopin;              //  Input to next loop function
+    zs_pipe_t *loopout;             //  Output of next loop function
     char *results;                  //  Sentence results, if any
-    size_t cpu_quota;               //  Number of cycles we can use
+    bool loop_fn;                   //  Call as loop function
 
     bool verbose;                   //  Trace execution progress
     size_t iterator;                //  For listing functions & atomics
@@ -268,8 +272,10 @@ zs_vm_new (void)
 {
     zs_vm_t *self = (zs_vm_t *) zmalloc (sizeof (zs_vm_t));
     if (self) {
-        self->input = zs_pipe_new ();
-        self->output = zs_pipe_new ();
+        self->stdin = zs_pipe_new ();
+        self->stdout = zs_pipe_new ();
+        self->loopin = zs_pipe_new ();
+        self->loopout = zs_pipe_new ();
         self->code_max = 32000;         //  Arbitrary; TODO: extensible
         self->code = (byte *) malloc (self->code_max);
         self->code [self->code_size++] = VM_STOP;
@@ -289,8 +295,10 @@ zs_vm_destroy (zs_vm_t **self_p)
     if (*self_p) {
         zs_vm_t *self = *self_p;
         zstr_free (&self->results);
-        zs_pipe_destroy (&self->input);
-        zs_pipe_destroy (&self->output);
+        zs_pipe_destroy (&self->stdin);
+        zs_pipe_destroy (&self->stdout);
+        zs_pipe_destroy (&self->loopin);
+        zs_pipe_destroy (&self->loopout);
         while (self->nbr_atomics)
             s_atomic_destroy (&self->atomics [--self->nbr_atomics]);
         free (self->code);
@@ -529,9 +537,9 @@ zs_vm_compile_xnest (zs_vm_t *self)
 void
 zs_vm_compile_menu (zs_vm_t *self)
 {
-    //  Pull last value or last phrase
+    //  VM: pull test value from loop function
     self->code [self->code_size++] = VM_PIPE;
-    self->code [self->code_size++] = VM_PIPE_MODEST;
+    self->code [self->code_size++] = VM_PIPE_SINGLE;
 
     //  Stack address of jump address
     //  Leave 24 bits for the jump address, fill with magic
@@ -564,41 +572,40 @@ zs_vm_compile_xmenu (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  TBD
+//  Compiles a loop. Caller must provide name of function, which has just run
+//  and left its output on stdout: loop state, and loop event.
 
 int
 zs_vm_compile_loop (zs_vm_t *self, const char *name)
 {
-    size_t address = s_resolve (self, name);
-    if (!address)
+    size_t fn_address = s_resolve (self, name);
+    if (!fn_address)
         return -1;              //  Undefined function, forget it
 
     //  The loop starts here
-    //  Push loop start address to scope stack so xloop gets it
-    assert (self->scope_stack_ptr < MAX_SCOPE);
-    self->scope_stack [self->scope_stack_ptr++] = self->code_size;
-
-    //  VM: pull test value from loop function
-    self->code [self->code_size++] = VM_PIPE;
-    self->code [self->code_size++] = VM_PIPE_MODEST;
-
-    //  VM: jump to address unless pipe value is positive
-    //   - push address of this opcode so xloop can complete it
+    //  VM:
+    //  - stack loopin, loopout pipes
+    //  - new loopin, loopout pipes
+    //  - pipe op GREEDY (stdout -> loopin)
+    //  - recv whole event from loopin
+    //  - jump to address if event <= 0
+    //
+    //   - push loop_address for xloop so it can fill in the blanks
     //   - use a magic value A5A5A5 to double-check this code
     assert (self->scope_stack_ptr < MAX_SCOPE);
     self->scope_stack [self->scope_stack_ptr++] = self->code_size + 1;
-    self->code [self->code_size++] = VM_JUMPEX;
+    self->code [self->code_size++] = VM_LOOP;
     self->code [self->code_size++] = 0xA5;
     self->code [self->code_size++] = 0xA5;
     self->code [self->code_size++] = 0xA5;
 
-    //  VM: push input pipe for next iteration of loop function
-    self->code [self->code_size++] = VM_PIPE;
-    self->code [self->code_size++] = VM_PIPE_LOOP;
-
-    //  Push function address to scope stack so xloop gets it
+    //  Push function address to scope stack for xloop
     assert (self->scope_stack_ptr < MAX_SCOPE);
-    self->scope_stack [self->scope_stack_ptr++] = address;
+    self->scope_stack [self->scope_stack_ptr++] = fn_address;
+
+    //  Push body address to scope stack for xloop
+    assert (self->scope_stack_ptr < MAX_SCOPE);
+    self->scope_stack [self->scope_stack_ptr++] = self->code_size;
 
     return 0;
 }
@@ -606,40 +613,45 @@ zs_vm_compile_loop (zs_vm_t *self, const char *name)
 
 //  ---------------------------------------------------------------------------
 //  TBD
+//  We compile xloop into this code:
+//  VM:
+//  - call loop function (loopin -> loopout)
+//  - pipe op GREEDY (loopout -> loopin)
+//  - recv whole event from loopin
+//  - jump to address if event > 0
+//    ... continue
 
 void
 zs_vm_compile_xloop (zs_vm_t *self)
 {
-    //  VM: pull input pipe back so we can call loop function
-    self->code [self->code_size++] = VM_PIPE;
-    self->code [self->code_size++] = VM_PIPE_UNLOOP;
-
-    //  Ppop loop function address off scope stack
-    //  VM: call the function using prepared input
+    //  Pop stacked body address (jump here if loop continues)
     assert (self->scope_stack_ptr);
-    size_t call_address = self->scope_stack [--self->scope_stack_ptr];
-    s_compile_call (self, call_address, 0);
+    size_t body_address = self->scope_stack [--self->scope_stack_ptr];
 
-    //  Finish loop JUMPEX code
+    //  Pop loop function address (call to reevaluate loop)
     assert (self->scope_stack_ptr);
-    size_t end_address = self->scope_stack [--self->scope_stack_ptr];
+    size_t fn_address = self->scope_stack [--self->scope_stack_ptr];
 
-    //  VM: jump back to start of loop
+    //  Pop stacked loop address (address of VM_LOOP parameter)
     assert (self->scope_stack_ptr);
-    size_t start_address = self->scope_stack [--self->scope_stack_ptr];
-    self->code [self->code_size++] = VM_JUMP;
-    self->code [self->code_size++] = (byte) (start_address >> 16);
-    self->code [self->code_size++] = (byte) (start_address >> 8);
-    self->code [self->code_size++] = (byte) (start_address);
+    size_t loop_address = self->scope_stack [--self->scope_stack_ptr];
 
-    //  Store current code_size into jump address
-    assert (self->code [end_address + 0] == 0xA5);
-    assert (self->code [end_address + 1] == 0xA5);
-    assert (self->code [end_address + 2] == 0xA5);
-    self->code [end_address++] = (byte) (self->code_size >> 16);
-    self->code [end_address++] = (byte) (self->code_size >> 8);
-    self->code [end_address++] = (byte) (self->code_size);
+    //  VM: execute loop function with unloop pipe semantics
+    s_compile_call (self, fn_address, VM_PIPE_UNLOOP);
 
+    //  VM: evaluate loop event and jump to body if positive
+    self->code [self->code_size++] = VM_XLOOP;
+    self->code [self->code_size++] = (byte) (body_address >> 16);
+    self->code [self->code_size++] = (byte) (body_address >> 8);
+    self->code [self->code_size++] = (byte) (body_address);
+
+    //  Fix VM_LOOP argument to point to current code_size
+    assert (self->code [loop_address + 0] == 0xA5);
+    assert (self->code [loop_address + 1] == 0xA5);
+    assert (self->code [loop_address + 2] == 0xA5);
+    self->code [loop_address++] = (byte) (self->code_size >> 16);
+    self->code [loop_address++] = (byte) (self->code_size >> 8);
+    self->code [loop_address++] = (byte) (self->code_size);
 }
 
 
@@ -753,26 +765,33 @@ zs_vm_run (zs_vm_t *self)
     size_t needle = s_function_body (self, self->code_head);
     self->call_stack [0] = 0;
     self->call_stack_ptr = 1;
-    self->cpu_quota = 100000;
 
     if (self->verbose)
         printf ("D [%04zd]: run '%s'\n", needle, s_function_name (self, self->code_head));
 
     //  Clean pipes before each run
-    zs_pipe_purge (self->input);
-    zs_pipe_purge (self->output);
+    zs_pipe_purge (self->stdin);
+    zs_pipe_purge (self->stdout);
 
     //  Run virtual machine until stopped
     while (true) {
-        assert (self->cpu_quota--);
-        if (self->verbose)
+        if (self->verbose) {
+//          Enable this only when debugging pipes; it creates a lot of output
+//             zs_pipe_print (self->stdin, "Stdin:   ");
+//             zs_pipe_print (self->stdout, "Stdout:  ");
+//             zs_pipe_print (self->loopin, "Loopin:  ");
+//             zs_pipe_print (self->loopout, "Loopout: ");
             printf ("D [%04zd]: ", needle);
+        }
         byte opcode = self->code [needle++];
         if (opcode < 240) {
             if (self->verbose)
                 printf ("atomic=%s\n", self->atomics [opcode]->name);
-            if ((self->atomics [opcode]->function) (self, self->input, self->output))
+            if ((self->atomics [opcode]->function) (self,
+                self->loop_fn? self->loopin: self->stdin,
+                self->loop_fn? self->loopout: self->stdout))
                 break;
+            self->loop_fn = false;
         }
         else
         if (opcode == VM_CALL) {
@@ -796,6 +815,45 @@ zs_vm_run (zs_vm_t *self)
             needle = self->call_stack [--self->call_stack_ptr];
         }
         else
+        if (opcode == VM_LOOP) {
+            //  - stack loopin, loopout pipes
+            //  - new loopin, loopout pipes
+            //  - pipe op GREEDY (stdout -> loopin)
+            //  - recv whole event from loopin
+            //  - jump to address if event <= 0
+
+            //  Get last phrase into loopin pipe
+            zs_pipe_purge (self->loopin);
+            zs_pipe_pull_greedy (self->loopin, self->stdout);
+            int64_t event = zs_pipe_recv_whole (self->loopin);
+            if (self->verbose)
+                printf ("loop event=%" PRId64 "\n", event);
+            if (event > 0)
+                needle += 3;        //  Skip jump address
+            else {
+                needle = (size_t) (self->code [needle + 0] << 16)
+                       + (size_t) (self->code [needle + 1] << 8)
+                       + (size_t) (self->code [needle + 2]);
+            }
+        }
+        else
+        if (opcode == VM_XLOOP) {
+            //  - pipe op GREEDY (loopout -> loopin)
+            //  - recv whole event from loopin
+            //  - jump to address if event > 0
+            zs_pipe_pull_greedy (self->loopin, self->loopout);
+            int64_t event = zs_pipe_recv_whole (self->loopin);
+            if (self->verbose)
+                printf ("xloop event=%" PRId64 "\n", event);
+            if (event > 0) {
+                needle = (size_t) (self->code [needle + 0] << 16)
+                       + (size_t) (self->code [needle + 1] << 8)
+                       + (size_t) (self->code [needle + 2]);
+            }
+            else
+                needle += 3;        //  Skip jump address
+        }
+        else
         if (opcode == VM_JUMP) {
             //  Jump unconditionally
             size_t address = (size_t) (self->code [needle + 0] << 16)
@@ -812,7 +870,7 @@ zs_vm_run (zs_vm_t *self)
                            + (size_t) (self->code [needle + 1] << 8)
                            + (size_t) (self->code [needle + 2]);
             //  We expect test value on input pipe
-            int64_t value = zs_pipe_recv_whole (self->input);
+            int64_t value = zs_pipe_recv_whole (self->stdin);
             if (self->verbose)
                 printf ("jumpex address=%zd value=%" PRId64 "\n", address, value);
             needle = value > 0? needle + 3: address;
@@ -821,7 +879,7 @@ zs_vm_run (zs_vm_t *self)
         if (opcode == VM_WHOLE) {
             int64_t whole;
             memcpy (&whole, self->code + needle, sizeof (whole));
-            zs_pipe_send_whole (self->output, whole);
+            zs_pipe_send_whole (self->stdout, whole);
             if (self->verbose)
                 printf ("whole value=%" PRId64 "\n", whole);
             needle += sizeof (whole);
@@ -830,7 +888,7 @@ zs_vm_run (zs_vm_t *self)
         if (opcode == VM_REAL) {
             double real;
             memcpy (&real, self->code + needle, sizeof (real));
-            zs_pipe_send_real (self->output, real);
+            zs_pipe_send_real (self->stdout, real);
             if (self->verbose)
                 printf ("real value=%g\n", real);
             needle += sizeof (real);
@@ -838,7 +896,7 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_STRING) {
             char *string = (char *) self->code + needle;
-            zs_pipe_send_string (self->output, string);
+            zs_pipe_send_string (self->stdout, string);
             if (self->verbose)
                 printf ("string value=%s\n", string);
             needle += strlen (string) + 1;
@@ -854,40 +912,34 @@ zs_vm_run (zs_vm_t *self)
             switch (pipe_op) {
                 case VM_PIPE_NEST:
                     assert (self->nest_stack_ptr < MAX_NEST);
-                    self->nest_stack [self->nest_stack_ptr++] = self->output;
-                    self->output = zs_pipe_new ();
+                    self->nest_stack [self->nest_stack_ptr++] = self->stdout;
+                    self->stdout = zs_pipe_new ();
                     break;
                 case VM_PIPE_UNNEST:
                     assert (self->nest_stack_ptr > 0);
                     self->nest_stack_ptr--;
-                    zs_pipe_destroy (&self->input);
-                    self->input = self->output;
-                    self->output = self->nest_stack [self->nest_stack_ptr];
+                    zs_pipe_destroy (&self->stdin);
+                    self->stdin = self->stdout;
+                    self->stdout = self->nest_stack [self->nest_stack_ptr];
                     break;
-                case VM_PIPE_LOOP:
-                    assert (self->loop_stack_ptr < MAX_LOOP);
-                    //  For now, pull modest into input; this isn't solid though
-                    zs_pipe_pull_modest (self->input, self->output);
-                    self->loop_stack [self->loop_stack_ptr++] = self->input;
-                    self->input = zs_pipe_new ();
-                    break;
-                case VM_PIPE_UNLOOP:
-                    assert (self->loop_stack_ptr > 0);
-                    self->loop_stack_ptr--;
-                    zs_pipe_destroy (&self->input);
-                    self->input = self->loop_stack [self->loop_stack_ptr];
+                case VM_PIPE_SINGLE:
+                    zs_pipe_pull_single (self->stdin, self->stdout);
                     break;
                 case VM_PIPE_MODEST:
-                    zs_pipe_pull_modest (self->input, self->output);
+                    zs_pipe_pull_modest (self->stdin, self->stdout);
                     break;
                 case VM_PIPE_GREEDY:
-                    zs_pipe_pull_greedy (self->input, self->output);
+                    zs_pipe_pull_greedy (self->stdin, self->stdout);
                     break;
                 case VM_PIPE_ARRAY:
-                    zs_pipe_pull_array (self->input, self->output);
+                    zs_pipe_pull_array (self->stdin, self->stdout);
+                    break;
+                case VM_PIPE_UNLOOP:
+                    zs_pipe_purge (self->loopout);
+                    self->loop_fn = true;
                     break;
                 case VM_PIPE_MARK:
-                    zs_pipe_mark (self->output);
+                    zs_pipe_mark (self->stdout);
                     break;
             }
         }
@@ -929,7 +981,7 @@ const char *
 zs_vm_results (zs_vm_t *self)
 {
     zstr_free (&self->results);
-    self->results = zs_pipe_paste (self->output);
+    self->results = zs_pipe_paste (self->stdout);
     return self->results;
 }
 
@@ -1000,13 +1052,13 @@ s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     else {
         int64_t value = zs_pipe_recv_whole (input);
         if (value > 0) {
-            //  Send next loop counter
-            zs_pipe_send_whole (output, value - 1);
-            //  Signal good to loop again
+            //  Send loop event 1 = continue loop
             zs_pipe_send_whole (output, 1);
+            //  Send loop state = our next counter
+            zs_pipe_send_whole (output, value - 1);
         }
         else
-            //  Signal end of loop
+            //  Send loop event 0 = end loop
             zs_pipe_send_whole (output, 0);
     }
     return 0;
@@ -1128,9 +1180,9 @@ zs_vm_test (bool verbose)
     //  --------------------------------------------------------------------
     //  go: (sub main menu)
     zs_vm_compile_define (vm, "go");
-    zs_vm_compile_inline (vm, "sub");
-    zs_vm_compile_inline (vm, "main");
-    zs_vm_compile_inline (vm, "menu");
+//     zs_vm_compile_inline (vm, "sub");
+//     zs_vm_compile_inline (vm, "main");
+//     zs_vm_compile_inline (vm, "menu");
     zs_vm_compile_inline (vm, "loop");
     zs_vm_commit (vm);
     if (verbose)
