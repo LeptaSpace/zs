@@ -773,8 +773,8 @@ zs_vm_run (zs_vm_t *self)
     zs_pipe_purge (self->stdin);
     zs_pipe_purge (self->stdout);
 
-    //  Run virtual machine until stopped
-    while (true) {
+    //  Run virtual machine until stopped or interrupted
+    while (!zctx_interrupted) {
         if (self->verbose) {
 //          Enable this only when debugging pipes; it creates a lot of output
 //             zs_pipe_print (self->stdin, "Stdin:   ");
