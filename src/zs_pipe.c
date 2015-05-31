@@ -55,6 +55,30 @@ s_value_destroy (value_t **self_p)
     }
 }
 
+static const char *
+s_value_string (value_t *self, zs_pipe_t *pipe)
+{
+    if (pipe) {
+        if (self->type == 'w') {
+            snprintf (pipe->string_value, sizeof (pipe->string_value),
+                      "%" PRId64, self->whole);
+            return pipe->string_value;
+        }
+        else
+        if (self->type == 'r') {
+            snprintf (pipe->string_value, sizeof (pipe->string_value),
+                      "%.9g", self->real);
+            return pipe->string_value;
+        }
+        else
+        if (self->type == 's')
+            return self->string;
+        else
+        if (self->type == '|')
+            return "|";
+    }
+    return "";
+}
 
 //  ---------------------------------------------------------------------------
 //  Create a new zs_pipe, return the reference if successful, or NULL
@@ -95,12 +119,10 @@ zs_pipe_destroy (zs_pipe_t **self_p)
 void
 zs_pipe_send_whole (zs_pipe_t *self, int64_t whole)
 {
-    if (!self->value)
-        self->value = s_value_new (NULL);
-    self->value->type = 'w';
-    self->value->whole = whole;
-    zlistx_add_end (self->values, self->value);
-    self->value = NULL;
+    value_t *value = s_value_new (NULL);
+    value->type = 'w';
+    value->whole = whole;
+    zlistx_add_end (self->values, value);
 }
 
 
@@ -110,13 +132,11 @@ zs_pipe_send_whole (zs_pipe_t *self, int64_t whole)
 void
 zs_pipe_send_real (zs_pipe_t *self, double real)
 {
-    if (!self->value)
-        self->value = s_value_new (NULL);
-    self->value->type = 'r';
-    self->value->real = real;
-    zlistx_add_end (self->values, self->value);
+    value_t *value = s_value_new (NULL);
+    value->type = 'r';
+    value->real = real;
+    zlistx_add_end (self->values, value);
     self->nbr_reals++;
-    self->value = NULL;
 }
 
 
@@ -126,17 +146,11 @@ zs_pipe_send_real (zs_pipe_t *self, double real)
 void
 zs_pipe_send_string (zs_pipe_t *self, const char *string)
 {
-    if (!self->value
-    ||  self->value->type != 's'
-    ||  strlen (self->value->string) < strlen (string)) {
-        s_value_destroy (&self->value);
-        self->value = s_value_new (string);
-        self->value->type = 's';
-        self->value->string = &self->value->type + 1;
-    }
-    strcpy (self->value->string, string);
-    zlistx_add_end (self->values, self->value);
-    self->value = NULL;
+    value_t *value = s_value_new (string);
+    value->type = 's';
+    value->string = &value->type + 1;
+    strcpy (value->string, string);
+    zlistx_add_end (self->values, value);
 }
 
 
@@ -164,7 +178,6 @@ zs_pipe_recv (zs_pipe_t *self)
     while (true) {
         s_value_destroy (&self->value);
         self->value = (value_t *) zlistx_detach (self->values, NULL);
-
         if (!self->value)
             return false;       //  Pipe is empty
         else
@@ -245,26 +258,10 @@ zs_pipe_real (zs_pipe_t *self)
 //  register is empty, returns an empty string "". The caller must not modify
 //  or free the string.
 
-char *
+const char *
 zs_pipe_string (zs_pipe_t *self)
 {
-    if (self->value) {
-        if (self->value->type == 'w') {
-            snprintf (self->string_value, sizeof (self->string_value),
-                      "%" PRId64, self->value->whole);
-            return self->string_value;
-        }
-        else
-        if (self->value->type == 'r') {
-            snprintf (self->string_value, sizeof (self->string_value),
-                      "%.9g", self->value->real);
-            return self->string_value;
-        }
-        else
-        if (self->value->type == 's')
-            return self->value->string;
-    }
-    return "";
+    return s_value_string (self->value, self);
 }
 
 
@@ -301,7 +298,7 @@ zs_pipe_recv_real (zs_pipe_t *self)
 //  to a string if needed. If there is no value to receive, returns "". The
 //  The caller must not modify or free the string.
 
-char *
+const char *
 zs_pipe_recv_string (zs_pipe_t *self)
 {
     if (zs_pipe_recv (self))
@@ -427,9 +424,6 @@ zs_pipe_pull_greedy (zs_pipe_t *self, zs_pipe_t *source)
     //  Ensure cursor points to first valid value, if any
     if (!value)
         zlistx_first (source->values);
-    else
-    if (value->type == '|')
-        zlistx_next (source->values);
 
     s_pull_values (self, source);
 }
@@ -461,9 +455,6 @@ zs_pipe_pull_array (zs_pipe_t *self, zs_pipe_t *source)
     //  Ensure cursor points to first valid value, if any
     if (!value)
         zlistx_first (source->values);
-    else
-    if (value->type == '|')
-        zlistx_next (source->values);
 
     s_pull_values (self, source);
 }
@@ -479,8 +470,16 @@ zs_pipe_paste (zs_pipe_t *self)
 {
     //  We use an extensible CZMQ chunk
     zchunk_t *chunk = zchunk_new (NULL, 256);
+
+//     while ((self->value = (value_t *) zlistx_detach (self->values, NULL))) {
+//         const char *string = zs_pipe_string (self);
+//         if (zchunk_size (chunk))
+//             zchunk_extend (chunk, " ", 1);
+//         zchunk_extend (chunk, string, strlen (string));
+//         s_value_destroy (&self->value);
+//     }
     while (zs_pipe_recv (self)) {
-        char *string = zs_pipe_string (self);
+        const char *string = zs_pipe_string (self);
         if (zchunk_size (chunk))
             zchunk_extend (chunk, " ", 1);
         zchunk_extend (chunk, string, strlen (string));
@@ -503,10 +502,10 @@ zs_pipe_print (zs_pipe_t *self, const char *prefix)
     if (zlistx_size (self->values)) {
         size_t limit = 10;          //  Keep things simple with long pipes
         printf ("%s", prefix);
-        self->value = (value_t *) zlistx_first (self->values);
-        while (self->value) {
-            printf ("[%s] ", zs_pipe_string (self));
-            self->value = (value_t *) zlistx_next (self->values);
+        value_t *value = (value_t *) zlistx_first (self->values);
+        while (value) {
+            printf ("[%s] ", s_value_string (value, self));
+            value = (value_t *) zlistx_next (self->values);
             if (--limit == 0) {
                 printf ("...");
                 break;

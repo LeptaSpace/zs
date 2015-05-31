@@ -58,6 +58,7 @@ s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "times", zs_type_modest, "Loop N times");
     else {
+        zs_pipe_mark (output);
         int64_t value = zs_pipe_recv_whole (input);
         if (value > 0) {
             //  Send loop event 1 = continue loop

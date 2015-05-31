@@ -78,7 +78,7 @@ double
 //  Returns the value of the register, coerced to a string if needed. If the
 //  register is empty, returns an empty string "". The caller must not modify
 //  or free the string.
-char *
+const char *
     zs_pipe_string (zs_pipe_t *self);
 
 //  Receives the next value off the pipe, into the register, and coerces it
@@ -94,7 +94,7 @@ double
 //  Receives the next value off the pipe, into the register, and coerces it
 //  to a string if needed. If there is no value to receive, returns "". The
 //  The caller must not modify or free the string.
-char *
+const char *
     zs_pipe_recv_string (zs_pipe_t *self);
 
 //  Marks an end of phrase in the pipe. This is used to delimit the pipe

@@ -558,6 +558,7 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "12.0 .1 +", "12.1");
     s_repl_assert (repl, "1 [1 2] 0.5 [1 2] 0.49 [1 2] count", "4");
     s_repl_assert (repl, "times (10) { 1 } count", "10");
+    s_repl_assert (repl, "2 times { <hello> 3 times { <world> } } count", "8");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

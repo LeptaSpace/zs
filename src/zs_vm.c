@@ -584,8 +584,8 @@ zs_vm_compile_loop (zs_vm_t *self, const char *name)
 
     //  The loop starts here
     //  VM:
-    //  - stack loopin, loopout pipes
-    //  - new loopin, loopout pipes
+    //  - stack loopout
+    //  - new loopout, empty loopin
     //  - pipe op GREEDY (stdout -> loopin)
     //  - recv whole event from loopin
     //  - jump to address if event <= 0
@@ -754,6 +754,13 @@ zs_vm_set_verbose (zs_vm_t *self, bool verbose)
 //  until the function ends. Returns 0 if stopped successfully, or -1 if
 //  stopped due to some error. Each run of the VM starts with clean pipes.
 
+static size_t
+s_decode_address (byte *code)
+{
+    return (size_t) (code [0] << 16) + (size_t) (code [1] << 8) + (size_t) (code [2]);
+}
+
+
 int
 zs_vm_run (zs_vm_t *self)
 {
@@ -796,13 +803,11 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_CALL) {
             //  Address is in next 3 bytes
-            size_t address = (size_t) (self->code [needle + 0] << 16)
-                           + (size_t) (self->code [needle + 1] << 8)
-                           + (size_t) (self->code [needle + 2]);
+            size_t address = s_decode_address (self->code + needle);
             needle += 3;
             assert (self->code [address] == VM_GUARD);
             if (self->verbose)
-                printf ("call function=%s address=%zd stack=%zd\n",
+                printf ("CALL function=%s address=%zd stack=%zd\n",
                         s_function_name (self, address), address, self->call_stack_ptr);
             assert (self->call_stack_ptr < MAX_CALLS);
             self->call_stack [self->call_stack_ptr++] = needle;
@@ -811,69 +816,68 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_RETURN) {
             if (self->verbose)
-                printf ("return stack=%zd\n", self->call_stack_ptr);
+                printf ("RETURN stack=%zd\n", self->call_stack_ptr);
             needle = self->call_stack [--self->call_stack_ptr];
         }
         else
         if (opcode == VM_LOOP) {
-            //  - stack loopin, loopout pipes
-            //  - new loopin, loopout pipes
+            //  - stack loopin, create new loopin
             //  - pipe op GREEDY (stdout -> loopin)
-            //  - recv whole event from loopin
+            //  - recv event from loopin (state remains on loopin)
             //  - jump to address if event <= 0
-
+            self->loop_stack [self->loop_stack_ptr++] = self->loopin;
+            self->loopin = zs_pipe_new ();
             //  Get last phrase into loopin pipe
-            zs_pipe_purge (self->loopin);
             zs_pipe_pull_greedy (self->loopin, self->stdout);
+            //  Get event and jump if false
             int64_t event = zs_pipe_recv_whole (self->loopin);
             if (self->verbose)
-                printf ("loop event=%" PRId64 "\n", event);
+                printf ("LOOP event=%" PRId64 "\n", event);
             if (event > 0)
                 needle += 3;        //  Skip jump address
-            else {
-                needle = (size_t) (self->code [needle + 0] << 16)
-                       + (size_t) (self->code [needle + 1] << 8)
-                       + (size_t) (self->code [needle + 2]);
-            }
+            else
+                needle = s_decode_address (self->code + needle);
         }
         else
         if (opcode == VM_XLOOP) {
             //  - pipe op GREEDY (loopout -> loopin)
-            //  - recv whole event from loopin
+            //  - recv event from loopin
             //  - jump to address if event > 0
+            //  - destroy loopin and pop saved loopin
+            //  Get last phrase into loopin pipe
             zs_pipe_pull_greedy (self->loopin, self->loopout);
+            //  Get event and jump if true
             int64_t event = zs_pipe_recv_whole (self->loopin);
             if (self->verbose)
-                printf ("xloop event=%" PRId64 "\n", event);
-            if (event > 0) {
-                needle = (size_t) (self->code [needle + 0] << 16)
-                       + (size_t) (self->code [needle + 1] << 8)
-                       + (size_t) (self->code [needle + 2]);
-            }
-            else
+                printf ("XLOOP event=%" PRId64 "\n", event);
+            if (event > 0)
+                needle = s_decode_address (self->code + needle);
+            else {
                 needle += 3;        //  Skip jump address
+                //  Restore previous loopin pipe
+                assert (self->loop_stack_ptr > 0);
+                zs_pipe_destroy (&self->loopin);
+                self->loopin = self->loop_stack [--self->loop_stack_ptr];
+            }
         }
         else
         if (opcode == VM_JUMP) {
             //  Jump unconditionally
-            size_t address = (size_t) (self->code [needle + 0] << 16)
-                           + (size_t) (self->code [needle + 1] << 8)
-                           + (size_t) (self->code [needle + 2]);
+            needle = s_decode_address (self->code + needle);
             if (self->verbose)
-                printf ("jump address=%zd\n", address);
-            needle = address;
+                printf ("JUMP address=%zd\n", needle);
         }
         else
         if (opcode == VM_JUMPEX) {
-            //  Jump if next input value is zero or negative
-            size_t address = (size_t) (self->code [needle + 0] << 16)
-                           + (size_t) (self->code [needle + 1] << 8)
-                           + (size_t) (self->code [needle + 2]);
             //  We expect test value on input pipe
-            int64_t value = zs_pipe_recv_whole (self->stdin);
+            int64_t event = zs_pipe_recv_whole (self->stdin);
             if (self->verbose)
-                printf ("jumpex address=%zd value=%" PRId64 "\n", address, value);
-            needle = value > 0? needle + 3: address;
+                printf ("JUMPEX event=%" PRId64 "\n", event);
+            //  Jump if next input value is zero or negative
+            if (event > 0)
+                needle += 3;        //  Skip jump address
+            else
+                needle = s_decode_address (self->code + needle);
         }
         else
         if (opcode == VM_WHOLE) {
@@ -881,7 +885,7 @@ zs_vm_run (zs_vm_t *self)
             memcpy (&whole, self->code + needle, sizeof (whole));
             zs_pipe_send_whole (self->stdout, whole);
             if (self->verbose)
-                printf ("whole value=%" PRId64 "\n", whole);
+                printf ("WHOLE value=%" PRId64 "\n", whole);
             needle += sizeof (whole);
         }
         else
@@ -890,7 +894,7 @@ zs_vm_run (zs_vm_t *self)
             memcpy (&real, self->code + needle, sizeof (real));
             zs_pipe_send_real (self->stdout, real);
             if (self->verbose)
-                printf ("real value=%g\n", real);
+                printf ("REAL value=%g\n", real);
             needle += sizeof (real);
         }
         else
@@ -898,7 +902,7 @@ zs_vm_run (zs_vm_t *self)
             char *string = (char *) self->code + needle;
             zs_pipe_send_string (self->stdout, string);
             if (self->verbose)
-                printf ("string value=%s\n", string);
+                printf ("STRING value=%s\n", string);
             needle += strlen (string) + 1;
         }
         else
@@ -907,7 +911,7 @@ zs_vm_run (zs_vm_t *self)
             //  the VM. The current design makes it easy to develop the language.
             byte pipe_op = self->code [needle++];
             if (self->verbose)
-                printf ("pipe op=%s\n", pipe_op_name [pipe_op]);
+                printf ("PIPE op=%s\n", pipe_op_name [pipe_op]);
 
             switch (pipe_op) {
                 case VM_PIPE_NEST:
@@ -917,10 +921,9 @@ zs_vm_run (zs_vm_t *self)
                     break;
                 case VM_PIPE_UNNEST:
                     assert (self->nest_stack_ptr > 0);
-                    self->nest_stack_ptr--;
                     zs_pipe_destroy (&self->stdin);
                     self->stdin = self->stdout;
-                    self->stdout = self->nest_stack [self->nest_stack_ptr];
+                    self->stdout = self->nest_stack [--self->nest_stack_ptr];
                     break;
                 case VM_PIPE_SINGLE:
                     zs_pipe_pull_single (self->stdin, self->stdout);
@@ -946,21 +949,21 @@ zs_vm_run (zs_vm_t *self)
         else
         if (opcode == VM_SENTENCE) {
             if (self->verbose)
-                printf ("sentence\n");
+                printf ("SENTENCE\n");
             //  TODO: send results to console/actor pipe
             //  For now zs_repl grabs results via the zs_vm_results call
         }
         else
         if (opcode == VM_GUARD) {
             if (self->verbose)
-                printf ("guard\n");
+                printf ("GUARD\n");
             printf ("E: corrupt VM, aborting\n");
             assert (false);
         }
         else
         if (opcode == VM_STOP) {
             if (self->verbose)
-                printf ("stop\n");
+                printf ("STOP\n");
             break;
         }
         else {
@@ -1050,6 +1053,7 @@ s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     if (zs_vm_probing (self))
         zs_vm_register (self, "times", zs_type_modest, "Loop N times");
     else {
+        zs_pipe_mark (output);
         int64_t value = zs_pipe_recv_whole (input);
         if (value > 0) {
             //  Send loop event 1 = continue loop
