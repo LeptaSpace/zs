@@ -1180,9 +1180,9 @@ zs_vm_test (bool verbose)
     //  --------------------------------------------------------------------
     //  go: (sub main menu)
     zs_vm_compile_define (vm, "go");
-//     zs_vm_compile_inline (vm, "sub");
-//     zs_vm_compile_inline (vm, "main");
-//     zs_vm_compile_inline (vm, "menu");
+    zs_vm_compile_inline (vm, "sub");
+    zs_vm_compile_inline (vm, "main");
+    zs_vm_compile_inline (vm, "menu");
     zs_vm_compile_inline (vm, "loop");
     zs_vm_commit (vm);
     if (verbose)
