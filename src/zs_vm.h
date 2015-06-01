@@ -169,6 +169,10 @@ const char *
 void
     zs_vm_set_verbose (zs_vm_t *self, bool verbose);
 
+//  Enable tracing of VM pipe states; produces lots of output
+void
+    zs_vm_trace_pipes (zs_vm_t *self);
+
 //  Run last defined function, if any, in the VM. This continues forever or
 //  until the function ends. Returns 0 if stopped successfully, or -1 if
 //  stopped due to some error. Each run of the VM starts with clean pipes.

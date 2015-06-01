@@ -42,6 +42,16 @@ s_index (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     return 0;
 }
 
+static int
+s_debug (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "debug", zs_type_nullary, "Trace pipe state in detail");
+    else
+        zs_vm_trace_pipes (self);
+    return 0;
+}
+
 
 //  ---------------------------------------------------------------------------
 //  Modest functions
@@ -320,6 +330,7 @@ s_register_atomics (zs_vm_t *self)
 {
     zs_vm_probe (self, s_check);
     zs_vm_probe (self, s_index);
+    zs_vm_probe (self, s_debug);
 
     zs_vm_probe (self, s_times);
 

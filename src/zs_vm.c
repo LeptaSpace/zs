@@ -167,6 +167,7 @@ struct _zs_vm_t {
     size_t loop_index;              //  Current loop index
 
     bool verbose;                   //  Trace execution progress
+    bool debug;                     //  Trace pipe states during execution
     size_t iterator;                //  For listing functions & atomics
     bool userspace;                 //  True when iterating functions
 };
@@ -753,6 +754,17 @@ zs_vm_set_verbose (zs_vm_t *self, bool verbose)
 
 
 //  ---------------------------------------------------------------------------
+//  Enable tracing of VM pipe states; produces lots of output
+
+void
+zs_vm_trace_pipes (zs_vm_t *self)
+{
+    self->verbose = true;
+    self->debug = true;
+}
+
+
+//  ---------------------------------------------------------------------------
 //  Run last defined function, if any, in the VM. This continues forever or
 //  until the function ends. Returns 0 if stopped successfully, or -1 if
 //  stopped due to some error. Each run of the VM starts with clean pipes.
@@ -785,14 +797,14 @@ zs_vm_run (zs_vm_t *self)
 
     //  Run virtual machine until stopped or interrupted
     while (!zctx_interrupted) {
-        if (self->verbose) {
-//          Enable this only when debugging pipes; it creates a lot of output
+        if (self->debug) {
             zs_pipe_print (self->stdin, "Stdin:   ");
             zs_pipe_print (self->stdout, "Stdout:  ");
             zs_pipe_print (self->loopin, "Loopin:  ");
             zs_pipe_print (self->loopout, "Loopout: ");
-            printf ("D [%04zd]: ", needle);
         }
+        if (self->verbose)
+            printf ("D [%04zd]: ", needle);
         byte opcode = self->code [needle++];
         if (opcode < 240) {
             if (self->verbose)

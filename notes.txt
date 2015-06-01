@@ -1,8 +1,6 @@
 TODO
 
 
-Problem: need access to loop index/counter
-Solution: make an index function
 
 
 
