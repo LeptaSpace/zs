@@ -32,47 +32,74 @@ s_check (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     return 0;
 }
 
-static int
-s_index (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
-{
-    if (zs_vm_probing (self))
-        zs_vm_register (self, "index", zs_type_nullary, "Report current loop index");
-    else
-        zs_pipe_send_whole (output, zs_vm_loop_index (self, 0));
-    return 0;
-}
+//  ---------------------------------------------------------------------------
+//  Modest functions
 
 static int
 s_debug (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "debug", zs_type_nullary, "Trace pipe state in detail");
+        zs_vm_register (self, "debug", zs_type_modest, "Trace pipe state in detail");
     else
-        zs_vm_trace_pipes (self);
+        zs_vm_trace_pipes (self, (zs_pipe_recv_whole (input) > 0));
     return 0;
 }
 
 
-//  ---------------------------------------------------------------------------
-//  Modest functions
-
+//  This is the times {} loop function
 static int
 s_times (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
         zs_vm_register (self, "times", zs_type_modest, "Loop N times");
     else {
+        int64_t cycles = zs_pipe_recv_whole (input);
         zs_pipe_mark (output);
-        int64_t value = zs_pipe_recv_whole (input);
-        if (value > 0) {
+
+        if (cycles > 0) {
             //  Send loop event 1 = continue loop
             zs_pipe_send_whole (output, 1);
-            //  Send loop state = our next counter
-            zs_pipe_send_whole (output, value - 1);
+            //  Send loop state: remaining cycles
+            zs_pipe_send_whole (output, cycles - 1);
         }
         else
             //  Send loop event 0 = end loop
             zs_pipe_send_whole (output, 0);
+    }
+    return 0;
+}
+
+//  This is the count {} loop function
+static int
+s_count (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "count", zs_type_modest, "Loop N times, counting");
+    else {
+        int64_t cycles = zs_pipe_recv_whole (input);
+        //  Get optional index start and delta from input
+        //  These default to zero and 1 respectively
+        int64_t index = zs_pipe_recv_whole (input);
+        int64_t delta = zs_pipe_recv_whole (input);
+        if (delta == 0)
+            delta = 1;
+
+        if (cycles > 0) {
+            //  Send index and split off state into next phrase
+            zs_pipe_send_whole (output, index);
+            zs_pipe_mark (output);
+            //  Send loop event 1 = continue loop
+            zs_pipe_send_whole (output, 1);
+            //  Send loop state: remaining cycles, index, delta
+            zs_pipe_send_whole (output, cycles - 1);
+            zs_pipe_send_whole (output, index + delta);
+            zs_pipe_send_whole (output, delta);
+        }
+        else {
+            //  Send loop event 0 = end loop
+            zs_pipe_mark (output);
+            zs_pipe_send_whole (output, 0);
+        }
     }
     return 0;
 }
@@ -88,16 +115,16 @@ s_sum (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         zs_vm_register (self, "sum", zs_type_greedy, "Sum of the values");
     else
     if (zs_pipe_realish (input)) {
-        double result = 0;
+        double sum = 0;
         while (zs_pipe_recv (input))
-            result += zs_pipe_real (input);
-        zs_pipe_send_real (output, result);
+            sum += zs_pipe_real (input);
+        zs_pipe_send_real (output, sum);
     }
     else {
-        int64_t result = 0;
+        int64_t sum = 0;
         while (zs_pipe_recv (input))
-            result += zs_pipe_whole (input);
-        zs_pipe_send_whole (output, result);
+            sum += zs_pipe_whole (input);
+        zs_pipe_send_whole (output, sum);
     }
     return 0;
 }
@@ -109,30 +136,30 @@ s_product (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         zs_vm_register (self, "product", zs_type_greedy, "Product of the values");
     else
     if (zs_pipe_realish (input)) {
-        double result = 1;
+        double product = 1;
         while (zs_pipe_recv (input))
-            result += zs_pipe_real (input);
-        zs_pipe_send_real (output, result);
+            product += zs_pipe_real (input);
+        zs_pipe_send_real (output, product);
     }
     else {
-        int64_t result = 1;
+        int64_t product = 1;
         while (zs_pipe_recv (input))
-            result += zs_pipe_whole (input);
-        zs_pipe_send_whole (output, result);
+            product += zs_pipe_whole (input);
+        zs_pipe_send_whole (output, product);
     }
     return 0;
 }
 
 static int
-s_count (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_tally (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "count", zs_type_greedy, "Number of values");
+        zs_vm_register (self, "tally", zs_type_greedy, "Number of values");
     else {
-        int64_t result = 0;
+        int64_t tally = 0;
         while (zs_pipe_recv (input))
-            result++;
-        zs_pipe_send_whole (output, result);
+            tally++;
+        zs_pipe_send_whole (output, tally);
     }
     return 0;
 }
@@ -144,12 +171,12 @@ s_mean (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
         zs_vm_register (self, "mean", zs_type_greedy, "Mean of the values");
     else {
         double total = 0;
-        double count = 0;
+        double tally = 0;
         while (zs_pipe_recv (input)) {
             total += zs_pipe_real (input);
-            count++;
+            tally++;
         }
-        zs_pipe_send_real (output, total / count);
+        zs_pipe_send_real (output, total / tally);
     }
     return 0;
 }
@@ -329,14 +356,14 @@ static void
 s_register_atomics (zs_vm_t *self)
 {
     zs_vm_probe (self, s_check);
-    zs_vm_probe (self, s_index);
-    zs_vm_probe (self, s_debug);
 
+    zs_vm_probe (self, s_debug);
     zs_vm_probe (self, s_times);
+    zs_vm_probe (self, s_count);
 
     zs_vm_probe (self, s_sum);
     zs_vm_probe (self, s_product);
-    zs_vm_probe (self, s_count);
+    zs_vm_probe (self, s_tally);
     zs_vm_probe (self, s_mean);
     zs_vm_probe (self, s_min);
     zs_vm_probe (self, s_max);

@@ -169,9 +169,13 @@ const char *
 void
     zs_vm_set_verbose (zs_vm_t *self, bool verbose);
 
-//  Enable tracing of VM pipe states; produces lots of output
+//  Atomic API: provides current loop state pipe; for use by loop atomics.
+zs_pipe_t *
+    zs_vm_loop_state (zs_vm_t *self);
+
+//  Atomic API: enable tracing of VM pipe states; produces lots of output
 void
-    zs_vm_trace_pipes (zs_vm_t *self);
+    zs_vm_trace_pipes (zs_vm_t *self, bool trace);
 
 //  Run last defined function, if any, in the VM. This continues forever or
 //  until the function ends. Returns 0 if stopped successfully, or -1 if
@@ -183,11 +187,6 @@ int
 //  modify returned value.
 const char *
     zs_vm_results (zs_vm_t *self);
-
-//  Atomic API: return index for the current (denest = 0) or specified
-//  parent loop (denest > 0). If there is no loop as specified, returns 0.
-size_t
-    zs_vm_loop_index (zs_vm_t *self, size_t denest);
 
 //  Self test of this class
 void

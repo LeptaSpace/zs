@@ -20,31 +20,33 @@
 
 **<a href="#toc3-312">Defining a Function</a>**
 
-**<a href="#toc3-329">The Code</a>**
+**<a href="#toc3-329">Irritating and Iterating</a>**
 
-**<a href="#toc3-342">The Virtual Machine</a>**
+**<a href="#toc3-345">The Code</a>**
 
-**<a href="#toc3-357">Extensibility</a>**
+**<a href="#toc3-358">The Virtual Machine</a>**
 
-**<a href="#toc3-390">Code Generation</a>**
+**<a href="#toc3-373">Extensibility</a>**
 
-**<a href="#toc3-398">The Shell</a>**
+**<a href="#toc3-406">Code Generation</a>**
 
-**<a href="#toc3-403">Arguments</a>**
+**<a href="#toc3-414">The Shell</a>**
 
-**<a href="#toc3-412">Other Goals</a>**
+**<a href="#toc3-419">Arguments</a>**
 
-**<a href="#toc2-431">Design Notes</a>**
+**<a href="#toc3-428">Other Goals</a>**
 
-**<a href="#toc2-439">Bibliography</a>**
+**<a href="#toc2-447">Design Notes</a>**
 
-**<a href="#toc2-448">Technicalities</a>**
+**<a href="#toc2-455">Bibliography</a>**
 
-**<a href="#toc3-451">Ownership and License</a>**
+**<a href="#toc2-464">Technicalities</a>**
 
-**<a href="#toc3-462">Building and Installing</a>**
+**<a href="#toc3-467">Ownership and License</a>**
 
-**<a href="#toc3-495">This Document</a>**
+**<a href="#toc3-478">Building and Installing</a>**
+
+**<a href="#toc3-511">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -188,13 +190,13 @@ The basic grammar of ZeroScript is therefore just a series of numbers, strings, 
 
 The language looks like this (taken from the VM self test):
 
-    sub: (<OK> <Guys> count 2 assert)
+    sub: (<OK> <Guys> tally 2 assert)
     main: (
         123 1000000000 sum 1000000123 assert,
-        <Hello,> <World> count 2 assert,
+        <Hello,> <World> tally 2 assert,
         add (123 456) 579 assert,
-        add (123 count (1 2 3)) 126 assert,
-        year year count 2 assert
+        add (123 tally (1 2 3)) 126 assert,
+        year year tally 2 assert
     )
     sub sub main
 
@@ -226,9 +228,9 @@ These should all be obvious:
     1 2 3
     > 1 2 3 add
     6
-    > 1 2 3 count, 1 1 add
+    > 1 2 3 tally, 1 1 add
     3 2
-    > 1 2 3 count, 1 1 add, subtract
+    > 1 2 3 tally, 1 1 add, subtract
     1
 
 I'll come to adding aliases like "+" and "-" later. How does that final "subtract" know what to do? Let me make a more delicate example of my target syntax:
@@ -271,13 +273,13 @@ Before we call a function, the VM prepares an input pipe based on the type of th
 
 * A modest function operates on the previous value in the current phrase, if there's one: "1 k". If we use a modest function at the start of a phrase, then it operates on the whole previous phrase: "1 2 3, k". This is like using parentheses: "k (1 2 3)".
 * A greedy function operates on the previous values in the current phrase, if there are any: "1 2 3 add". If we use a greedy function at the start of a phrase, it operators on the whole sentence so far: "1 2 3, 4 5 6, add".
-* An array function applies one value (the last value) to a phrase. Internally the last value is passed first, so the function can use it as an operand: "1 2 3, 2 times". The comma can help readability though isn't necessary.
+* An array function applies one value (the last value) to a phrase. Internally the last value is passed first, so the function can use it as an operand: "1 2 3, 2 x". The comma can help readability though isn't necessary.
 
 This language style is sometimes called *concatenative*. However most such languages force the user to learn reverse-Polish notation and the mechanics of a stack, neither of which are intuitive. FIFO pipes seem more intuitive and more fitting for a language that aims to stretch itself over multiple threads, cores, boxes, and clouds.
 
 I'm trying to avoid forced-binary operations, as two seems an arbitrary special case. More importantly, infix notation doesn't work well with the concatenative style. Hence the array functions. Here is how array functions work:
 
-    > 1 2 3, 2 times
+    > 1 2 3, 2 x
     2 4 6
     > 22 7 /
     3.14286
@@ -363,7 +365,23 @@ Here are some other examples
     > K (1 2 3)
     1000 2000 3000
 
-<A name="toc3-329" title="The Code" />
+<A name="toc3-329" title="Irritating and Iterating" />
+### Irritating and Iterating
+
+Here is how we repeat some actions:
+
+    > hi-hole: ( 3 times { <well> } )
+    > hi-hole
+    well well well
+
+Or, to get a sequence of numbers:
+
+    > count (10) { }
+    1 2 3 4 5 6 7 8 9 10
+    > count (10 0 2) { }
+    0 2 4 6 8 10 12 14 16 18
+
+<A name="toc3-345" title="The Code" />
 ### The Code
 
 The code has these pieces:
@@ -376,7 +394,7 @@ The code has these pieces:
 
 The fsm_c.gsl script builds the state machines, which are XML models that drive GSL code generation.
 
-<A name="toc3-342" title="The Virtual Machine" />
+<A name="toc3-358" title="The Virtual Machine" />
 ### The Virtual Machine
 
 I finally settled on a bytecode threaded interpreter. The 'threading' part refers to the way the code runs together, not the concurrency. However the play on words may be fun later. A metal direct threaded interpreter literally jumps to primitive functions, which jump back to the interpreter, so your application consists of 90% hand-written assembler and 10% glue. It's elegant. It doesn't work in ANSI C, though gcc has a hack "goto anywhere" trick one could use. One is not going to, at this stage.
@@ -391,7 +409,7 @@ Opcodes 0-239 are "atomics", and point to a look-up table of function addresses.
 
 255 is the opcode for "do more complex stuff", which I'll now explain.
 
-<A name="toc3-357" title="Extensibility" />
+<A name="toc3-373" title="Extensibility" />
 ### Extensibility
 
 Extensibility means people contributing. This should IMO be one of the first goals of any technically complex project: *how do I make it absurdly simple for people to give me their valuable time and knowledge?*
@@ -424,7 +442,7 @@ And here's the code for that function:
 
 For external atomics I want to add a "class" concept so that atomics are abstracted. The caller will register the class, which will register all its own atomics. This lets us add classes dynamically. The class will essentially be an opcode argument (255 + class + method).
 
-<A name="toc3-390" title="Code Generation" />
+<A name="toc3-406" title="Code Generation" />
 ### Code Generation
 
 We use GSL code generation to build the core language pieces. There are two cases:
@@ -432,12 +450,12 @@ We use GSL code generation to build the core language pieces. There are two case
 * Generating the scaling atomics. See [zs_scaling.gsl](https://github.com/LeptaSpace/zs/blob/master/src/zs_scaling.gsl) and [zs_units_si.xml](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.xml), which produce the source code in [zs_units_si.h](https://github.com/LeptaSpace/zs/blob/master/src/zs_units_si.h).
 * Generating the state machines. See zs_lex.xml and zs_repl.xml.
 
-<A name="toc3-398" title="The Shell" />
+<A name="toc3-414" title="The Shell" />
 ### The Shell
 
 The zs shell provides command history, editing, and tab completion using the Tab key or '?' (as I'm trying to not use special characters in the language, the question mark should remain free for the CLI) (We'll see). We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
 
-<A name="toc3-403" title="Arguments" />
+<A name="toc3-419" title="Arguments" />
 ### Arguments
 
 The nice thing about languages is the Internet Comments per Kiloline of Code (IC/KLOC) factor, easily 10-1,000 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one gives a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -446,7 +464,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 When doing an experiment, "everyone else does it this way, so you should too" is not valid science. Unless, the alternatives are known to be painful, toxic, or deadly. In fact doing stuff no-one expects is kind of exactly the point.
 
-<A name="toc3-412" title="Other Goals" />
+<A name="toc3-428" title="Other Goals" />
 ### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -465,7 +483,7 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-431" title="Design Notes" />
+<A name="toc2-447" title="Design Notes" />
 ## Design Notes
 
 * Any language aspect that takes more than 10 minutes to understand is too complex.
@@ -473,7 +491,7 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
 * Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
 
-<A name="toc2-439" title="Bibliography" />
+<A name="toc2-455" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
@@ -482,10 +500,10 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * http://en.wikipedia.org/wiki/Concatenative_programming_language
 * https://wiki.haskell.org/Functional_programming
 
-<A name="toc2-448" title="Technicalities" />
+<A name="toc2-464" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-451" title="Ownership and License" />
+<A name="toc3-467" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -496,7 +514,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-462" title="Building and Installing" />
+<A name="toc3-478" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -529,7 +547,7 @@ You will need the pkg-config, libtool, and autoreconf packages.
 
 Uses: https://github.com/troglobit/editline.
 
-<A name="toc3-495" title="This Document" />
+<A name="toc3-511" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).

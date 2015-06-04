@@ -161,10 +161,8 @@ struct _zs_vm_t {
     zs_pipe_t *stdin;               //  Input to next function
     zs_pipe_t *stdout;              //  Current phrase output
     zs_pipe_t *loopin;              //  Input to next loop function
-    zs_pipe_t *loopout;             //  Output of next loop function
     char *results;                  //  Sentence results, if any
     bool loop_fn;                   //  Call as loop function
-    size_t loop_index;              //  Current loop index
 
     bool verbose;                   //  Trace execution progress
     bool debug;                     //  Trace pipe states during execution
@@ -279,7 +277,6 @@ zs_vm_new (void)
         self->stdin = zs_pipe_new ();
         self->stdout = zs_pipe_new ();
         self->loopin = zs_pipe_new ();
-        self->loopout = zs_pipe_new ();
         self->code_max = 32000;         //  Arbitrary; TODO: extensible
         self->code = (byte *) malloc (self->code_max);
         self->code [self->code_size++] = VM_STOP;
@@ -302,7 +299,6 @@ zs_vm_destroy (zs_vm_t **self_p)
         zs_pipe_destroy (&self->stdin);
         zs_pipe_destroy (&self->stdout);
         zs_pipe_destroy (&self->loopin);
-        zs_pipe_destroy (&self->loopout);
         while (self->nbr_atomics)
             s_atomic_destroy (&self->atomics [--self->nbr_atomics]);
         free (self->code);
@@ -549,8 +545,7 @@ zs_vm_compile_loop (zs_vm_t *self, const char *name)
 
     //  The loop starts here
     //  VM:
-    //  - stack loopout
-    //  - new loopout, empty loopin
+    //  - stack loopin, new loopin
     //  - pipe op GREEDY (stdout -> loopin)
     //  - recv whole event from loopin
     //  - jump to address if event <= 0
@@ -579,8 +574,8 @@ zs_vm_compile_loop (zs_vm_t *self, const char *name)
 //  ---------------------------------------------------------------------------
 //  We compile xloop into this code:
 //  VM:
-//  - call loop function (loopin -> loopout)
-//  - pipe op GREEDY (loopout -> loopin)
+//  - call loop function (loopin -> stdout)
+//  - pipe op GREEDY (stdout -> loopin)
 //  - recv whole event from loopin
 //  - jump to address if event > 0
 //    ... continue
@@ -754,13 +749,23 @@ zs_vm_set_verbose (zs_vm_t *self, bool verbose)
 
 
 //  ---------------------------------------------------------------------------
-//  Enable tracing of VM pipe states; produces lots of output
+//  Atomic API: enable tracing of VM pipe states; produces lots of output
 
 void
-zs_vm_trace_pipes (zs_vm_t *self)
+zs_vm_trace_pipes (zs_vm_t *self, bool trace)
 {
-    self->verbose = true;
-    self->debug = true;
+    self->verbose = trace;
+    self->debug = trace;
+}
+
+
+//  ---------------------------------------------------------------------------
+//  Atomic API: provides current loop state pipe; for use by loop atomics.
+
+zs_pipe_t *
+zs_vm_loop_state (zs_vm_t *self)
+{
+    return NULL;
 }
 
 
@@ -780,6 +785,7 @@ int
 zs_vm_run (zs_vm_t *self)
 {
     assert (!self->checkpoint);
+//     static size_t quota = 250;
 
     //  We call the last function that was defined, which is at code_head.
     //  When this function returns, the VM ends at needle = 0, and stops.
@@ -794,14 +800,18 @@ zs_vm_run (zs_vm_t *self)
     //  Clean pipes before each run
     zs_pipe_purge (self->stdin);
     zs_pipe_purge (self->stdout);
+    zs_pipe_purge (self->loopin);
 
     //  Run virtual machine until stopped or interrupted
     while (!zctx_interrupted) {
+//         if (--quota == 0) {
+//             puts ("EXPIRED");
+//             break;
+//         }
         if (self->debug) {
             zs_pipe_print (self->stdin, "Stdin:   ");
             zs_pipe_print (self->stdout, "Stdout:  ");
             zs_pipe_print (self->loopin, "Loopin:  ");
-            zs_pipe_print (self->loopout, "Loopout: ");
         }
         if (self->verbose)
             printf ("D [%04zd]: ", needle);
@@ -811,7 +821,7 @@ zs_vm_run (zs_vm_t *self)
                 printf ("atomic=%s\n", self->atomics [opcode]->name);
             if ((self->atomics [opcode]->function) (self,
                 self->loop_fn? self->loopin: self->stdin,
-                self->loop_fn? self->loopout: self->stdout))
+                self->stdout))
                 break;
             self->loop_fn = false;
         }
@@ -852,24 +862,22 @@ zs_vm_run (zs_vm_t *self)
                 needle += 3;        //  Skip jump address
             else {
                 needle = s_decode_address (self->code + needle);
-                self->loop_index = 1;
             }
         }
         else
         if (opcode == VM_XLOOP) {
-            //  - pipe op GREEDY (loopout -> loopin)
+            //  - pipe op GREEDY (stdout -> loopin)
             //  - recv event from loopin
             //  - jump to address if event > 0
             //  - destroy loopin and pop saved loopin
             //  Get last phrase into loopin pipe
-            zs_pipe_pull_greedy (self->loopin, self->loopout);
+            zs_pipe_pull_greedy (self->loopin, self->stdout);
             //  Get event and jump if true
             int64_t event = zs_pipe_recv_whole (self->loopin);
             if (self->verbose)
                 printf ("XLOOP event=%" PRId64 "\n", event);
             if (event > 0) {
                 needle = s_decode_address (self->code + needle);
-                self->loop_index++;
             }
             else {
                 needle += 3;        //  Skip jump address
@@ -957,7 +965,6 @@ zs_vm_run (zs_vm_t *self)
                     zs_pipe_pull_array (self->stdin, self->stdout);
                     break;
                 case VM_PIPE_UNLOOP:
-                    zs_pipe_purge (self->loopout);
                     self->loop_fn = true;
                     break;
                 case VM_PIPE_MARK:
@@ -995,17 +1002,6 @@ zs_vm_run (zs_vm_t *self)
 
 
 //  ---------------------------------------------------------------------------
-//  Atomic API: return index for the current (denest = 0) or specified
-//  parent loop (denest > 0). If there is no loop as specified, returns 0.
-
-size_t
-zs_vm_loop_index (zs_vm_t *self, size_t denest)
-{
-    return self->loop_index;
-}
-
-
-//  ---------------------------------------------------------------------------
 //  Return results as string, after successful execution. Caller must not
 //  modify returned value.
 //  TODO: deprected, to be replaced by sending to pipe on sentence
@@ -1038,15 +1034,15 @@ s_sum (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 }
 
 static int
-s_count (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+s_tally (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 {
     if (zs_vm_probing (self))
-        zs_vm_register (self, "count", zs_type_greedy, "Eat and count all the values");
+        zs_vm_register (self, "tally", zs_type_greedy, "Eat and tally all the values");
     else {
-        int64_t count = 0;
+        int64_t tally = 0;
         while (zs_pipe_recv (input))
-            count++;
-        zs_pipe_send_whole (output, count);
+            tally++;
+        zs_pipe_send_whole (output, tally);
     }
     return 0;
 }
@@ -1111,18 +1107,18 @@ zs_vm_test (bool verbose)
     zs_vm_set_verbose (vm, verbose);
 
     zs_vm_probe (vm, s_sum);
-    zs_vm_probe (vm, s_count);
+    zs_vm_probe (vm, s_tally);
     zs_vm_probe (vm, s_assert);
     zs_vm_probe (vm, s_year);
     zs_vm_probe (vm, s_times);
 
     //  --------------------------------------------------------------------
-    //  sub: (<OK> <Guys> count 2 assert)
+    //  sub: (<OK> <Guys> tally 2 assert)
 
     zs_vm_compile_define (vm, "sub");
     zs_vm_compile_string (vm, "OK");
     zs_vm_compile_string (vm, "Guys");
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_inline (vm, "tally");
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_commit (vm);
@@ -1130,10 +1126,10 @@ zs_vm_test (bool verbose)
     //  --------------------------------------------------------------------
     //  main: (
     //      123 1000000000 sum 1000000123 assert,
-    //      <Hello,> <World> count 2 assert,
+    //      <Hello,> <World> tally 2 assert,
     //      sum (123 456) 579 assert,
-    //      sum (123 count (1 2 3)) 126 assert,
-    //      year year count 2 assert
+    //      sum (123 tally (1 2 3)) 126 assert,
+    //      year year tally 2 assert
     //  )
 
     zs_vm_compile_define (vm, "main");
@@ -1147,7 +1143,7 @@ zs_vm_test (bool verbose)
 
     zs_vm_compile_string (vm, "Hello,");
     zs_vm_compile_string (vm, "World");
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_inline (vm, "tally");
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_compile_phrase (vm);
@@ -1162,7 +1158,7 @@ zs_vm_test (bool verbose)
 
     zs_vm_compile_nest   (vm, "sum");
     zs_vm_compile_whole  (vm, 123);
-    zs_vm_compile_nest   (vm, "count");
+    zs_vm_compile_nest   (vm, "tally");
     zs_vm_compile_whole  (vm, 1);
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_whole  (vm, 3);
@@ -1174,14 +1170,14 @@ zs_vm_test (bool verbose)
 
     zs_vm_compile_inline (vm, "year");
     zs_vm_compile_inline (vm, "year");
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_inline (vm, "tally");
     zs_vm_compile_whole  (vm, 2);
     zs_vm_compile_inline (vm, "assert");
 
     zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
-    //  menu: (0 [ <hello> ] -1 [ <world> ] count 1 assert)
+    //  menu: (0 [ <hello> ] -1 [ <world> ] tally 1 assert)
 
     zs_vm_compile_define (vm, "menu");
     zs_vm_compile_whole  (vm, 1);
@@ -1192,13 +1188,13 @@ zs_vm_test (bool verbose)
     zs_vm_compile_menu   (vm);
     zs_vm_compile_string (vm, "world");
     zs_vm_compile_xmenu  (vm);
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_inline (vm, "tally");
     zs_vm_compile_whole  (vm, 1);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_commit (vm);
 
     //  --------------------------------------------------------------------
-    //  loop: (3 times { <hello> } count 3 assert )
+    //  loop: (3 times { <hello> } tally 3 assert )
 
     zs_vm_compile_define (vm, "loop");
     zs_vm_compile_whole  (vm, 3);
@@ -1206,7 +1202,7 @@ zs_vm_test (bool verbose)
     zs_vm_compile_loop   (vm, "times");
     zs_vm_compile_string (vm, "hello");
     zs_vm_compile_xloop  (vm);
-    zs_vm_compile_inline (vm, "count");
+    zs_vm_compile_inline (vm, "tally");
     zs_vm_compile_whole  (vm, 3);
     zs_vm_compile_inline (vm, "assert");
     zs_vm_commit (vm);

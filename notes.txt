@@ -1,31 +1,74 @@
 TODO
 
+    zs_vm_loopout ()
+        first call: same as stdout
+        xloop call: loop_state
+
+
+    times()
+        - read state from stdin
+        - send event/state phrase to loopout
+        - optionally send something to stdout
+
+        first call:
+        xloop call:
+            -
+
+        - pull event/state phrase and leave index on pipe
 
 
 
 
-    LOOP:
+    atomic can push index to stdin in each loop
 
-        function { phrase }
+        > 3 times { echo }
+        1 2 3
 
-        - function is called before phrase
-        - sends yes/no (1/0) and next index
-        - atomics for basic operations:
-            n times
-            forever
+    atomic can count index from different starts
+
+        > 3 10 times { echo }
+        10 11 12
+
+    atomic can increment index by arbitrary values
+
+        > 3 3 -1 times { echo }
+        3 2 1
+
+    need echo atomic to print stdin
+
+    times atomic must read start and delta
+
+    times (count start delta)
+
+    -----
 
 
-        ? how to access loop index inside phrase
-        - we have no variables or symbols to play with
-        - some function could inject value into input stream
-
-            index atomic
-
-        ? how to store more than a single value in loop state
-        - having a loop stack is pretty clumsy
 
 
 
+    other loop atomics?
+        forever {  }
+        break -> jump out of loop
+        while (function)
+            loop state is function reference
+
+    instead of named variables
+        how about named pipes?
+
+
+    iterations
+    index start -> 1
+    index delta -> 1
+    inside each loop
+        push index to stdin
+    echo atomic
+        modest stdin -> stdout
+
+
+    index atomic is essentially a hard-coded variable
+        zs_vm_set_index (self, value)
+        zs_vm_set (self, "index", value)
+        -> scoped, or perhaps not
 
 
 
@@ -103,8 +146,6 @@ selftests run through all atomic tests
     - default for * is "multiple by 1"?
     - how to add hint for function....
     k: <Multiply by 1000> (1000 *)
-
-- increase function address space to 32 bits (now 16 bits)
 
 - pipes can probably be built as single tree structure?
 
