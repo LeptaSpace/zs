@@ -463,7 +463,6 @@ zs_pipe_pull_array (zs_pipe_t *self, zs_pipe_t *source)
 //  ---------------------------------------------------------------------------
 //  Return pipe contents, as string. Caller must free it when done. Values are
 //  separated by spaces. This empties the pipe.
-//  TODO: make this an atomic (paste)
 
 char *
 zs_pipe_paste (zs_pipe_t *self)
@@ -471,18 +470,16 @@ zs_pipe_paste (zs_pipe_t *self)
     //  We use an extensible CZMQ chunk
     zchunk_t *chunk = zchunk_new (NULL, 256);
 
-//     while ((self->value = (value_t *) zlistx_detach (self->values, NULL))) {
-//         const char *string = zs_pipe_string (self);
-//         if (zchunk_size (chunk))
-//             zchunk_extend (chunk, " ", 1);
-//         zchunk_extend (chunk, string, strlen (string));
-//         s_value_destroy (&self->value);
-//     }
-    while (zs_pipe_recv (self)) {
+    while ((self->value = (value_t *) zlistx_detach (self->values, NULL))) {
         const char *string = zs_pipe_string (self);
-        if (zchunk_size (chunk))
-            zchunk_extend (chunk, " ", 1);
-        zchunk_extend (chunk, string, strlen (string));
+        if (streq (string, "|"))
+            zchunk_extend (chunk, ",", 1);
+        else {
+            if (zchunk_size (chunk))
+                zchunk_extend (chunk, " ", 1);
+            zchunk_extend (chunk, string, strlen (string));
+        }
+        s_value_destroy (&self->value);
     }
     size_t result_size = zchunk_size (chunk);
     char *result = (char *) malloc (result_size + 1);

@@ -1,46 +1,14 @@
 TODO
 
-    zs_vm_loopout ()
-        first call: same as stdout
-        xloop call: loop_state
+    while (function)
 
+        - How can we identify function reference rather than execution?
+        - (function) without arguments
+        - when function is modest, greedy, or array
+        - or even unary
+            -> store function address on stdout
 
-    times()
-        - read state from stdin
-        - send event/state phrase to loopout
-        - optionally send something to stdout
-
-        first call:
-        xloop call:
-            -
-
-        - pull event/state phrase and leave index on pipe
-
-
-
-
-    atomic can push index to stdin in each loop
-
-        > 3 times { echo }
-        1 2 3
-
-    atomic can count index from different starts
-
-        > 3 10 times { echo }
-        10 11 12
-
-    atomic can increment index by arbitrary values
-
-        > 3 3 -1 times { echo }
-        3 2 1
-
-    need echo atomic to print stdin
-
-    times atomic must read start and delta
-
-    times (count start delta)
-
-    -----
+    (function) -> store function address instead of compiling call to function
 
 
 
