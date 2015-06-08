@@ -540,9 +540,9 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "1 2 3, sum", "6");
     s_repl_assert (repl, "1 2 3, 4 5 6 sum", "1 2 3 15");
     s_repl_assert (repl, "1 2 3, 4 5 6, sum", "21");
-    s_repl_assert (repl, "1 2 3 count, 1 1 sum, min", "2");
+    s_repl_assert (repl, "1 2 3 tally, 1 1 sum, min", "2");
     s_repl_assert (repl, "sum (1 2 3)", "6");
-    s_repl_assert (repl, "sum (sum (1 2 3) count (4 5 6))", "9");
+    s_repl_assert (repl, "sum (sum (1 2 3) tally (4 5 6))", "9");
     s_repl_assert (repl, "sum (1 2 3", "");
     s_repl_assert (repl, ")", "6");
     s_repl_assert (repl, "sub: (<hello>)", "");
@@ -556,8 +556,9 @@ zs_repl_test (bool verbose)
     s_repl_assert (repl, "K: (1000 *)", "");
     s_repl_assert (repl, "K (1 2 3)", "1000 2000 3000");
     s_repl_assert (repl, "12.0 .1 +", "12.1");
-    s_repl_assert (repl, "1 [1 2] 0.5 [1 2] 0.49 [1 2] count", "4");
-    s_repl_assert (repl, "times (10) { 1 } count", "10");
+    s_repl_assert (repl, "1 [1 2] 0.5 [1 2] 0.49 [1 2] tally", "4");
+    s_repl_assert (repl, "times (10) { 1 } tally", "10");
+    s_repl_assert (repl, "2 times { <hello> 3 times { <world> } } tally", "8");
     zs_repl_destroy (&repl);
     //  @end
     printf ("OK\n");

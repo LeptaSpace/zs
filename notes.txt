@@ -1,32 +1,42 @@
 TODO
 
+    while (function)
 
-Problem: need access to loop index/counter
-Solution: make an index function
+        - How can we identify function reference rather than execution?
+        - (function) without arguments
+        - when function is modest, greedy, or array
+        - or even unary
+            -> store function address on stdout
 
-
-    LOOP:
-
-        function { phrase }
-
-        - function is called before phrase
-        - sends yes/no (1/0) and next index
-        - atomics for basic operations:
-            n times
-            forever
-
-
-        ? how to access loop index inside phrase
-        - we have no variables or symbols to play with
-        - some function could inject value into input stream
-
-            index atomic
-
-        ? how to store more than a single value in loop state
-        - having a loop stack is pretty clumsy
+    (function) -> store function address instead of compiling call to function
 
 
 
+
+
+    other loop atomics?
+        forever {  }
+        break -> jump out of loop
+        while (function)
+            loop state is function reference
+
+    instead of named variables
+        how about named pipes?
+
+
+    iterations
+    index start -> 1
+    index delta -> 1
+    inside each loop
+        push index to stdin
+    echo atomic
+        modest stdin -> stdout
+
+
+    index atomic is essentially a hard-coded variable
+        zs_vm_set_index (self, value)
+        zs_vm_set (self, "index", value)
+        -> scoped, or perhaps not
 
 
 
@@ -104,8 +114,6 @@ selftests run through all atomic tests
     - default for * is "multiple by 1"?
     - how to add hint for function....
     k: <Multiply by 1000> (1000 *)
-
-- increase function address space to 32 bits (now 16 bits)
 
 - pipes can probably be built as single tree structure?
 

@@ -123,6 +123,16 @@ int
 void
     zs_vm_compile_xnest (zs_vm_t *self);
 
+//  Compiles a loop. Caller must provide name of function, which has just run
+//  and left its output on stdout: loop event, and then loop state, either as
+//  one value or as a phrase.
+int
+    zs_vm_compile_loop (zs_vm_t *self, const char *name);
+
+//  TBD
+void
+    zs_vm_compile_xloop (zs_vm_t *self);
+
 //  TBD
 void
     zs_vm_compile_menu (zs_vm_t *self);
@@ -130,14 +140,6 @@ void
 //  TBD
 void
     zs_vm_compile_xmenu (zs_vm_t *self);
-
-//  TBD
-int
-    zs_vm_compile_loop (zs_vm_t *self, const char *name);
-
-//  TBD
-void
-    zs_vm_compile_xloop (zs_vm_t *self);
 
 //  Compile end of phrase. This appends the phrase output to the current
 //  sentence output, and starts a new phrase.
@@ -166,6 +168,14 @@ const char *
 //  Enable tracing of VM compilation and execution.
 void
     zs_vm_set_verbose (zs_vm_t *self, bool verbose);
+
+//  Atomic API: provides current loop state pipe; for use by loop atomics.
+zs_pipe_t *
+    zs_vm_loop_state (zs_vm_t *self);
+
+//  Atomic API: enable tracing of VM pipe states; produces lots of output
+void
+    zs_vm_trace_pipes (zs_vm_t *self, bool trace);
 
 //  Run last defined function, if any, in the VM. This continues forever or
 //  until the function ends. Returns 0 if stopped successfully, or -1 if

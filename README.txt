@@ -146,13 +146,13 @@ The basic grammar of ZeroScript is therefore just a series of numbers, strings, 
 
 The language looks like this (taken from the VM self test):
 
-    sub: (<OK> <Guys> count 2 assert)
+    sub: (<OK> <Guys> tally 2 assert)
     main: (
         123 1000000000 sum 1000000123 assert,
-        <Hello,> <World> count 2 assert,
+        <Hello,> <World> tally 2 assert,
         add (123 456) 579 assert,
-        add (123 count (1 2 3)) 126 assert,
-        year year count 2 assert
+        add (123 tally (1 2 3)) 126 assert,
+        year year tally 2 assert
     )
     sub sub main
 
@@ -183,9 +183,9 @@ These should all be obvious:
     1 2 3
     > 1 2 3 add
     6
-    > 1 2 3 count, 1 1 add
+    > 1 2 3 tally, 1 1 add
     3 2
-    > 1 2 3 count, 1 1 add, subtract
+    > 1 2 3 tally, 1 1 add, subtract
     1
 
 I'll come to adding aliases like "+" and "-" later. How does that final "subtract" know what to do? Let me make a more delicate example of my target syntax:
@@ -318,6 +318,21 @@ Here are some other examples
     > K (1000 *)
     > K (1 2 3)
     1000 2000 3000
+
+### Irritating and Iterating
+
+Here is how we repeat some actions:
+
+    > hi-hole: ( 3 times { <well> } )
+    > hi-hole
+    well well well
+
+Or, to get a sequence of numbers:
+
+    > count (10) { }
+    1 2 3 4 5 6 7 8 9 10
+    > count (10 0 2) { }
+    0 2 4 6 8 10 12 14 16 18
 
 ### The Code
 
