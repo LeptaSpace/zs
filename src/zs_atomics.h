@@ -105,6 +105,33 @@ s_count (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
 }
 
 
+//  This is the countdown {} loop function
+static int
+s_countdown (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
+{
+    if (zs_vm_probing (self))
+        zs_vm_register (self, "countdown", zs_type_modest, "Loop N times, counting dow");
+    else {
+        int64_t cycles = zs_pipe_recv_whole (input);
+        if (cycles > 0) {
+            //  Send index and split off state into next phrase
+            zs_pipe_send_whole (output, cycles);
+            zs_pipe_mark (output);
+            //  Send loop event 1 = continue loop
+            zs_pipe_send_whole (output, 1);
+            //  Send loop state: remaining cycles
+            zs_pipe_send_whole (output, cycles - 1);
+        }
+        else {
+            //  Send loop event 0 = end loop
+            zs_pipe_mark (output);
+            zs_pipe_send_whole (output, 0);
+        }
+    }
+    return 0;
+}
+
+
 //  ---------------------------------------------------------------------------
 //  Greedy functions
 
@@ -360,6 +387,7 @@ s_register_atomics (zs_vm_t *self)
     zs_vm_probe (self, s_debug);
     zs_vm_probe (self, s_times);
     zs_vm_probe (self, s_count);
+    zs_vm_probe (self, s_countdown);
 
     zs_vm_probe (self, s_sum);
     zs_vm_probe (self, s_product);
