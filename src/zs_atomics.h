@@ -78,11 +78,9 @@ s_count (zs_vm_t *self, zs_pipe_t *input, zs_pipe_t *output)
     else {
         int64_t cycles = zs_pipe_recv_whole (input);
         //  Get optional index start and delta from input
-        //  These default to zero and 1 respectively
-        int64_t index = zs_pipe_recv_whole (input);
-        int64_t delta = zs_pipe_recv_whole (input);
-        if (delta == 0)
-            delta = 1;
+        //  These both default to 1 (so default is 1, 2, 3,...)
+        int64_t index = zs_pipe_recv (input)? zs_pipe_whole (input): 1;
+        int64_t delta = zs_pipe_recv (input)? zs_pipe_whole (input): 1;
 
         if (cycles > 0) {
             //  Send index and split off state into next phrase
