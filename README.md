@@ -545,7 +545,7 @@ Here's how to build ZeroScript from GitHub:
 
 You will need the pkg-config, libtool, and autoreconf packages.
 
-Uses: https://github.com/troglobit/editline.
+Uses: https://github.com/troglobit/editline. Get the tarballs from http://troglobit.com/editline.html.
 
 <A name="toc3-511" title="This Document" />
 ### This Document
