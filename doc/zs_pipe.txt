@@ -17,26 +17,6 @@ zs_pipe_t *
 void
     zs_pipe_destroy (zs_pipe_t **self_p);
 
-//  Sets pipe register to contain a specified whole number; any previous
-//  value in the register is lost.
-void
-    zs_pipe_set_whole (zs_pipe_t *self, int64_t whole);
-
-//  Sets pipe register to contain a specified real number; any previous
-//  value in the register is lost.
-void
-    zs_pipe_set_real (zs_pipe_t *self, double real);
-
-//  Sets pipe register to contain a specified string; any previous value
-//  in the register is lost.
-void
-    zs_pipe_set_string (zs_pipe_t *self, const char *string);
-
-//  Sends current pipe register to the pipe; returns 0 if successful, or
-//  -1 if the pipe register was empty. Clears the register.
-int
-    zs_pipe_send (zs_pipe_t *self);
-
 //  Send whole number to pipe; this wipes the current pipe register.
 void
     zs_pipe_send_whole (zs_pipe_t *self, int64_t whole);
@@ -81,7 +61,7 @@ double
 //  Returns the value of the register, coerced to a string if needed. If the
 //  register is empty, returns an empty string "". The caller must not modify
 //  or free the string.
-char *
+const char *
     zs_pipe_string (zs_pipe_t *self);
 
 //  Receives the next value off the pipe, into the register, and coerces it
@@ -97,7 +77,7 @@ double
 //  Receives the next value off the pipe, into the register, and coerces it
 //  to a string if needed. If there is no value to receive, returns "". The
 //  The caller must not modify or free the string.
-char *
+const char *
     zs_pipe_recv_string (zs_pipe_t *self);
 
 //  Marks an end of phrase in the pipe. This is used to delimit the pipe
@@ -105,6 +85,11 @@ char *
 //  values off a pipe.
 void
     zs_pipe_mark (zs_pipe_t *self);
+
+//  Pulls a single value from the source pipe into the pipe. If there was
+//  no value to pull, sends a constant '1' value to the pipe.
+void
+    zs_pipe_pull_single (zs_pipe_t *self, zs_pipe_t *source);
 
 //  Pulls a list of values from the source pipe into the pipe. This function
 //  does a "modest" pull: in a phrase, pulls the last single value. After a
@@ -128,6 +113,10 @@ void
 //  separated by spaces. This empties the pipe.
 char *
     zs_pipe_paste (zs_pipe_t *self);
+
+//  Print pipe contents, for debugging, prints nothing if pipe is empty
+void
+    zs_pipe_print (zs_pipe_t *self, const char *prefix);
 
 //  Empty the pipe of any values it might contain.
 void
@@ -167,6 +156,7 @@ assert (!zs_pipe_recv (pipe));
 
 char *results = zs_pipe_paste (pipe);
 assert (streq (results, ""));
+zstr_free (&results);
 
 zs_pipe_send_whole (pipe, 4);
 zs_pipe_send_whole (pipe, 5);
