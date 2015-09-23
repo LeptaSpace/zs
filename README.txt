@@ -403,6 +403,8 @@ We use GSL code generation to build the core language pieces. There are two case
 
 The zs shell provides command history, editing, and tab completion using the Tab key or '?' (as I'm trying to not use special characters in the language, the question mark should remain free for the CLI) (We'll see). We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
 
+To animate the state machines for the lexer and parser, run "zs -v".
+
 ### Arguments
 
 The nice thing about languages is the Internet Comments per Kiloline of Code (IC/KLOC) factor, easily 10-1,000 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one gives a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.

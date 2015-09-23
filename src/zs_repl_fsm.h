@@ -702,6 +702,12 @@ fsm_execute (fsm_t *self)
             else
             if (self->event == start_loop_event) {
                 if (!self->exception) {
+                    //  require_loop_function
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ require_loop_function");
+                    require_loop_function (self->parent);
+                }
+                if (!self->exception) {
                     //  compile_start_loop
                     if (self->animate)
                         zsys_debug ("zs_repl:               $ compile_start_loop");
@@ -975,6 +981,12 @@ fsm_execute (fsm_t *self)
             }
             else
             if (self->event == start_loop_event) {
+                if (!self->exception) {
+                    //  require_loop_function
+                    if (self->animate)
+                        zsys_debug ("zs_repl:               $ require_loop_function");
+                    require_loop_function (self->parent);
+                }
                 if (!self->exception) {
                     //  compile_start_loop
                     if (self->animate)

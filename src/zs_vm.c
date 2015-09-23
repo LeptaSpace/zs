@@ -539,6 +539,7 @@ zs_vm_compile_xnest (zs_vm_t *self)
 int
 zs_vm_compile_loop (zs_vm_t *self, const char *name)
 {
+    assert (name);
     size_t fn_address = s_resolve (self, name);
     if (!fn_address)
         return -1;              //  Undefined function, forget it

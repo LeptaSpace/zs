@@ -312,6 +312,7 @@ require_loop_function (zs_repl_t *self)
 static void
 compile_start_loop (zs_repl_t *self)
 {
+    assert (self->loop_function [self->scope]);
     zs_vm_compile_loop (self->vm, self->loop_function [self->scope]);
     assert (self->scope < SCOPE_MAX);
     self->scope_stack [self->scope++] = zs_lex_end_loop;

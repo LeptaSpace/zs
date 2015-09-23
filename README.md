@@ -32,21 +32,21 @@
 
 **<a href="#toc3-414">The Shell</a>**
 
-**<a href="#toc3-419">Arguments</a>**
+**<a href="#toc3-421">Arguments</a>**
 
-**<a href="#toc3-428">Other Goals</a>**
+**<a href="#toc3-430">Other Goals</a>**
 
-**<a href="#toc2-447">Design Notes</a>**
+**<a href="#toc2-449">Design Notes</a>**
 
-**<a href="#toc2-455">Bibliography</a>**
+**<a href="#toc2-457">Bibliography</a>**
 
-**<a href="#toc2-464">Technicalities</a>**
+**<a href="#toc2-466">Technicalities</a>**
 
-**<a href="#toc3-467">Ownership and License</a>**
+**<a href="#toc3-469">Ownership and License</a>**
 
-**<a href="#toc3-478">Building and Installing</a>**
+**<a href="#toc3-480">Building and Installing</a>**
 
-**<a href="#toc3-511">This Document</a>**
+**<a href="#toc3-513">This Document</a>**
 
 Seriously, this is renewing my hope in technology. Thanks @hintjens -- Jason J. Gullickson ‏@jasonbot2000
 
@@ -455,7 +455,9 @@ We use GSL code generation to build the core language pieces. There are two case
 
 The zs shell provides command history, editing, and tab completion using the Tab key or '?' (as I'm trying to not use special characters in the language, the question mark should remain free for the CLI) (We'll see). We use the editline library for this; it is a clone of the FSF readline function, though much smaller and without extra dependencies. One neat feature is that as you define commands, these become available in the shell.
 
-<A name="toc3-419" title="Arguments" />
+To animate the state machines for the lexer and parser, run "zs -v".
+
+<A name="toc3-421" title="Arguments" />
 ### Arguments
 
 The nice thing about languages is the Internet Comments per Kiloline of Code (IC/KLOC) factor, easily 10-1,000 times higher than for things like protocols, security mechanisms, or library functions. Make a messy API and no-one gives a damn. Ah, but a language! Everyone has an opinion. I kind of like this, the long troll.
@@ -464,7 +466,7 @@ If you want to talk about minor details like my use of < and > for strings, be m
 
 When doing an experiment, "everyone else does it this way, so you should too" is not valid science. Unless, the alternatives are known to be painful, toxic, or deadly. In fact doing stuff no-one expects is kind of exactly the point.
 
-<A name="toc3-428" title="Other Goals" />
+<A name="toc3-430" title="Other Goals" />
 ### Other Goals
 
 Disclaimer: the "vision" thing is way overrated. I only add this section because it's fun.
@@ -483,7 +485,7 @@ Since each box will have an arbitrary set of atomics, bytecode is not portable. 
 
 Perhaps the most compelling reason for a new language project is to give the ZeroMQ community an opportunity to work together. We are often fragmented across platforms and operating systems, yet we are solving the same kinds of problems over and over. A shared language would bring together valuable experience. This is the thing which excites me the most, which we managed to almost do using C (as it can be wrapped in anything, so ties together many cultural threads).
 
-<A name="toc2-447" title="Design Notes" />
+<A name="toc2-449" title="Design Notes" />
 ## Design Notes
 
 * Any language aspect that takes more than 10 minutes to understand is too complex.
@@ -491,7 +493,7 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * Special characters are annoying and I want to reduce or eliminate the need on them. Some punctuation is OK.
 * Real numbers and whole numbers are not the same set in reality. How much is 2 + 2? Anything from 3 to 5, if you are counting real things.
 
-<A name="toc2-455" title="Bibliography" />
+<A name="toc2-457" title="Bibliography" />
 ## Bibliography
 
 * http://www.complang.tuwien.ac.at/forth/threaded-code.html
@@ -500,10 +502,10 @@ Perhaps the most compelling reason for a new language project is to give the Zer
 * http://en.wikipedia.org/wiki/Concatenative_programming_language
 * https://wiki.haskell.org/Functional_programming
 
-<A name="toc2-464" title="Technicalities" />
+<A name="toc2-466" title="Technicalities" />
 ## Technicalities
 
-<A name="toc3-467" title="Ownership and License" />
+<A name="toc3-469" title="Ownership and License" />
 ### Ownership and License
 
 The contributors are listed in AUTHORS. This project uses the MPL v2 license, see LICENSE.
@@ -514,7 +516,7 @@ ZeroScript uses the [CLASS (C Language Style for Scalabilty)](http://rfc.zeromq.
 
 To report an issue, use the [ZeroScript issue tracker](https://github.com/lepaspace/zs/issues) at github.com.
 
-<A name="toc3-478" title="Building and Installing" />
+<A name="toc3-480" title="Building and Installing" />
 ### Building and Installing
 
 Here's how to build ZeroScript from GitHub:
@@ -547,7 +549,7 @@ You will need the pkg-config, libtool, and autoreconf packages.
 
 Uses: https://github.com/troglobit/editline. Get the tarballs from http://troglobit.com/editline.html.
 
-<A name="toc3-511" title="This Document" />
+<A name="toc3-513" title="This Document" />
 ### This Document
 
 This document is originally at README.txt and is built using [gitdown](http://github.com/imatix/gitdown).
